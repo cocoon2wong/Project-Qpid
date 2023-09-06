@@ -2,21 +2,26 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 19:26:54
+@LastEditTime: 2023-09-06 21:03:53
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
-import os
 import re
-import sys
 from .args import Args
 from .silverballers import AgentArgs, HandlerArgs, SilverballersArgs
 
 FLAG = '<!-- DO NOT CHANGE THIS LINE -->'
 TARGET_FILE = './README.md'
 MAX_SPACE = 20
+
+ARGS_DIC = {
+    Args: ['Basic Args', None],
+    AgentArgs: ['First-stage Silverballers Args', 0],
+    HandlerArgs: ['Second-stage Silverballers Args', 0],
+    SilverballersArgs: ['Silverballers Args', 1],
+}
 
 
 def read_comments(args: Args) -> list[str]:
@@ -94,17 +99,9 @@ def update_readme(new_lines: list[str], md_file: str):
 
 
 def print_help_info(value: str = None):
-    files = [Args(is_temporary=True),
-             AgentArgs(is_temporary=True),
-             HandlerArgs(is_temporary=True),
-             SilverballersArgs(is_temporary=True)]
-
-    titles = ['Basic Args',
-              'First-stage Silverballers Args',
-              'Second-stage Silverballers Args',
-              'Silverballers Args']
-
-    father_indices = [None, 0, 0, 1, 1]
+    files = [T(is_temporary=True) for T in ARGS_DIC.keys()]
+    titles = [v[0] for v in ARGS_DIC.values()]
+    father_indices = [v[1] for v in ARGS_DIC.values()]
 
     doc_lines = get_doc(files, titles, father_indices)
     if value is None:
@@ -115,3 +112,8 @@ def print_help_info(value: str = None):
         doc_lines = [doc for doc in doc_lines if doc[5:].startswith(value)]
         [print(doc) for doc in doc_lines]
     return doc_lines
+
+
+def update_args_dic(new_dic: dict):
+    ARGS_DIC.update(new_dic)
+    

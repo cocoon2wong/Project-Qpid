@@ -4,9 +4,9 @@ Q-Pid
 A training "engine" for trajectory prediction models (based on TensorFlow 2).
 """
 
-from . import (applications, args, base, managers, model, silverballers,
-               training, utils)
-from .__getHelp import print_help_info
+from . import (applications, args, base, help, model, silverballers, training,
+               utils)
+from .help import print_help_info, update_args_dic
 
 
 def set_log_path(p: str):
