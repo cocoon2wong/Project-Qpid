@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 17:52:31
+@LastEditTime: 2023-09-07 09:46:08
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -20,6 +20,36 @@ STATIC = ARG_TYPES.STATIC
 TEMPORARY = ARG_TYPES.TEMPORARY
 NA = 'Unavailable'
 
+ARG_ALIAS: dict[str, list[str]] = {}
+
+
+def add_arg_alias(alias: str, command: list[str]):
+    """
+    Add a new alias for running args.
+
+    :param alias: The alias string.
+    :param command: Commands, should be a list of strings.
+    """
+    ARG_ALIAS[alias] = command
+
+
+def parse_arg_alias(terminal_args: list[str]):
+    """
+    Parse arg alias from the terminal inputs.
+    """
+    if terminal_args is None:
+        return None
+
+    for alias, command in ARG_ALIAS.items():
+        if alias not in terminal_args:
+            continue
+
+        index = terminal_args.index(alias)
+        terminal_args = (terminal_args[:index] +
+                         command +
+                         terminal_args[index+1:])
+    return terminal_args
+
 
 class Args(ArgsManager):
     """
@@ -29,7 +59,7 @@ class Args(ArgsManager):
     def __init__(self, terminal_args: list[str] = None,
                  is_temporary=False) -> None:
 
-        super().__init__(terminal_args, is_temporary)
+        super().__init__(parse_arg_alias(terminal_args), is_temporary)
 
     def _init_all_args(self):
         super()._init_all_args()

@@ -27,6 +27,20 @@ Argument-related classes and constants.
     A flag to indicate some argument's type.
     Args with argtype=`temporary` will not be saved into JSON files.
     The program will parse these args from the terminal at each time.
+
+## Variables
+
+- `ARG_ALIAS`:
+    A dictionary that saves all aliases for running args.
+
+## Public Methods:
+
+- `add_arg_alias`:
+    Add new arg alias.
+
+- `parse_arg_alias`:
+    Parse arg alias from a list of args.
 """
 
-from .__args import DYNAMIC, STATIC, TEMPORARY, Args
+from .__args import (ARG_ALIAS, DYNAMIC, STATIC, TEMPORARY, Args,
+                     add_arg_alias, parse_arg_alias)
