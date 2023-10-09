@@ -96,7 +96,7 @@ class BaseManager(BaseObject):
             verbose_mode=None):
 
         if verbose_mode:
-            if not self.args.verbose:
+            if self.args is not None and not self.args.verbose:
                 return s
 
         return super().log(s, level, raiseError)

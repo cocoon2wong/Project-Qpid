@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-25 14:51:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-12 20:09:45
+@LastEditTime: 2023-10-09 16:08:11
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -14,13 +14,13 @@ from typing import Any
 import numpy as np
 import tensorflow as tf
 
-from ....base import BaseManager
-from ....constant import INPUT_TYPES
-from ....utils import (POOLING_BEFORE_SAVING, SEG_IMG, WINDOW_EXPAND_METER,
-                       WINDOW_EXPAND_PIXEL, WINDOW_SIZE_METER,
-                       WINDOW_SIZE_PIXEL)
-from ...__base import BaseInputManager
-from ...__splitManager import Clip
+from ...base import BaseManager
+from ...constant import INPUT_TYPES
+from ...dataset import Clip
+from ...dataset.__base import BaseInputManager
+from ...utils import (POOLING_BEFORE_SAVING, SEG_IMG, WINDOW_EXPAND_METER,
+                      WINDOW_EXPAND_PIXEL, WINDOW_SIZE_METER,
+                      WINDOW_SIZE_PIXEL)
 
 
 class MapParasManager(BaseInputManager):

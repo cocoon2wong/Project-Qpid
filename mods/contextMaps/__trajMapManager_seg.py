@@ -2,22 +2,21 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-12 20:33:42
+@LastEditTime: 2023-10-09 16:29:01
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
-
 import cv2
 import numpy as np
 
-from ....base import BaseManager
-from ....constant import INPUT_TYPES
-from ....utils import SEG_IMG
-from ...__base import BaseInputManager
-from ...__splitManager import Clip, SplitManager
-from ..__inputObject import Agent
+from ...base import BaseManager
+from ...constant import INPUT_TYPES
+from ...dataset import Clip, SplitManager
+from ...dataset.__base import BaseInputManager
+from ...dataset.agent_based import Agent
+from ...utils import SEG_IMG
 from .__trajMapManager import TrajMapManager
 
 

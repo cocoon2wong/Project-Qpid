@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-08-17 14:44:10
+@LastEditTime: 2023-10-09 17:39:54
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -15,13 +15,12 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from ..base import BaseManager
-from ..model.layers.transfroms import (_BaseTransformLayer,
-                                            get_transform_layers)
 from ..constant import INPUT_TYPES
+from ..model.layers.transfroms import _BaseTransformLayer, get_transform_layers
 from ..utils import POOLING_BEFORE_SAVING, dir_check
 from .__base import Annotation, AnnotationManager, BaseInputManager
 from .__splitManager import SplitManager
-from .agent_based import Agent, AgentFilesManager, TrajectoryManager, maps
+from .agent_based import Agent, AgentFilesManager, TrajectoryManager
 from .frame_based import FrameFilesManager, FrameManager
 
 
@@ -151,6 +150,7 @@ class AgentManager(BaseManager):
         Accept all types in `INPUT_TYPES`.
         """
         if (t := INPUT_TYPES.MAP) in inputs_type:
+            from qpid.mods import contextMaps as maps
             p = POOLING_BEFORE_SAVING
             self.ext_types.append(t)
             self.ext_mgrs.append(maps.MapParasManager(self))
@@ -158,8 +158,8 @@ class AgentManager(BaseManager):
             self.ext_mgrs.append(maps.TrajMapManager_seg(self, p))
             self.ext_mgrs.append(maps.SocialMapManager(self, p))
 
-        if (t := INPUT_TYPES.MAP_PARAS) in inputs_type:
-            self.ext_types.append(t)
+            if (t := INPUT_TYPES.MAP_PARAS) in inputs_type:
+                self.ext_types.append(t)
 
         self.model_inputs = inputs_type
         self.model_labels = labels_type

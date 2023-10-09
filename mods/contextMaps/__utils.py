@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-10 09:38:32
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:34:49
+@LastEditTime: 2023-10-09 16:58:34
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-from ....utils import get_relative_path
+from ...utils import get_relative_path
 
 MASK_FILE_PATH = get_relative_path(__file__, 'mask_circle.png')
 MASK = cv2.imread(MASK_FILE_PATH)[:, :, 0]/50

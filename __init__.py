@@ -8,6 +8,23 @@ from . import (applications, args, base, help, model, silverballers, training,
                utils)
 from .help import print_help_info, update_args_dic
 
+__SYSTEM_MANAGER = base.BaseManager(name='SYSTEM')
+
+
+def log(s: str, level: str = 'info', raiseError=None):
+    """
+    The system-level log function.
+
+    :param s: The text to log.
+    :param level: Log level, can be one of `['info', 'warning', 'error', 'debug']`.
+    :param raiseError: Some exception to raise after logging.
+    """
+    __SYSTEM_MANAGER.log(s, level, raiseError)
+
+
+def _log_mod_loaded(name: str):
+    log(f'Mod `{name}` successfully loaded.')
+
 
 def set_log_path(p: str):
     """

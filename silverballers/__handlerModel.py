@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:52:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:53:30
+@LastEditTime: 2023-10-09 17:43:44
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -15,7 +15,6 @@ from ..args import DYNAMIC, STATIC, TEMPORARY
 from ..base import SecondaryBar
 from ..constant import INPUT_TYPES
 from ..dataset import AgentManager
-from ..dataset.agent_based.maps import MapParasManager
 from ..training import Structure, loss
 from ..utils import POOLING_BEFORE_SAVING
 from .__baseArgs import BaseSilverballersArgs, SilverballersArgs
@@ -164,8 +163,9 @@ class BaseHandlerModel(BaseSubnetwork):
         if ((INPUT_TYPES.MAP in self.input_types)
                 and (INPUT_TYPES.MAP_PARAS in self.input_types)):
 
+            from qpid.mods import contextMaps as maps
             map_mgr = self.get_top_manager().get_member(
-                AgentManager).get_member(MapParasManager)
+                AgentManager).get_member(maps.MapParasManager)
             scores = map_mgr.score(trajs=outputs_p[0],
                                    maps=inputs[1],
                                    map_paras=inputs[2],
