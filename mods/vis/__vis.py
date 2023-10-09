@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:42:48
+@LastEditTime: 2023-10-09 17:50:14
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -12,11 +12,11 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from ..base import BaseManager, SecondaryBar
-from ..dataset import AnnotationManager, Clip
-from ..dataset.agent_based import Agent
-from ..utils import (DRAW_TEXT_IN_IMAGES, DRAW_TEXT_IN_VIDEOS, SMALL_POINTS,
-                     get_relative_path)
+from ...base import BaseManager, SecondaryBar
+from ...dataset import AnnotationManager, Clip
+from ...dataset.agent_based import Agent
+from ...utils import (DRAW_TEXT_IN_IMAGES, DRAW_TEXT_IN_VIDEOS, SMALL_POINTS,
+                      get_relative_path)
 from .__helper import ADD, get_helper
 
 OBS_IMAGE = 'obs_small.png' if SMALL_POINTS else 'obs.png'

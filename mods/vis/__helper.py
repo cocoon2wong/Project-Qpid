@@ -12,8 +12,8 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-from ..constant import ANN_TYPES
-from ..utils import DISTRIBUTION_COLORBAR, DRAW_LINES, INIT_POSITION
+from ...constant import ANN_TYPES
+from ...utils import DISTRIBUTION_COLORBAR, DRAW_LINES, INIT_POSITION
 
 CONV_LAYER = tf.keras.layers.Conv2D(
     1, (20, 20), (1, 1), 'same',

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-07-14 14:48:30
+@LastEditTime: 2023-10-09 17:50:52
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -16,11 +16,10 @@ import tensorflow as tf
 
 from ..args import Args
 from ..base import BaseManager
-from ..model import Model
 from ..constant import ANN_TYPES, INPUT_TYPES
 from ..dataset import AgentManager, Annotation, AnnotationManager, SplitManager
+from ..model import Model
 from ..utils import WEIGHTS_FORMAT, dir_check, get_loss_mask
-from ..vis import Visualization
 from . import loss
 from .loss import LossManager
 
@@ -598,10 +597,13 @@ class Structure(BaseManager):
                 self.log('Currently visualizing with annotation type ' +
                          f'`{self.args.anntype}` is not supported!',
                          level='error', raiseError=NotImplementedError)
+            
+            # Import vis package
+            from qpid.mods import vis
 
             # draw results on video frames
             clip = clips[0]
-            tv = Visualization(self, self.args.dataset, clip)
+            tv = vis.Visualization(self, self.args.dataset, clip)
 
             save_base_path = dir_check(self.args.log_dir) \
                 if self.args.load == 'null' \
