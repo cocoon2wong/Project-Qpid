@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 10:05:11
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 17:43:06
+@LastEditTime: 2023-10-09 20:12:46
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -57,6 +57,7 @@ class BaseObject():
 
         # create or restore a logger
         logger = logging.getLogger(name=f'`{name}` ({type(self).__name__})')
+        logger.propagate = False
 
         if not logger.hasHandlers():
             logger.setLevel(logging.INFO)
