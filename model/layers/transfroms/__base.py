@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-09 20:25:36
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-21 14:47:02
+@LastEditTime: 2023-10-11 10:34:16
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -10,10 +10,10 @@
 
 from typing import Union
 
-import tensorflow as tf
+import torch
 
 
-class _BaseTransformLayer(tf.keras.layers.Layer):
+class _BaseTransformLayer(torch.nn.Module):
     """
     Calculate some Transform on (a batch of) trajectories.
     Method `set_Tshape` and `kernel_function` should be re-write
@@ -68,28 +68,28 @@ class _BaseTransformLayer(tf.keras.layers.Layer):
         """
         raise NotImplementedError
 
-    def call(self, inputs: tf.Tensor, *args, **kwargs):
+    def forward(self, inputs: torch.Tensor, *args, **kwargs):
 
         # calculate with a big batch size
         if self.mode == 0:
             shape_original = None
             if inputs.ndim >= 4:
-                shape_original = list(tf.shape(inputs))
-                inputs = tf.reshape(inputs, [-1] + shape_original[-2:])
+                shape_original = list(inputs.shape)
+                inputs = torch.reshape(inputs, [-1] + shape_original[-2:])
 
             outputs = self.kernel_function(inputs, *args, **kwargs)
 
             if shape_original is not None:
-                shape_new = list(tf.shape(outputs))
-                outputs = tf.reshape(outputs,
-                                     shape_original[:-2] + shape_new[-2:])
+                shape_new = list(outputs.shape)
+                outputs = torch.reshape(outputs,
+                                        shape_original[:-2] + shape_new[-2:])
 
         # calculate recurrently
         elif self.mode == 1:
             reshape = False
             if inputs.ndim == 3:
                 reshape = True
-                inputs = inputs[tf.newaxis, :, :, :]
+                inputs = inputs[None, :, :, :]
 
             outputs = []
             for batch_inputs in inputs:
@@ -100,7 +100,7 @@ class _BaseTransformLayer(tf.keras.layers.Layer):
             if reshape:
                 outputs = outputs[0]
 
-            outputs = tf.cast(outputs, tf.float32)
+            outputs = torch.stack(outputs)
 
         # calculate directly
         elif self.mode == 2:
@@ -111,8 +111,8 @@ class _BaseTransformLayer(tf.keras.layers.Layer):
 
         return outputs
 
-    def kernel_function(self, inputs: tf.Tensor,
-                        *args, **kwargs) -> tf.Tensor:
+    def kernel_function(self, inputs: torch.Tensor,
+                        *args, **kwargs) -> torch.Tensor:
         """
         Calculate any kind of transform on a batch of trajectories.
 
@@ -130,5 +130,5 @@ class NoneTransformLayer(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return [self.steps, self.channels]
 
-    def kernel_function(self, inputs: tf.Tensor, *args, **kwargs):
+    def kernel_function(self, inputs: torch.Tensor, *args, **kwargs):
         return inputs

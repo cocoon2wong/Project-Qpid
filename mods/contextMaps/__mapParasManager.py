@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-25 14:51:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 16:08:11
+@LastEditTime: 2023-10-10 13:34:19
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -12,7 +12,7 @@ import os
 from typing import Any
 
 import numpy as np
-import tensorflow as tf
+import torch
 
 from ...base import BaseManager
 from ...constant import INPUT_TYPES
@@ -49,8 +49,7 @@ class MapParasManager(BaseInputManager):
         self.b: np.ndarray = None
 
         if POOLING_BEFORE_SAVING:
-            self._upsampling = tf.keras.layers.UpSampling2D(
-                size=[5, 5], data_format='channels_last')
+            self._upsampling = torch.nn.MaxUnpool2d([5, 5])
 
     @property
     def void_map(self) -> np.ndarray:
@@ -145,10 +144,10 @@ class MapParasManager(BaseInputManager):
             t = t[..., :2]
         return t
 
-    def score(self, trajs: tf.Tensor,
-              maps: tf.Tensor,
-              map_paras: tf.Tensor,
-              centers: tf.Tensor) -> tf.Tensor:
+    def score(self, trajs: torch.Tensor,
+              maps: torch.Tensor,
+              map_paras: torch.Tensor,
+              centers: torch.Tensor) -> torch.Tensor:
         """
         Calculate the score of the predicted trajectory in the
         social and scene interaction case.
@@ -165,42 +164,43 @@ class MapParasManager(BaseInputManager):
         centers = self.C(centers)
 
         if POOLING_BEFORE_SAVING:
-            maps = self._upsampling(maps[..., tf.newaxis])[..., 0]
+            maps = self._upsampling(maps[:, None])[:, 0]
 
         W = map_paras[:, :2]
         b = map_paras[:, 2:]
 
         while W.ndim != trajs.ndim:
-            W = W[:, tf.newaxis, :]
-            b = b[:, tf.newaxis, :]
+            W = W[:, None, :]
+            b = b[:, None, :]
 
         while centers.ndim != trajs.ndim:
-            centers = centers[:, tf.newaxis, :]
+            centers = centers[:, None, :]
 
         trajs_global_grid = (trajs - b) * W
         centers_global_grid = (centers - b) * W
         bias_grid = trajs_global_grid - centers_global_grid
-        bias_grid = tf.cast(bias_grid, tf.int32)
+        bias_grid = bias_grid.to(torch.int32)
 
-        s = tf.shape(maps)
-        map_center = tf.cast([s[-2]//2, s[-1]//2], tf.int32)
-        trajs_grid = map_center[tf.newaxis] + bias_grid
-        trajs_grid = tf.minimum(tf.maximum(trajs_grid, 0), s[-2]-1)
+        s = maps.shape
+        map_center = torch.tensor([s[-2]//2, s[-1]//2], dtype=torch.int32)
+        trajs_grid = map_center[None] + bias_grid
+        trajs_grid = torch.minimum(torch.maximum(trajs_grid, 0), s[-2]-1)
 
-        count = tf.range(s[0])
+        count = torch.arange(s[0])
         while count.ndim != trajs_grid.ndim:
-            count = count[:, tf.newaxis]
+            count = count[:, None]
 
-        agent_count = count * tf.ones_like(trajs_grid[..., :1])
-        index = tf.concat([agent_count, trajs_grid], axis=-1)
+        agent_count = count * torch.ones_like(trajs_grid[..., :1])
+        index = torch.concat([agent_count, trajs_grid], dim=-1)
 
+        # FIXME: Compute map scores with torch
         all_scores = tf.gather_nd(maps, index)
         avg_scores = tf.reduce_sum(all_scores, axis=-1)
 
         return avg_scores
 
-    def pick_trajectories(self, traj: tf.Tensor,
-                          scores: tf.Tensor,
+    def pick_trajectories(self, traj: torch.Tensor,
+                          scores: torch.Tensor,
                           percent: float):
         """
         Pick trajectories according to their scores.
@@ -212,16 +212,17 @@ class MapParasManager(BaseInputManager):
         if scores.ndim < 2:
             return traj
 
+        # FIXME: Pick trajectories with torch
         bs = tf.shape(scores)[0]
         _index = tf.argsort(scores, axis=-1, direction='ASCENDING')
         _index = _index[..., :int(percent * scores.shape[-1])]
 
         # Calculate indices
-        _index = _index[..., tf.newaxis]
+        _index = _index[..., None]
         count = tf.range(bs)
 
         while count.ndim < _index.ndim:
-            count = count[:, tf.newaxis]
+            count = count[:, None]
 
         count = count * tf.ones_like(_index)
         new_index = tf.concat([count, _index], axis=-1)

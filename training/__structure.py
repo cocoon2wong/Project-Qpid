@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 17:50:52
+@LastEditTime: 2023-10-11 10:45:03
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -12,7 +12,9 @@ import os
 from typing import Union, overload
 
 import numpy as np
-import tensorflow as tf
+import torch
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 from ..args import Args
 from ..base import BaseManager
@@ -72,9 +74,12 @@ class Structure(BaseManager):
 
         # init model options
         self.model: Model = None
-        self.set_gpu()
+        self.optimizer: torch.optim.Optimizer = None
         self.noTraining = False
-        self.optimizer = self.set_optimizer()
+
+        # init compute devices
+        self._device: torch.device = None
+        self._device_local: torch.device = None
 
         # Set labels, loss functions, and metrics
         self.label_types: list[str] = []
@@ -126,6 +131,24 @@ class Structure(BaseManager):
         """
         return self.agent_manager.split_manager
 
+    @property
+    def device(self):
+        """
+        Compute device (use GPU if available).
+        """
+        if self._device is None:
+            self._device = torch.device("cpu")
+        return self._device
+
+    @property
+    def device_local(self):
+        """
+        Basic compute device (like CPU).
+        """
+        if self._device_local is None:
+            self._device_local = torch.device("cpu")
+        return self._device_local
+
     def set_labels(self, *args):
         """
         Set label types when calculating loss and metrics.
@@ -144,16 +167,19 @@ class Structure(BaseManager):
         """
         self.label_types = [item for item in args]
 
-    def set_optimizer(self, epoch: int = None) -> tf.keras.optimizers.Optimizer:
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.args.lr)
+    def set_optimizer(self, epoch: int = None) -> torch.optim.Optimizer:
+        if self.noTraining:
+            return None
+
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                          lr=self.args.lr)
         return self.optimizer
 
     def set_gpu(self):
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = self.args.gpu.replace('_', ',')
-        gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
+        os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+        # FIXME: Set GPU
 
     def create_model(self) -> Model:
         """
@@ -164,10 +190,10 @@ class Structure(BaseManager):
         """
         raise NotImplementedError('MODEL is not defined!')
 
-    def gradient_operations(self, inputs: list[tf.Tensor],
-                            labels: list[tf.Tensor],
-                            loss_move_average: tf.Variable,
-                            *args, **kwargs) -> tuple[tf.Tensor, dict[str, tf.Tensor], tf.Tensor]:
+    def gradient_operations(self, inputs: list[torch.Tensor],
+                            labels: list[torch.Tensor],
+                            loss_move_average: torch.Tensor,
+                            *args, **kwargs) -> tuple[torch.Tensor, dict[str, torch.Tensor], torch.Tensor]:
         """
         Run gradient descent once during training.
 
@@ -179,24 +205,21 @@ class Structure(BaseManager):
         :return loss_dict: A dict of all loss functions.
         :return loss_move_average: Moving average loss.
         """
+        # Compute predictions
+        outputs = self.model.implement(inputs, training=True)
+        loss, loss_dict = self.loss.forward(
+            outputs, labels, inputs=inputs, training=True)
+        loss_move_average = 0.7 * loss + 0.3 * loss_move_average
 
-        with tf.GradientTape() as tape:
-            outputs = self.model.forward(inputs, training=True)
-            loss, loss_dict = self.loss.call(
-                outputs, labels, inputs=inputs, training=True)
-
-            loss_move_average = 0.7 * loss + 0.3 * loss_move_average
-
-        grads = tape.gradient(loss_move_average,
-                              self.model.trainable_variables)
-        self.optimizer.apply_gradients(zip(grads,
-                                           self.model.trainable_variables))
+        # Compute gradients
+        loss.backward()
+        self.optimizer.step()
 
         return loss, loss_dict, loss_move_average
 
-    def model_validate(self, inputs: list[tf.Tensor],
-                       labels: tf.Tensor,
-                       training=None) -> tuple[list[tf.Tensor], tf.Tensor, dict[str, tf.Tensor]]:
+    def model_validate(self, inputs: list[torch.Tensor],
+                       labels: torch.Tensor,
+                       training=None) -> tuple[list[torch.Tensor], torch.Tensor, dict[str, torch.Tensor]]:
         """
         Run one step forward and calculate metrics.
 
@@ -207,12 +230,12 @@ class Structure(BaseManager):
         :return metrics: The weighted sum of all loss.
         :return loss_dict: A dict contains all loss.
         """
-        outputs = self.model.forward(inputs, training)
-        metrics, metrics_dict = self.metrics.call(
+        outputs = self.model.implement(inputs, training)
+        metrics, metrics_dict = self.metrics.forward(
             outputs, labels, inputs=inputs, training=None)
 
         if self.args.compute_loss:
-            _, loss_dict = self.loss.call(
+            _, loss_dict = self.loss.forward(
                 outputs, labels, inputs=inputs, training=None)
 
             metrics_dict.update(loss_dict)
@@ -224,7 +247,9 @@ class Structure(BaseManager):
         Load models and datasets, then start training or testing.
         """
         # init model and dataset manager
-        self.model = self.create_model()
+        self.model = self.create_model().to(self.device)
+        self.optimizer = self.set_optimizer()
+        self.set_gpu()
         self.agent_manager.set_types(inputs_type=self.model.input_types,
                                      labels_type=self.label_types)
 
@@ -250,14 +275,15 @@ class Structure(BaseManager):
 
         clips_train = self.split_manager.train_sets
         clips_val = self.split_manager.test_sets
-        ds_train = self.agent_manager.make(clips_train, 'train')
-        ds_val = self.agent_manager.clean().make(clips_val, 'test')
+        ds_train = self.agent_manager.make(clips_train, training=True)
+        ds_val = self.agent_manager.clean().make(clips_val, training=False)
 
         # train on all test/train clips
         _, _, best_metric, best_epoch = self.__train(ds_train, ds_val)
         self.print_train_results(best_epoch=best_epoch,
                                  best_metric=best_metric)
 
+    @torch.no_grad()
     def test(self):
         """
         Run a test on the given dataset.
@@ -269,14 +295,14 @@ class Structure(BaseManager):
         # test on a single sub-dataset
         if self.args.test_mode == 'one':
             clip = self.args.force_clip
-            ds_test = self.agent_manager.make(clip, 'test')
+            ds_test = self.agent_manager.make(clip, training=False)
             r = self.__test(ds_test)
 
         # test on all test datasets separately
         elif self.args.test_mode == 'all':
             metrics_dict = {}
             for clip in test_sets:
-                ds_test = self.agent_manager.make(clip, 'test')
+                ds_test = self.agent_manager.make(clip, training=False)
                 _, m_dict, _ = self.__test(ds_test)
                 metrics_dict[clip] = m_dict
 
@@ -284,7 +310,7 @@ class Structure(BaseManager):
 
         # test on all test datasets together
         elif self.args.test_mode == 'mix':
-            ds_test = self.agent_manager.make(test_sets, 'test')
+            ds_test = self.agent_manager.make(test_sets, training=False)
             r = self.__test(ds_test)
 
         else:
@@ -297,7 +323,7 @@ class Structure(BaseManager):
             self.write_test_results(outputs=outputs,
                                     clips=self.agent_manager.processed_clips['test'])
 
-    def __train(self, ds_train: tf.data.Dataset, ds_val: tf.data.Dataset):
+    def __train(self, ds_train: DataLoader, ds_val: DataLoader):
         """
         Train the model on the given dataset.
 
@@ -319,10 +345,11 @@ class Structure(BaseManager):
         self.args._save_as_json(self.args.log_dir)
 
         # open tensorboard
-        tb = tf.summary.create_file_writer(self.args.log_dir)
+        tb = SummaryWriter(self.args.log_dir)
 
         # init variables for training
-        loss_move = tf.Variable(0, dtype=tf.float32)
+        loss_move = torch.autograd.Variable(
+            torch.tensor(0, dtype=torch.float32))
         loss_dict = {}
         metrics_dict = {}
 
@@ -332,52 +359,45 @@ class Structure(BaseManager):
         test_epochs = []
         train_number = len(ds_train)
 
-        # divide with batch size
-        ds_train = ds_train.repeat(
-            self.args.epochs).batch(self.args.batch_size)
-
         # start training
-        batch_number = len(ds_train)
-
-        epochs = []
-        for batch_id, dat in enumerate(self.timebar(ds_train, text='Training...')):
-
-            epoch = (batch_id * self.args.batch_size) // train_number
+        for epoch in self.timebar(range(self.args.epochs), text='Training...'):
 
             # Update learning rate and optimizer
-            if not epoch in epochs:
-                self.set_optimizer(epoch)
-                epochs.append(epoch)
+            self.set_optimizer(epoch)
 
-            # Run training once
-            len_labels = len(self.label_types)
-            loss, loss_dict, loss_move = self.gradient_operations(
-                inputs=dat[:-len_labels],
-                labels=dat[-len_labels:],
-                loss_move_average=loss_move,
-                epoch=epoch,
-            )
+            # Split into batches
+            for inputs, labels in ds_train:
+                # Move data to GPU
+                inputs = [i.to(self.device) for i in inputs]
+                labels = [i.to(self.device) for i in labels]
 
-            # Check if `nan` in the loss dictionary
-            if tf.math.is_nan(loss):
-                self.log(f'Find `nan` values in the loss dictionary, ' +
-                         f'stop training... ' +
-                         f'Best metrics obtained from the last epoch: ' +
-                         f'{best_metrics_dict}.',
-                         level='error', raiseError=ValueError)
+                # Run training once
+                len_labels = len(self.label_types)
+                loss, loss_dict, loss_move = self.gradient_operations(
+                    inputs=inputs,
+                    labels=labels,
+                    loss_move_average=loss_move,
+                    epoch=epoch,
+                )
 
+                # Check if `nan` in the loss dictionary
+                if torch.isnan(loss):
+                    self.log(f'Find `nan` values in the loss dictionary, ' +
+                             f'stop training... ' +
+                             f'Best metrics obtained from the last epoch: ' +
+                             f'{best_metrics_dict}.',
+                             level='error', raiseError=ValueError)
+
+            # Training done (this epoch)
             # Run validation
             if ((epoch >= self.args.start_test_percent * self.args.epochs)
-                    and ((epoch - 1) % self.args.test_step == 0)
-                    and (not epoch in test_epochs)
-                    and (epoch > 0)) or (batch_id == batch_number - 1):
+                    and ((epoch - 1) % self.args.test_step == 0)):
 
                 metric, metrics_dict = self.__test_on_dataset(
                     ds=ds_val,
                     show_timebar=False,
                     test_during_training=True
                 )
-                test_epochs.append(epoch)
 
                 # Save model
                 if metric <= best_metric:
@@ -385,10 +405,10 @@ class Structure(BaseManager):
                     best_metrics_dict = metrics_dict
                     best_epoch = epoch
 
-                    self.model.save_weights(os.path.join(
-                        self.args.log_dir,
-                        f'{self.args.model_name}_epoch{epoch}' + WEIGHTS_FORMAT
-                    ))
+                    torch.save(self.model.state_dict(),
+                               os.path.join(self.args.log_dir,
+                                            f'{self.args.model_name}_epoch{epoch}' +
+                                            WEIGHTS_FORMAT))
 
                     np.savetxt(os.path.join(self.args.log_dir, 'best_ade_epoch.txt'),
                                np.array([best_metric, best_epoch]))
@@ -403,23 +423,22 @@ class Structure(BaseManager):
             self.update_timebar(log_dict, pos='end')
 
             # Write tensorboard
-            with tb.as_default():
-                for name, value in log_dict.items():
-                    if name == 'best':
-                        value = best_metrics_dict
-                        if '-' in value.keys():
-                            continue
+            for name, value in log_dict.items():
+                if name == 'best':
+                    value = best_metrics_dict
+                    if '-' in value.keys():
+                        continue
 
-                        for k, v in value.items():
-                            tf.summary.scalar(k + ' (Best)', v, step=epoch)
+                    for k, v in value.items():
+                        tb.add_scalar(k + ' (Best)', v, epoch)
 
-                    else:
-                        tf.summary.scalar(name, value, step=epoch)
+                else:
+                    tb.add_scalar(name, value, epoch)
 
         return log_dict, metrics_dict, best_metric, best_epoch
 
-    def __test(self, ds_test: tf.data.Dataset) -> \
-            tuple[float, dict[str, float], list[tf.Tensor]]:
+    def __test(self, ds_test: DataLoader) -> \
+            tuple[float, dict[str, float], list[torch.Tensor]]:
         """
         Test model on the given dataset.
 
@@ -452,26 +471,27 @@ class Structure(BaseManager):
         return metric, metrics_dict, outputs
 
     @overload
-    def __test_on_dataset(self, ds: tf.data.Dataset,
+    def __test_on_dataset(self, ds: DataLoader,
                           show_timebar=False,
                           test_during_training=False) \
         -> tuple[float, dict[str, float]]: ...
 
     @overload
-    def __test_on_dataset(self, ds: tf.data.Dataset,
+    def __test_on_dataset(self, ds: DataLoader,
                           return_results=False,
                           show_timebar=False,
                           test_during_training=False) \
-        -> tuple[list[tf.Tensor], float, dict[str, float]]: ...
+        -> tuple[list[torch.Tensor], float, dict[str, float]]: ...
 
-    def __test_on_dataset(self, ds: tf.data.Dataset,
+    @torch.no_grad()
+    def __test_on_dataset(self, ds: DataLoader,
                           return_results=False,
                           show_timebar=False,
                           test_during_training=False):
         """
         Run a test on the given dataset.
 
-        :param ds: The test `tf.data.Dataset` object.
+        :param ds: The test `DataLoader` object.
         :param return_results: Controls items to return (the defaule value is `False`).
         :param show_timebar: Controls whether to show the process.
         :param test_during_training: Indicates whether to test during training.
@@ -491,26 +511,24 @@ class Structure(BaseManager):
         batch_weightedsum_metrics = []
         metrics_names: list[str] = None
 
-        # divide with batch size
-        ds = ds.batch(self.args.batch_size)
-
         # hide time bar when training
         timebar = self.timebar(ds, 'Test...') if show_timebar else ds
 
         count = []
-        len_labels = len(self.label_types)
-        for dat in timebar:
-            x = dat[:-len_labels]
-            gt = dat[-len_labels:]
+        for x, gt in timebar:
+            # Move data to GPU
+            x = [i.to(self.device) for i in x]
+            gt = [i.to(self.device) for i in gt]
+
             mask = get_loss_mask(x[0], gt[0])
-            valid_count = tf.reduce_sum(mask)
+            valid_count = torch.sum(mask)
 
             outputs, metrics, metrics_dict = self.model_validate(
                 inputs=x, labels=gt, training=False)
 
             # Check if there are valid trajectories in this batch
             if valid_count == 0:
-                outputs[0] = tf.zeros_like(outputs[0]) / 0.0
+                outputs[0] = torch.zeros_like(outputs[0]) / 0.0
 
             # Add metrics and outputs to their dicts
             else:
@@ -584,7 +602,7 @@ class Structure(BaseManager):
                  f'load: {self.args.load}, ' +
                  f'metrics: {loss_dict}')
 
-    def write_test_results(self, outputs: list[tf.Tensor], clips: list[str]):
+    def write_test_results(self, outputs: list[torch.Tensor], clips: list[str]):
         """
         Save visualized prediction results.
         """
@@ -597,7 +615,7 @@ class Structure(BaseManager):
                 self.log('Currently visualizing with annotation type ' +
                          f'`{self.args.anntype}` is not supported!',
                          level='error', raiseError=NotImplementedError)
-            
+
             # Import vis package
             from qpid.mods import vis
 
@@ -677,7 +695,7 @@ def _get_item(item, indices: list):
     return res
 
 
-def stack_batch_outputs(outputs: list[list[tf.Tensor]]):
+def stack_batch_outputs(outputs: list[list[torch.Tensor]]):
     """
     Stack several batches' model outputs.
     Input of this function should be a list of model outputs,
@@ -692,7 +710,7 @@ def stack_batch_outputs(outputs: list[list[tf.Tensor]]):
             indices.append([index])
 
     # Concat all output tensors
-    o = [tf.concat([_get_item(_o, _i) for _o in outputs], axis=0)
+    o = [torch.concat([_get_item(_o, _i) for _o in outputs], dim=0)
          for _i in indices]
 
     final_outputs = []
@@ -714,14 +732,14 @@ def weighted_average(inputs: list, weights: list, return_numpy=False) -> list:
     Weighted sum all the inputs.
     NOTE: The length of `inputs` and `weights` should be the same value.
     """
-    inputs = tf.cast(inputs, tf.float32)
-    weights = tf.cast(weights, tf.float32)
-    count = tf.reduce_sum(weights)
+    inputs = torch.tensor(inputs, dtype=torch.float32)
+    weights = torch.tensor(weights, dtype=torch.float32)
+    count = torch.sum(weights)
 
     while weights.ndim < inputs.ndim:
-        weights = weights[..., tf.newaxis]
+        weights = weights[..., None]
 
-    res = tf.reduce_sum(inputs * weights / count, axis=0)
+    res = torch.sum(inputs * weights / count, dim=0)
 
     if return_numpy:
         res = res.numpy()

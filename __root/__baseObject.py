@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 10:05:11
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 20:12:46
+@LastEditTime: 2023-10-11 10:15:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,7 @@
 import logging
 from typing import TypeVar, Union
 
-import tensorflow as tf
+import torch
 from tqdm import tqdm
 
 from .. import utils
@@ -132,11 +132,14 @@ class BaseObject():
         """
         if issubclass(type(item), dict):
             for key, value in item.items():
-                if issubclass(type(value), tf.Tensor):
-                    item[key] = value.numpy()
+                if issubclass(type(value), torch.Tensor):
+                    if value.requires_grad:
+                        value = value.detach()
 
-        elif issubclass(type(item), tf.Tensor):
-            item = item.numpy()
+                    item[key] = value.cpu().numpy()
+
+        elif issubclass(type(item), torch.Tensor):
+            item = item.cpu().numpy()
 
         if pos == 'end':
             if type(item) is str:
@@ -163,7 +166,7 @@ class BaseObject():
 
         print(f'>>> [{self.name}]: {title}')
         for key, value in kwargs.items():
-            if type(value) == tf.Tensor:
+            if type(value) == torch.Tensor:
                 value = value.numpy()
 
             if (type(value) == list and

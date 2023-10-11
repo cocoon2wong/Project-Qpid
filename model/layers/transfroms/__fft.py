@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-09 20:30:01
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-05-09 20:30:04
+@LastEditTime: 2023-10-11 10:34:44
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 
 from typing import Union
 
-import tensorflow as tf
+import torch
 
 from .__base import _BaseTransformLayer
 
@@ -24,8 +24,8 @@ class FFTLayer(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return [self.steps, 2*self.channels]
 
-    def kernel_function(self, inputs: tf.Tensor,
-                        *args, **kwargs) -> tf.Tensor:
+    def kernel_function(self, inputs: torch.Tensor,
+                        *args, **kwargs) -> torch.Tensor:
         """
         Run FFT on a batch of trajectories.
 
@@ -35,14 +35,16 @@ class FFTLayer(_BaseTransformLayer):
             shape = `(batch, steps, 2*channels)`
         """
 
-        ffts = []
+        real = []
+        imag = []
         for index in range(0, inputs.shape[-1]):
-            seq = tf.cast(tf.gather(inputs, index, axis=-1), tf.complex64)
-            seq_fft = tf.signal.fft(seq)
-            ffts.append(tf.expand_dims(seq_fft, -1))
+            x_fft = torch.fft.fft(inputs[..., index])[..., None]
+            real.append(x_fft.real)
+            imag.append(x_fft.imag)
 
-        ffts = tf.concat(ffts, axis=-1)
-        return tf.concat([tf.math.real(ffts), tf.math.imag(ffts)], axis=-1)
+        real = torch.concat(real, dim=-1)
+        imag = torch.concat(imag, dim=-1)
+        return torch.concat([real, imag], dim=-1)
 
 
 class FFT2DLayer(_BaseTransformLayer):
@@ -54,7 +56,7 @@ class FFT2DLayer(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return [self.steps, 2*self.channels]
 
-    def kernel_function(self, inputs: tf.Tensor, *args, **kwargs) -> tf.Tensor:
+    def kernel_function(self, inputs: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """
         Run 2D FFT on a batch of trajectories.
 
@@ -64,10 +66,8 @@ class FFT2DLayer(_BaseTransformLayer):
             shape = `(batch, steps, 2*channels)`.
         """
 
-        seq = tf.cast(inputs, tf.complex64)
-        fft = tf.signal.fft2d(seq)
-
-        return tf.concat([tf.math.real(fft), tf.math.imag(fft)], axis=-1)
+        seq = torch.fft.fft2(inputs)
+        return torch.concat([seq.real, seq.imag], dim=-1)
 
 
 class IFFTLayer(_BaseTransformLayer):
@@ -79,28 +79,17 @@ class IFFTLayer(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return [self.steps, 2*self.channels]
 
-    def kernel_function(self, inputs: tf.Tensor, *args, **kwargs):
-
-        real = tf.gather(inputs, tf.range(
-            0, self.channels), axis=-1)
-        imag = tf.gather(inputs, tf.range(
-            self.channels, 2*self.channels), axis=-1)
+    def kernel_function(self, inputs: torch.Tensor, *args, **kwargs):
+        real = inputs[..., 0: self.channels]
+        imag = inputs[..., self.channels: 2*self.channels]
 
         ffts = []
         for index in range(0, real.shape[-1]):
-            r = tf.gather(real, index, axis=-1)
-            i = tf.gather(imag, index, axis=-1)
-            ffts.append(
-                tf.expand_dims(
-                    tf.math.real(
-                        tf.signal.ifft(
-                            tf.complex(r, i)
-                        )
-                    ), axis=-1
-                )
-            )
+            r = real[..., index]
+            i = imag[..., index]
+            ffts.append((torch.fft.ifft(torch.complex(r, i)).real)[..., None])
 
-        return tf.concat(ffts, axis=-1)
+        return torch.concat(ffts, dim=-1)
 
 
 class IFFT2Dlayer(_BaseTransformLayer):
@@ -112,13 +101,12 @@ class IFFT2Dlayer(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return [self.steps, 2*self.channels]
 
-    def kernel_function(self, inputs: tf.Tensor, *args, **kwargs) -> tf.Tensor:
+    def kernel_function(self, inputs: torch.Tensor, *args, **kwargs) -> torch.Tensor:
 
         real = inputs[..., :self.channels]
         imag = inputs[..., self.channels:]
 
-        seq = tf.complex(real, imag)
-        fft = tf.signal.ifft2d(seq)
+        seq = torch.complex(real, imag)
+        fft = torch.fft.ifft2d(seq)
 
-        return tf.math.real(fft)
-    
+        return fft.real

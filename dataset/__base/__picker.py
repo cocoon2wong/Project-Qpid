@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-30 09:52:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 19:12:48
+@LastEditTime: 2023-10-10 20:14:58
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,7 @@
 from typing import TypeVar, Union
 
 import numpy as np
-import tensorflow as tf
+import torch
 
 from ...base import BaseManager
 from ...utils import get_relative_path, load_from_plist
@@ -87,7 +87,7 @@ class Annotation():
         if isNumpy(inputs):
             center = np.mean(coordinates, axis=0)
         elif isTensor(inputs):
-            center = tf.reduce_mean(tf.stack(coordinates), axis=0)
+            center = torch.mean(torch.stack(coordinates), dim=0)
         else:
             raise TypeError(f'Wrong trajectory type `{type(inputs)}`.')
 
@@ -156,7 +156,7 @@ class AnnotationManager(BaseManager):
             self.add_annotation(name)
         return self.annotations[name]
 
-    def get(self, inputs: Union[tf.Tensor, np.ndarray]):
+    def get(self, inputs: Union[torch.Tensor, np.ndarray]):
         """
         Get data with target annotation forms from original dataset files.
         """
@@ -204,7 +204,7 @@ def isNumpy(value):
 
 
 def isTensor(value):
-    if issubclass(type(value), tf.Tensor):
+    if issubclass(type(value), torch.Tensor):
         return True
     else:
         return False

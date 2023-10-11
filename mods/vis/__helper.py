@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-28 14:50:31
+@LastEditTime: 2023-10-10 13:10:19
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,14 +10,10 @@
 
 import cv2
 import numpy as np
-import tensorflow as tf
+import torch
 
 from ...constant import ANN_TYPES
 from ...utils import DISTRIBUTION_COLORBAR, DRAW_LINES, INIT_POSITION
-
-CONV_LAYER = tf.keras.layers.Conv2D(
-    1, (20, 20), (1, 1), 'same',
-    kernel_initializer=tf.initializers.constant(1/(20*20)))
 
 
 class BaseVisHelper():
@@ -87,9 +83,15 @@ class BaseVisHelper():
             f_dis = ADD(f_dis, f, type='auto')
 
         # smooth distribution image
-        f_dis = CONV_LAYER(np.transpose(f_dis.astype(np.float32), [2, 0, 1])[
-            :, :, :, np.newaxis]).numpy()
-        f_dis = np.transpose(f_dis[:, :, :, 0], [1, 2, 0])
+        f_dis = torch.conv2d(
+            torch.from_numpy(
+                np.transpose(f_dis.astype(np.float32),
+                             [2, 0, 1])[:, np.newaxis]
+            ),
+            weight=torch.ones([1, 1, 20, 20])/(20**2),
+            padding='same'
+        ).numpy()
+        f_dis = np.transpose(f_dis[:, 0], [1, 2, 0])
 
         source = ADD(source, f_dis, alpha=alpha, type='auto')
         return source
@@ -130,9 +132,10 @@ class CoordinateHelper(BaseVisHelper):
         # draw points
         if inputs.ndim > 2:
             inputs = np.reshape(inputs, [-1, inputs.shape[-1]])
-        
+
         if 255 not in color:
-            png = (png.astype(float) * color[np.newaxis, np.newaxis] / 255).astype(np.uint8)
+            png = (png.astype(float) *
+                   color[np.newaxis, np.newaxis] / 255).astype(np.uint8)
         for input in inputs:
             source = self.draw_single(source, input, png)
 

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 19:05:21
+@LastEditTime: 2023-10-11 10:44:50
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -106,7 +106,7 @@ class SilverballersModel(Model):
         for traj in all_trajs:
             # Call the first stage model multiple times
             x_agent = [traj] + [inputs[i] for i in self.agent_input_index[1:]]
-            y_all_agent.append(o := self.agent.forward(x_agent))
+            y_all_agent.append(o := self.agent.implement(x_agent))
             y_agent.append(o[0])
 
         y_agent = tf.concat(y_agent, axis=-1)

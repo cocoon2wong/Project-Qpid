@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2021-04-30 15:09:20
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-26 10:52:24
+@LastEditTime: 2023-10-10 19:35:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 """
 
 import numpy as np
-import tensorflow as tf
+import torch
 
 from ...utils import batch_matmul
 
@@ -58,7 +58,7 @@ def positional_encoding(position, d_model):
 
     pos_encoding = angle_rads[np.newaxis, ...]
 
-    return tf.cast(pos_encoding, dtype=tf.float32)
+    return torch.from_numpy(pos_encoding).to(torch.float32)
 
 
 def create_padding_mask(seq):
@@ -67,15 +67,15 @@ def create_padding_mask(seq):
     这确保了模型不会将填充作为输入。
     该 mask 表明填充值 `0` 出现的位置：在这些位置 mask 输出 `1`，否则输出 `0`。
     """
-    seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+    seq = (seq == 0).to(torch.float32)
 
     # 添加额外的维度来将填充加到
     # 注意力对数（logits）。
     # (..., steps, 1, 1, seq_len, dim)
-    return seq[..., tf.newaxis, tf.newaxis, :, :]
+    return seq[..., None, None, :, :]
 
 
-def create_look_ahead_mask(size):
+def create_look_ahead_mask(size: int, device: torch.device):
     """
     前瞻遮挡（look-ahead mask）用于遮挡一个序列中的后续标记（future tokens）。
     换句话说，该 mask 表明了不应该使用的条目。
@@ -83,7 +83,7 @@ def create_look_ahead_mask(size):
     这意味着要预测第三个词，将仅使用第一个和第二个词。
     与此类似，预测第四个词，仅使用第一个，第二个和第三个词，依此类推。 
     """
-    mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
+    mask = torch.triu(torch.ones((size, size)), diagonal=1).to(device)
     return mask  # (seq_len, seq_len)
 
 
@@ -101,9 +101,9 @@ def create_masks(inp, tar):
 
     # 在解码器的第一个注意力模块使用。
     # 用于填充（pad）和遮挡（mask）解码器获取到的输入的后续标记（future tokens）。
-    look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[-2])
+    look_ahead_mask = create_look_ahead_mask(tar.shape[-2], tar.device)
     dec_target_padding_mask = create_padding_mask(tar)[..., 0]
-    combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
+    combined_mask = torch.maximum(dec_target_padding_mask, look_ahead_mask)
 
     return enc_padding_mask, combined_mask, dec_padding_mask
 
@@ -153,8 +153,8 @@ def scaled_dot_product_attention(q, k, v, mask):
     matmul_qk = batch_matmul(q, k, transpose_b=True)
 
     # 缩放 matmul_qk
-    dk = tf.cast(tf.shape(k)[-1], tf.float32)
-    scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
+    dk = torch.tensor(k.shape[-1], dtype=torch.float32)
+    scaled_attention_logits = matmul_qk / torch.sqrt(dk)
 
     # 将 mask 加入到缩放的张量上。
     if mask is not None:
@@ -162,15 +162,15 @@ def scaled_dot_product_attention(q, k, v, mask):
 
     # softmax 在最后一个轴（seq_len_k）上归一化，因此分数
     # 相加等于1。
-    attention_weights = tf.nn.softmax(
-        scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
+    attention_weights = torch.softmax(
+        scaled_attention_logits, dim=-1)  # (..., seq_len_q, seq_len_k)
 
     output = batch_matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
 
     return output, attention_weights
 
 
-class MultiHeadAttention(tf.keras.layers.Layer):
+class MultiHeadAttention(torch.nn.Module):
     """
     <img src="https://tensorflow.google.cn/images/tutorials/transformer/multi_head_attention.png" width="500" alt="multi-head attention">
 
@@ -204,24 +204,22 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         self.depth = d_model // self.num_heads
 
-        self.wq = tf.keras.layers.Dense(d_model)
-        self.wk = tf.keras.layers.Dense(d_model)
-        self.wv = tf.keras.layers.Dense(d_model)
+        self.wq = torch.nn.Linear(d_model, d_model)
+        self.wk = torch.nn.Linear(d_model, d_model)
+        self.wv = torch.nn.Linear(d_model, d_model)
 
-        self.dense = tf.keras.layers.Dense(d_model)
+        self.dense = torch.nn.Linear(d_model, d_model)
 
     def split_heads(self, x):
         """分拆最后一个维度到 (num_heads, depth).
         转置结果使得形状为 (..., num_heads, seq_len, depth)
         """
-        x = tf.reshape(
-            x, list(tf.shape(x)[:-1]) + [self.num_heads, self.depth])
-        i = list(tf.range(x.ndim))
-        return tf.transpose(x, perm=i[:-3] + [i[-2], i[-3], i[-1]])
+        x = torch.reshape(
+            x, list(x.shape[:-1]) + [self.num_heads, self.depth])
+        i = list(range(x.ndim))
+        return torch.permute(x, i[:-3] + [i[-2], i[-3], i[-1]])
 
-    def call(self, v, k, q, mask):
-        batch_size = tf.shape(q)[0]
-
+    def forward(self, v, k, q, mask):
         q = self.wq(q)  # (..., seq_len, d_model)
         k = self.wk(k)  # (..., seq_len, d_model)
         v = self.wv(v)  # (..., seq_len, d_model)
@@ -235,14 +233,14 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         scaled_attention, attention_weights = scaled_dot_product_attention(
             q, k, v, mask)
 
-        i = list(tf.range(scaled_attention.ndim))
-        scaled_attention = tf.transpose(
+        i = list(range(scaled_attention.ndim))
+        scaled_attention = torch.permute(
             scaled_attention,
-            perm=i[:-3] + [i[-2], i[-3], i[-1]])  # (..., seq_len_q, num_heads, depth)
+            i[:-3] + [i[-2], i[-3], i[-1]])  # (..., seq_len_q, num_heads, depth)
 
-        concat_attention = tf.reshape(
+        concat_attention = torch.reshape(
             scaled_attention,
-            list(tf.shape(scaled_attention)[:-3]) + [-1, self.d_model])  # (..., seq_len_q, d_model)
+            list(scaled_attention.shape[:-3]) + [-1, self.d_model])  # (..., seq_len_q, d_model)
 
         # (batch_size, seq_len_q, d_model)
         output = self.dense(concat_attention)
@@ -256,10 +254,11 @@ def point_wise_feed_forward_network(d_model, dff):
 
     点式前馈网络由两层全联接层组成，两层之间有一个 ReLU 激活函数。
     """
-    return tf.keras.Sequential([
-        tf.keras.layers.Dense(dff, activation='relu'),
+    return torch.nn.Sequential(
+        torch.nn.Linear(d_model, dff),
+        torch.nn.ReLU(),
         # (batch_size, seq_len, dff)
 
-        tf.keras.layers.Dense(d_model)
+        torch.nn.Linear(dff, d_model)
         # (batch_size, seq_len, d_model)
-    ])
+    )

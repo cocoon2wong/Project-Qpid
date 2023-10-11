@@ -2,25 +2,28 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:25:47
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-15 15:09:46
+@LastEditTime: 2023-10-10 20:21:54
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import tensorflow as tf
+import torch
 
 from ...utils import POOLING_BEFORE_SAVING
+from .__base import Dense
 from .transfroms import _BaseTransformLayer
 
 
-class TrajEncoding(tf.keras.layers.Layer):
+class TrajEncoding(torch.nn.Module):
     """
     Encode trajectories into the traj feature
     """
 
-    def __init__(self, units: int = 64,
-                 activation=None,
+    def __init__(self, input_units: int,
+                 output_units: int = 64,
+                 activation: type[torch.nn.Module] = None,
                  transform_layer: _BaseTransformLayer = None,
                  channels_first=True,
                  *args, **kwargs):
@@ -39,14 +42,17 @@ class TrajEncoding(tf.keras.layers.Layer):
 
         self.Tlayer = None
         self.channels_first = channels_first
-
+        fc_input_units = input_units
+        
         if transform_layer:
+            fc_input_units = output_units
             self.Tlayer = transform_layer
-            self.fc2 = tf.keras.layers.Dense(units, tf.nn.relu)
+            Tchannels = self.Tlayer.Tshape[1]
+            self.fc2 = Dense(Tchannels, output_units, torch.nn.ReLU)
 
-        self.fc1 = tf.keras.layers.Dense(units, activation)
+        self.fc1 = Dense(fc_input_units, output_units, activation)
 
-    def call(self, trajs: tf.Tensor, **kwargs) -> tf.Tensor:
+    def forward(self, trajs: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Encode trajectories into the high-dimension features.
 
@@ -59,9 +65,9 @@ class TrajEncoding(tf.keras.layers.Layer):
             t = self.Tlayer(trajs)  # (batch, Tsteps, Tchannels)
 
             if not self.channels_first:
-                i = list(tf.range(t.ndim))
+                i = list(range(t.ndim))
                 # (batch, Tchannels, Tsteps)
-                t = tf.transpose(t, i[:-2] + [i[-1], i[-2]])
+                t = torch.permute(t, i[:-2] + [i[-1], i[-2]])
 
             fc2 = self.fc2(t)
             return self.fc1(fc2)
@@ -73,6 +79,7 @@ class TrajEncoding(tf.keras.layers.Layer):
 class ContextEncoding(tf.keras.layers.Layer):
     """
     Encode context maps into the context feature
+    FIXME: It DOES NOT SUPPORT torch.
     """
 
     def __init__(self, output_channels: int,
@@ -81,7 +88,7 @@ class ContextEncoding(tf.keras.layers.Layer):
                  *args, **kwargs):
         """
         Init a context encoding module.
-        The context encoding layer finally outputs a `tf.Tensor`
+        The context encoding layer finally outputs a `torch.Tensor`
         with shape `(batch_size, output_channels, units)`.
 
         :param output_channels: Output channels.
@@ -99,7 +106,7 @@ class ContextEncoding(tf.keras.layers.Layer):
         self.fc = tf.keras.layers.Dense(output_channels * units, activation)
         self.reshape = tf.keras.layers.Reshape((output_channels, units))
 
-    def call(self, context_map: tf.Tensor, **kwargs) -> tf.Tensor:
+    def call(self, context_map: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Encode context maps into context features.
 

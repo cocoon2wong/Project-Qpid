@@ -2,22 +2,25 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:20:57
 @LastEditors: Conghao Wong
-@LastEditTime: 2022-04-21 10:52:00
+@LastEditTime: 2023-10-10 20:44:21
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
+
+from .__base import Dense
 
 
-class GraphConv(tf.keras.layers.Layer):
+class GraphConv(torch.nn.Module):
     """
     Graph conv layer
     """
 
-    def __init__(self, units: int,
-                 activation=None,
+    def __init__(self, input_units: int,
+                 output_units: int,
+                 activation: type[torch.nn.Module] = None,
                  *args, **kwargs):
         """
         Init a graph convolution layer
@@ -27,11 +30,11 @@ class GraphConv(tf.keras.layers.Layer):
         """
         super().__init__(*args, **kwargs)
 
-        self.fc = tf.keras.layers.Dense(units, activation)
+        self.fc = Dense(input_units, output_units, activation)
 
-    def call(self, features: tf.Tensor,
-             adjMatrix: tf.Tensor,
-             *args, **kwargs) -> tf.Tensor:
+    def forward(self, features: torch.Tensor,
+                adjMatrix: torch.Tensor,
+                *args, **kwargs) -> torch.Tensor:
         """
         Run the graph convolution operation
 
@@ -40,5 +43,5 @@ class GraphConv(tf.keras.layers.Layer):
         :return outputs: shape = (batch, N, units)
         """
 
-        dot = tf.matmul(adjMatrix, features)
+        dot = torch.matmul(adjMatrix, features)
         return self.fc(dot)

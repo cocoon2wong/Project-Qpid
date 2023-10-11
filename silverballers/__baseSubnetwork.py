@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-06 16:45:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:47:48
+@LastEditTime: 2023-10-10 18:02:21
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 
 from typing import Union
 
-import tensorflow as tf
+import torch
 
 from ..args import Args
 from ..dataset import AgentManager
@@ -46,12 +46,10 @@ class BaseSubnetwork(Model):
 
         # Keypoints and their indices
         indices = [int(i) for i in self.args.key_points.split('_')]
-        self.__ki = tf.cast(indices, tf.int32)
+        self.__ki = torch.tensor(indices, dtype=torch.int32)
 
-        self.n_key_past: int = tf.reduce_sum(
-            tf.cast(self.__ki < 0, tf.int32))
-        self.n_key_future: int = tf.reduce_sum(
-            tf.cast(self.__ki >= 0, tf.int32))
+        self.n_key_past: int = torch.sum((self.__ki < 0).to(torch.int32))
+        self.n_key_future: int = torch.sum((self.__ki >= 0).to(torch.int32))
         self.n_key = self.n_key_past + self.n_key_future
 
     @property
@@ -77,7 +75,7 @@ class BaseSubnetwork(Model):
         return self.structure.annmanager.dim
 
     @property
-    def key_indices_future(self) -> tf.Tensor:
+    def key_indices_future(self) -> torch.Tensor:
         """
         Indices of the future keypoints.
         Data type is `tf.int32`.
@@ -85,16 +83,17 @@ class BaseSubnetwork(Model):
         return self.__ki[self.n_key_past:]
 
     @property
-    def key_indices_past(self) -> tf.Tensor:
+    def key_indices_past(self) -> torch.Tensor:
         """
         Indices of the past keypoints.
         Data type is `tf.int32`.
         It starts with `0`.
         """
         if self.n_key_past:
-            return self.args.obs_frames + self.__ki[:self.n_key_past]
+            k_i = self.args.obs_frames + self.__ki[:self.n_key_past]
+            return torch.tensor(k_i, dtype=torch.int32)
         else:
-            return tf.cast([], tf.int32)
+            return torch.tensor([], dtype=torch.int32)
 
     @property
     def picker(self):

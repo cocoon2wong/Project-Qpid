@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:09:03
+@LastEditTime: 2023-10-10 20:43:20
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -13,7 +13,7 @@ import time
 from typing import TypeVar
 
 import numpy as np
-import tensorflow as tf
+import torch
 
 from ..args import Args
 from ..base import BaseManager
@@ -26,7 +26,7 @@ T = TypeVar('T')
 MAX_INFERENCE_TIME_STORGED = 100
 
 
-class Model(tf.keras.Model, BaseManager):
+class Model(torch.nn.Module, BaseManager):
     """
     Model (Model Manager)
     -----
@@ -35,21 +35,6 @@ class Model(tf.keras.Model, BaseManager):
     -----
     When training or testing new models, please subclass this class, and clarify
     model layers used in your model.
-    ```python
-    class MyModel(Model):
-        def __init__(self, Args, structure, *args, **kwargs):
-            super().__init__(Args, structure, *args, **kwargs)
-
-            self.fc = tf.keras.layers.Dense(64, tf.nn.relu)
-            self.fc1 = tf.keras.layers.Dense(2)
-    ```
-
-    Then define your model's pipeline in `call` method:
-    ```python
-        def call(self, inputs, training=None, mask=None):
-            y = self.fc(inputs)
-            return self.fc1(y)
-    ```
 
     Public Methods
     --------------
@@ -71,8 +56,9 @@ class Model(tf.keras.Model, BaseManager):
                  structure=None,
                  *args, **kwargs):
 
-        tf.keras.Model.__init__(self, *args, **kwargs)
-        BaseManager.__init__(self, manager=structure, name=self.name)
+        torch.nn.Module.__init__(self, *args, **kwargs)
+        BaseManager.__init__(self, manager=structure,
+                             name=f'{type(self).__name__}({hex(id(self))})')
 
         # Pre/post-process model and settings
         self.processor = process.ProcessModel(self.args)
@@ -122,21 +108,21 @@ class Model(tf.keras.Model, BaseManager):
         else:
             return '(Not Available)'
 
-    def call(self, inputs,
-             training=None,
-             mask=None,
-             *args, **kwargs):
+    def forward(self, inputs,
+                training=None,
+                mask=None,
+                *args, **kwargs):
 
         raise NotImplementedError
 
-    def forward(self, inputs: list[tf.Tensor],
-                training=None) -> list[tf.Tensor]:
+    def implement(self, inputs: list[torch.Tensor],
+                  training=None) -> list[torch.Tensor]:
         """
         Run a forward implementation.
 
         :param inputs: Input tensor (or a `list` of tensors).
         :param training: Config if running as training or test mode.
-        :return outputs_p: Model's output. type=`list[tf.Tensor]`.
+        :return outputs_p: Model's output. type=`list[torch.Tensor]`.
         """
         # Preprocess
         inputs_p = self.processor(inputs, preprocess=True, training=training)
@@ -198,7 +184,7 @@ class Model(tf.keras.Model, BaseManager):
     def load_weights_from_logDir(self, weights_dir: str):
         all_files = os.listdir(weights_dir)
         weights_files = [f for f in all_files
-                         if WEIGHTS_FORMAT + '.' in f]
+                         if WEIGHTS_FORMAT in f]
         weights_files.sort()
 
         if CHECKPOINT_FILENAME in all_files:
@@ -208,8 +194,9 @@ class Model(tf.keras.Model, BaseManager):
             weights_files = [f for f in weights_files
                              if f'_epoch{epoch}{WEIGHTS_FORMAT}' in f]
 
-        weights_name = weights_files[-1].split('.index')[0]
-        self.load_weights(p := os.path.join(weights_dir, weights_name))
+        weights_name = weights_files[-1]
+        self.load_state_dict(torch.load(
+            p := os.path.join(weights_dir, weights_name)))
         self.log(f'Successfully load weights from `{p}`.', verbose_mode=True)
 
     def print_info(self, **kwargs):

@@ -2,19 +2,19 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 09:06:50
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-20 09:03:13
+@LastEditTime: 2023-10-10 11:56:47
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 
-def ADE_2D(pred: tf.Tensor,
-           GT: tf.Tensor,
+def ADE_2D(pred: torch.Tensor,
+           GT: torch.Tensor,
            coe: float = 1.0,
-           mask: tf.Tensor = None) -> tf.Tensor:
+           mask: torch.Tensor = None) -> torch.Tensor:
     """
     Calculate `ADE` or `minADE`.
 
@@ -27,21 +27,21 @@ def ADE_2D(pred: tf.Tensor,
         Return `minADE` when input_shape = [batch, K, pred_frames, 2].
     """
     if pred.ndim == GT.ndim:      # (batch, steps, dim)
-        pred = pred[..., tf.newaxis, :, :]
+        pred = pred[..., None, :, :]
 
     # Shape of all_ade: (..., K)
-    all_ade = tf.reduce_mean(
-        tf.linalg.norm(
-            pred - GT[..., tf.newaxis, :, :],
-            ord=2, axis=-1
-        ), axis=-1)
+    all_ade = torch.mean(
+        torch.norm(
+            pred - GT[..., None, :, :],
+            p=2, dim=-1
+        ), dim=-1)
 
-    best_ade = tf.reduce_min(all_ade, axis=-1)
+    best_ade = torch.min(all_ade, dim=-1)[0]
 
     if mask is not None:
         best_ade *= mask
-        count = tf.reduce_sum(mask)
+        count = torch.sum(mask)
     else:
-        count = tf.reduce_sum(tf.ones_like(best_ade))
+        count = torch.sum(torch.ones_like(best_ade))
 
-    return coe * tf.reduce_sum(best_ade) / count
+    return coe * torch.sum(best_ade) / count

@@ -2,20 +2,21 @@
 @Author: Conghao Wong
 @Date: 2021-04-30 14:58:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-15 16:39:52
+@LastEditTime: 2023-10-11 10:41:30
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 @Part of modules come from https://tensorflow.google.cn/tutorials/text/transformer.
 """
 
-import tensorflow as tf
+import torch
 
+from ..layers import Dropout
 from ._utils import (MultiHeadAttention, create_encoder_mask, create_masks,
                      point_wise_feed_forward_network, positional_encoding)
 
 
-class EncoderLayer(tf.keras.layers.Layer):
+class EncoderLayer(torch.nn.Module):
     """
     ### 编码器层（Encoder layer）
 
@@ -38,13 +39,13 @@ class EncoderLayer(tf.keras.layers.Layer):
         self.mha = MultiHeadAttention(d_model, num_heads)
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm1 = torch.nn.LayerNorm(d_model, eps=1e-6)
+        self.layernorm2 = torch.nn.LayerNorm(d_model, eps=1e-6)
 
-        self.dropout1 = tf.keras.layers.Dropout(rate)
-        self.dropout2 = tf.keras.layers.Dropout(rate)
+        self.dropout1 = Dropout(rate)
+        self.dropout2 = Dropout(rate)
 
-    def call(self, x, training, mask):
+    def forward(self, x, training, mask):
 
         # (batch_size, input_seq_len, d_model)
         attn_output, _ = self.mha(x, x, x, mask)
@@ -60,7 +61,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         return out2
 
 
-class DecoderLayer(tf.keras.layers.Layer):
+class DecoderLayer(torch.nn.Module):
     """
     ### 解码器层（Decoder layer）
 
@@ -92,16 +93,16 @@ class DecoderLayer(tf.keras.layers.Layer):
 
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm3 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm1 = torch.nn.LayerNorm(d_model, eps=1e-6)
+        self.layernorm2 = torch.nn.LayerNorm(d_model, eps=1e-6)
+        self.layernorm3 = torch.nn.LayerNorm(d_model, eps=1e-6)
 
-        self.dropout1 = tf.keras.layers.Dropout(rate)
-        self.dropout2 = tf.keras.layers.Dropout(rate)
-        self.dropout3 = tf.keras.layers.Dropout(rate)
+        self.dropout1 = Dropout(rate)
+        self.dropout2 = Dropout(rate)
+        self.dropout3 = Dropout(rate)
 
-    def call(self, x, enc_output, training,
-             look_ahead_mask, padding_mask):
+    def forward(self, x, enc_output, training,
+                look_ahead_mask, padding_mask):
         # enc_output.shape == (batch_size, input_seq_len, d_model)
 
         # (batch_size, target_seq_len, d_model)
@@ -123,7 +124,7 @@ class DecoderLayer(tf.keras.layers.Layer):
         return out3, attn_weights_block1, attn_weights_block2
 
 
-class Encoder(tf.keras.layers.Layer):
+class Encoder(torch.nn.Module):
     """
     This module comes from https://tensorflow.google.cn/tutorials/text/transformer.
 
@@ -156,34 +157,39 @@ class Encoder(tf.keras.layers.Layer):
         # self.embedding = tf.keras.layers.Embedding(input_vocab_size, d_model)
 
         # transformer for trajectory prediction
-        self.embedding = tf.keras.layers.Dense(d_model, activation=tf.nn.tanh)
+        self.embedding = torch.nn.Sequential(
+            torch.nn.Linear(d_model, d_model),
+            torch.nn.Tanh(),
+        )
 
         self.pos_encoding = positional_encoding(maximum_position_encoding,
                                                 self.d_model)
 
-        self.enc_layers = [EncoderLayer(d_model, num_heads, dff, rate)
-                           for _ in range(num_layers)]
+        for i in range(num_layers):
+            self.add_module(f'enc_layer_{i}',
+                            EncoderLayer(d_model, num_heads, dff, rate))
 
-        self.dropout = tf.keras.layers.Dropout(rate)
+        self.dropout = Dropout(rate)
 
-    def call(self, x, training, mask):
+    def forward(self, x: torch.Tensor, training, mask):
 
-        seq_len = tf.shape(x)[-2]
+        seq_len = x.shape[-2]
 
         # 将嵌入和位置编码相加。
         x = self.embedding(x)  # (batch_size, input_seq_len, d_model)
-        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
-        x += self.pos_encoding[:, :seq_len, :]
+        x = x * torch.sqrt(torch.tensor(self.d_model, dtype=torch.float32))
+        x = x + self.pos_encoding.to(x.device)[:, :seq_len, :]
 
         x = self.dropout(x, training=training)
 
-        for i in range(self.num_layers):
-            x = self.enc_layers[i](x, training, mask)
+        for index in range(self.num_layers):
+            layer = self.get_submodule(f'enc_layer_{index}')
+            x = layer(x, training, mask)
 
         return x  # (batch_size, input_seq_len, d_model)
 
 
-class Decoder(tf.keras.layers.Layer):
+class Decoder(torch.nn.Module):
     """
     ### 解码器（Decoder）
 
@@ -208,30 +214,36 @@ class Decoder(tf.keras.layers.Layer):
         # self.embedding = tf.keras.layers.Embedding(target_vocab_size, d_model)
 
         # transformer for trajectory prediction
-        self.embedding = tf.keras.layers.Dense(d_model, activation=tf.nn.tanh)
+        self.embedding = torch.nn.Sequential(
+            torch.nn.Linear(target_vocab_size, d_model),
+            torch.nn.Tanh(),
+        )
 
         self.pos_encoding = positional_encoding(
             maximum_position_encoding, d_model)
 
-        self.dec_layers = [DecoderLayer(d_model, num_heads, dff, rate)
-                           for _ in range(num_layers)]
-        self.dropout = tf.keras.layers.Dropout(rate)
+        for index in range(num_layers):
+            self.add_module(f'dec_layer_{index}', 
+                            DecoderLayer(d_model, num_heads, dff, rate))
 
-    def call(self, x, enc_output, training,
-             look_ahead_mask, padding_mask):
+        self.dropout = Dropout(rate)
 
-        seq_len = tf.shape(x)[-2]
+    def forward(self, x, enc_output, training,
+                look_ahead_mask, padding_mask):
+
+        seq_len = x.shape[-2]
         attention_weights = {}
 
         x = self.embedding(x)  # (batch_size, target_seq_len, d_model)
-        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
-        x += self.pos_encoding[:, :seq_len, :]
+        x = x * torch.sqrt(torch.tensor(self.d_model, dtype=torch.float32))
+        x = x + self.pos_encoding.to(x.device)[:, :seq_len, :]
 
         x = self.dropout(x, training=training)
 
         for i in range(self.num_layers):
-            x, block1, block2 = self.dec_layers[i](x, enc_output, training,
-                                                   look_ahead_mask, padding_mask)
+            layer = self.get_submodule(f'dec_layer_{i}')
+            x, block1, block2 = layer(x, enc_output, training,
+                                      look_ahead_mask, padding_mask)
 
             attention_weights['decoder_layer{}_block1'.format(i+1)] = block1
             attention_weights['decoder_layer{}_block2'.format(i+1)] = block2
@@ -240,7 +252,7 @@ class Decoder(tf.keras.layers.Layer):
         return x, attention_weights
 
 
-class Transformer(tf.keras.Model):
+class Transformer(torch.nn.Module):
     """
     ## 创建 Transformer
 
@@ -292,11 +304,11 @@ class Transformer(tf.keras.Model):
                                target_vocab_size, pe_target, rate)
 
         if self.include_top:
-            self.final_layer = tf.keras.layers.Dense(target_vocab_size)
+            self.final_layer = torch.nn.Linear(d_model, target_vocab_size)
 
-    def call(self, inputs: tf.Tensor,
-             targets: tf.Tensor,
-             training=None) -> tuple[tf.Tensor, tf.Tensor]:
+    def forward(self, inputs: torch.Tensor,
+                targets: torch.Tensor,
+                training=None) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Transformer forward implementation
 
@@ -330,7 +342,7 @@ class Transformer(tf.keras.Model):
         return final_output, attention_weights
 
 
-class TransformerEncoder(tf.keras.Model):
+class TransformerEncoder(torch.nn.Module):
     """
     Transformer Encoder
     """
@@ -360,9 +372,9 @@ class TransformerEncoder(tf.keras.Model):
                           rate=dropout)
 
         if self.include_top:
-            self.final_layer = tf.keras.layers.Dense(dim_output)
+            self.final_layer = torch.nn.Linear(dim_model, dim_output)
 
-    def call(self, inputs: tf.Tensor, training=None, *args, **kwargs) -> tf.Tensor:
+    def forward(self, inputs: torch.Tensor, training=None, *args, **kwargs) -> torch.Tensor:
 
         # Create masks
         enc_mask = create_encoder_mask(inputs)

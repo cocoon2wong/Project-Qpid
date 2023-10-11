@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 19:13:02
+@LastEditTime: 2023-10-10 18:47:03
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -14,7 +14,7 @@ import plistlib
 import time
 
 import numpy as np
-import tensorflow as tf
+import torch
 
 """
 Configs
@@ -60,7 +60,7 @@ LOG_MAX_LIST_LEN = 10
 LOG_STREAM_HANDLER = logging.StreamHandler()
 
 # Weights configs
-WEIGHTS_FORMAT = '.tf'
+WEIGHTS_FORMAT = '.pt'
 CHECKPOINT_FILENAME = 'best_ade_epoch.txt'
 
 # Visualization settings
@@ -112,40 +112,48 @@ def load_from_plist(path: str) -> dict:
     return dat
 
 
-def get_mask(input: tf.Tensor, dtype=tf.float32):
-    return tf.cast(input < 0.05 * INIT_POSITION, dtype)
+def get_mask(input: torch.Tensor, dtype=torch.float32):
+    return (input < 0.05 * INIT_POSITION).to(dtype=dtype)
 
 
-def get_loss_mask(obs: tf.Tensor, label: tf.Tensor, return_numpy=False):
+def get_loss_mask(obs: torch.Tensor | np.ndarray,
+                  label: torch.Tensor | np.ndarray,
+                  return_numpy=False):
     """
     Get mask from both model predictions and labels.
-    Return type: `tf.float32`.
+    Return type: `torch.float32`.
 
     :param obs: Observed trajectories, shape = `(..., steps, dim)`
     :param label: Label trajectories, shape = `(..., steps, dim)`
     """
-    pred_mask = get_mask(tf.reduce_sum(obs, axis=[-1, -2]))
-    label_mask = get_mask(tf.reduce_sum(label, axis=[-1, -2]))
+    if issubclass(type(obs), np.ndarray):
+        obs = torch.from_numpy(obs)
+        label = torch.from_numpy(label)
+
+    pred_mask = get_mask(torch.sum(obs, dim=[-1, -2]))
+    label_mask = get_mask(torch.sum(label, dim=[-1, -2]))
     mask = pred_mask * label_mask
     if return_numpy:
         mask = mask.numpy()
     return mask
 
 
-def batch_matmul(a: tf.Tensor, b: tf.Tensor, *args, **kwargs):
+def batch_matmul(a: torch.Tensor, b: torch.Tensor, transpose_b=False):
     """
     Run matmul operations on a batch of inputs.
-    Other args will be wrapped to `tf.matmul`.
+    Other args will be wrapped to `torch.matmul`.
 
     :param a: Input, shape is `(..., a, b)`.
     :param b: Another input, shape is `(..., b, c)`.
     """
+    if transpose_b:
+        b = torch.transpose(b, -1, -2)
     if a.ndim <= 4:
-        return tf.matmul(a, b, *args, **kwargs)
+        return torch.matmul(a, b)
 
-    batch = tf.shape(a)[:-3]
-    _a = tf.reshape(a, [-1]+list(tf.shape(a)[2:]))
-    _b = tf.reshape(b, [-1]+list(tf.shape(b)[2:]))
-    res = tf.matmul(_a, _b, *args, **kwargs)
+    batch = a.shape[:-3]
+    _a = torch.reshape(a, [-1]+list(a.shape[2:]))
+    _b = torch.reshape(b, [-1]+list(b.shape[2:]))
+    res = torch.matmul(_a, _b)
 
-    return tf.reshape(res, list(batch) + list(tf.shape(res)[1:]))
+    return torch.reshape(res, list(batch) + list(res.shape[1:]))

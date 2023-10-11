@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 15:11:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-07-10 14:58:03
+@LastEditTime: 2023-10-10 20:42:42
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -73,7 +73,7 @@ class BaseInputObject():
             else:
                 setattr(self, item, zipped_data[item])
         return self
-    
+
     def padding(self, trajs: np.ndarray) -> np.ndarray:
         """
         Padding all agents' trajectories.
@@ -180,7 +180,8 @@ class BaseInputObject():
         return self._frames_future
 
     def _get_masked_traj(self, traj: np.ndarray):
-        if not issubclass(type(self.mask), np.ndarray):
+        if ((not issubclass(type(self.mask), np.ndarray)) or
+                (self.mask.ndim == 0)):
             return traj
         else:
             index = np.where(self.mask)[0]

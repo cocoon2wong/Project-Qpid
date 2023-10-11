@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 17:39:54
+@LastEditTime: 2023-10-11 10:29:43
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,8 @@
 import random
 
 import numpy as np
-import tensorflow as tf
+import torch
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
 from ..base import BaseManager
@@ -22,6 +23,23 @@ from .__base import Annotation, AnnotationManager, BaseInputManager
 from .__splitManager import SplitManager
 from .agent_based import Agent, AgentFilesManager, TrajectoryManager
 from .frame_based import FrameFilesManager, FrameManager
+
+
+class TrajectoryDataset(Dataset):
+
+    def __init__(self, inputs: list[torch.Tensor],
+                 labels: list[torch.Tensor]) -> None:
+        super().__init__()
+
+        self.inputs = inputs
+        self.labels = labels
+
+    def __getitem__(self, index):
+        return (tuple([i[index] for i in self.inputs]),
+                tuple([l[index] for l in self.labels]))
+
+    def __len__(self):
+        return len(self.inputs[0])
 
 
 class AgentManager(BaseManager):
@@ -164,33 +182,30 @@ class AgentManager(BaseManager):
         self.model_inputs = inputs_type
         self.model_labels = labels_type
 
-    def gather_inputs(self) -> list[tf.Tensor]:
+    def gather_inputs(self) -> list[torch.Tensor]:
         """
         Get all model inputs from agents.
         """
         return [self._gather(T) for T in self.model_inputs]
 
-    def gather_labels(self) -> list[tf.Tensor]:
+    def gather_labels(self) -> list[torch.Tensor]:
         """
         Get all model labels from agents.
         """
         return [self._gather(T) for T in self.model_labels]
 
-    def make_dataset(self, shuffle=False) -> tf.data.Dataset:
+    def make_dataset(self, training=False) -> DataLoader:
         """
-        Get inputs from all agents and make the `tf.data.Dataset`
+        Get inputs from all agents and make the `torch.utils.data.DataLoader`
         object. Note that the dataset contains both model inputs
         and labels.
         """
-        data = tuple(self.gather_inputs() + self.gather_labels())
-        dataset = tf.data.Dataset.from_tensor_slices(data)
-
-        if shuffle:
-            dataset = dataset.shuffle(
-                len(dataset),
-                reshuffle_each_iteration=True
-            )
-
+        x = self.gather_inputs()
+        y = self.gather_labels()
+        dataset = DataLoader(dataset=TrajectoryDataset(x, y),
+                             batch_size=self.args.batch_size,
+                             drop_last=True if training else False,
+                             shuffle=True if training else False)
         return dataset
 
     def clean(self):
@@ -201,23 +216,23 @@ class AgentManager(BaseManager):
         self.ext_inputs = {}
         return self
 
-    def make(self, clips: list[str], mode: str) -> tf.data.Dataset:
+    def make(self, clips: list[str], training: bool) -> DataLoader:
         """
-        Load train samples and make the `tf.data.Dataset` object to train.
+        Load train samples and make the `torch.utils.data.DataLoader`
+        object to train.
 
         :param clips: Clips to load.
-        :param mode: The load mode, can be `'test'` or `'train'`.
-        :return dataset: The loaded `tf.data.Dataset` object.
+        :param training: The load mode.
+        :return dataset: The loaded `torch.utils.data.DataLoader` object.
         """
         if type(clips) is str:
             clips = [clips]
 
         # shuffle agents and video clips when training
-        if mode == 'train':
-            shuffle = True
+        if training:
             random.shuffle(clips)
-        else:
-            shuffle = False
+
+        mode = 'training' if training else 'test'
 
         # load agent data in each video clip
         for clip_name in self.timebar(clips):
@@ -249,14 +264,14 @@ class AgentManager(BaseManager):
                     self.ext_inputs[clip_name][key] += value
 
         self.processed_clips[mode] += clips
-        return self.make_dataset(shuffle=shuffle)
+        return self.make_dataset(training=training)
 
     def _gather_obs_trajs(self, agents: list[Agent] = None) -> np.ndarray:
         if not agents:
             agents = self.agents
         return np.array([a.traj for a in agents])
 
-    def _gather(self, type_name: str) -> tf.Tensor:
+    def _gather(self, type_name: str) -> torch.Tensor:
         """
         Get model inputs or labels from a list of `Agent`-like objects.
 
@@ -271,8 +286,8 @@ class AgentManager(BaseManager):
                 if res is None:
                     res = _res[t]
                 else:
-                    res = tf.concat([res, _res[t]], axis=0)
-            return tf.cast(res, tf.float32)
+                    res = torch.concat([res, _res[t]], dim=0)
+            return torch.tensor(res, dtype=torch.float32)
 
         if t == INPUT_TYPES.OBSERVED_TRAJ:
             return _get_obs_traj(self.agents)
@@ -307,7 +322,7 @@ class AgentManager(BaseManager):
                     [agent.traj, agent.groundtruth], axis=-2))
 
             t_layer = self.t_layers[t]
-            return t_layer(tf.cast(trajs, tf.float32))
+            return t_layer(torch.tensor(trajs, dtype=torch.float32))
 
         else:
             raise ValueError(type_name)
@@ -321,7 +336,7 @@ class AgentManager(BaseManager):
         return super().print_info(**t_info, **kwargs)
 
 
-def _get_obs_traj(input_agents: list[Agent]) -> tf.Tensor:
+def _get_obs_traj(input_agents: list[Agent]) -> torch.Tensor:
     """
     Get observed trajectories from agents.
 
@@ -331,19 +346,19 @@ def _get_obs_traj(input_agents: list[Agent]) -> tf.Tensor:
     inputs = []
     for agent in tqdm(input_agents, 'Prepare trajectories...'):
         inputs.append(agent.traj)
-    return tf.cast(inputs, tf.float32)
+    return torch.tensor(np.array(inputs), dtype=torch.float32)
 
 
-def _get_neighbor_traj(input_agents: list[Agent]) -> tf.Tensor:
+def _get_neighbor_traj(input_agents: list[Agent]) -> torch.Tensor:
     inputs = []
     for agent in tqdm(input_agents, 'Prepare neighbors...'):
         inputs.append(agent.traj_neighbor)
-    return tf.cast(inputs, tf.float32)
+    return torch.tensor(np.array(inputs), dtype=torch.float32)
 
 
 def _get_gt_traj(input_agents: list[Agent],
                  destination=False,
-                 text='groundtruth') -> tf.Tensor:
+                 text='groundtruth') -> torch.Tensor:
     """
     Get groundtruth trajectories from agents.
 
@@ -357,8 +372,8 @@ def _get_gt_traj(input_agents: list[Agent],
         else:
             inputs.append(agent.groundtruth)
 
-    return tf.cast(inputs, tf.float32)
+    return torch.tensor(np.array(inputs), dtype=torch.float32)
 
 
-def _get_dest_traj(input_agents: list[Agent]) -> tf.Tensor:
+def _get_dest_traj(input_agents: list[Agent]) -> torch.Tensor:
     return _get_gt_traj(input_agents, destination=True, text='destinations')

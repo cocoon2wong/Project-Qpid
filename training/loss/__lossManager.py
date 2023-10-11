@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-20 09:15:37
+@LastEditTime: 2023-10-11 10:46:57
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 
 from typing import Union
 
-import tensorflow as tf
+import torch
 
 from ...base import BaseManager
 from ...dataset import Annotation, AnnotationManager
@@ -91,10 +91,10 @@ class LossManager(BaseManager):
             self.loss_weights.append(weights)
             self.loss_paras.append(parameters)
 
-    def call(self, outputs: list[tf.Tensor],
-             labels: list[tf.Tensor],
-             inputs: list[tf.Tensor],
-             training=None):
+    def forward(self, outputs: list[torch.Tensor],
+                labels: list[torch.Tensor],
+                inputs: list[torch.Tensor],
+                training=None):
         """
         Call all loss functions recorded in the `loss_list`.
 
@@ -112,7 +112,7 @@ class LossManager(BaseManager):
         loss_dict = {}
         mask = get_loss_mask(inputs[0], labels[0])
         for layer, paras in zip(self.loss_list, self.loss_paras):
-            name = layer.name.split('_1')[0]
+            name = layer.__class__.__name__
             if len(paras):
                 if 'name' in paras.keys():
                     name = paras['name']
@@ -128,14 +128,16 @@ class LossManager(BaseManager):
         if (l := len(self.loss_weights)):
             if l != len(loss_dict):
                 raise ValueError('Incorrect loss weights!')
-            weights = self.loss_weights
+            weights = torch.tensor(self.loss_weights, dtype=torch.float32)
 
         else:
-            weights = tf.ones(len(loss_dict))
+            weights = torch.ones(len(loss_dict))
 
-        summary = tf.matmul(tf.expand_dims(list(loss_dict.values()), 0),
-                            tf.expand_dims(weights, 1))
-        summary = tf.reshape(summary, ())
+        summary = torch.matmul(
+            torch.unsqueeze(torch.stack(list(loss_dict.values())), 0),
+            torch.unsqueeze(weights.to(mask.device), 1)
+        )
+        summary = torch.reshape(summary, ())
         return summary, loss_dict
 
     def print_info(self, **kwargs):

@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-09-01 10:40:50
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-04 15:48:29
+@LastEditTime: 2023-10-10 16:38:41
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 from ...constant import ANN_TYPES, INPUT_TYPES, OUTPUT_TYPES
 from ...utils import SCALE_THRESHOLD
@@ -37,32 +37,30 @@ class Scale(BaseProcessLayer):
         self._scales = None
 
     @property
-    def scales(self) -> tf.Tensor:
+    def scales(self) -> torch.Tensor:
         """
         Scales of all observed trajectories.
         Shape is `(batch, 1, 1)`
         """
         return self._scales
 
-    def update_paras(self, inputs: dict[str, tf.Tensor]) -> None:
+    def update_paras(self, inputs: dict[str, torch.Tensor]) -> None:
         trajs = inputs[INPUT_TYPES.OBSERVED_TRAJ]
         # Move vector, shape = (batch, 2)
         vectors = trajs[..., -1, :] - trajs[..., 0, :]
 
         # Move distance, shape = (batch)
-        scales = tf.linalg.norm(vectors, axis=-1)
+        scales = torch.norm(vectors, dim=-1)
 
         # Reshape into (batch, 1, 1)
-        scales = scales[:, tf.newaxis, tf.newaxis]
+        scales = scales[:, None, None]
 
         # Ignore trajectories with small movements
-        # mask = tf.cast(scales <= SCALE_THRESHOLD, tf.float32)
-        # scales = mask * 1.0 + (1.0 - mask) * scales
-        scales = tf.maximum(scales, SCALE_THRESHOLD)
+        scales = torch.maximum(scales, torch.tensor(SCALE_THRESHOLD))
 
         self._scales = scales
 
-    def preprocess(self, inputs: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
+    def preprocess(self, inputs: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Scaling length of trajectories' direction vector into 1.
         The reference point when scaling is the `last` observation point.
@@ -77,7 +75,7 @@ class Scale(BaseProcessLayer):
                 raise ValueError(_type)
         return outputs
 
-    def postprocess(self, inputs: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
+    def postprocess(self, inputs: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Scale trajectories back to their original.
         The reference point is the `first` prediction point.
@@ -91,21 +89,21 @@ class Scale(BaseProcessLayer):
                 raise ValueError(_type)
         return outputs
 
-    def scale(self, trajs: tf.Tensor, inverse=False, autoref_index: int = None):
+    def scale(self, trajs: torch.Tensor, inverse=False, autoref_index: int = None):
         scales = self.scales
         if inverse:
             scales = 1.0 / scales
 
-        ref_points = trajs[..., tf.newaxis, autoref_index, :]
+        ref_points = trajs[..., None, autoref_index, :]
 
         while scales.ndim < trajs.ndim:
-            scales = scales[..., tf.newaxis]
+            scales = scales[..., None]
 
         return (trajs - ref_points) / scales + ref_points
 
-    def scale_neighbors(self, nei_trajs: tf.Tensor):
+    def scale_neighbors(self, nei_trajs: torch.Tensor):
         scales = self.scales
         while scales.ndim < nei_trajs.ndim:
-            scales = scales[..., tf.newaxis]
+            scales = scales[..., None]
 
         return nei_trajs / scales

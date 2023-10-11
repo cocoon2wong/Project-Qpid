@@ -2,16 +2,16 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 21:50:44
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-04-14 09:33:29
+@LastEditTime: 2023-10-10 17:26:46
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 
-class OuterLayer(tf.keras.layers.Layer):
+class OuterLayer(torch.nn.Module):
     """
     Compute the outer product of two vectors.
 
@@ -31,7 +31,7 @@ class OuterLayer(tf.keras.layers.Layer):
         self.N = b_dim
         self.reshape = reshape
 
-    def call(self, tensorA: tf.Tensor, tensorB: tf.Tensor):
+    def forward(self, tensorA: torch.Tensor, tensorB: torch.Tensor):
         """
         Compute the outer product of two vectors.
 
@@ -41,15 +41,15 @@ class OuterLayer(tf.keras.layers.Layer):
             else its output shape = (..., M*N)
         """
 
-        _a = tf.expand_dims(tensorA, axis=-1)
-        _b = tf.expand_dims(tensorB, axis=-2)
+        _a = tensorA[..., None]
+        _b = tensorB[..., None, :]
 
-        _a = tf.repeat(_a, self.N, axis=-1)
-        _b = tf.repeat(_b, self.M, axis=-2)
+        _a = torch.repeat_interleave(_a, self.N, dim=-1)
+        _b = torch.repeat_interleave(_b, self.M, dim=-2)
 
         outer = _a * _b
 
         if not self.reshape:
             return outer
         else:
-            return tf.reshape(outer, list(outer.shape[:-2]) + [self.M*self.N])
+            return torch.reshape(outer, list(outer.shape[:-2]) + [self.M*self.N])

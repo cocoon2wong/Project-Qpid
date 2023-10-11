@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-10 09:38:32
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 16:58:34
+@LastEditTime: 2023-10-10 13:25:18
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 
 import cv2
 import numpy as np
-import tensorflow as tf
+import torch
 
 from ...utils import get_relative_path
 
@@ -21,7 +21,7 @@ MASKS = {}
 DECAY_P = np.array([[0.0, 0.7, 1.0], [1.0, 1.0, 0.5]])
 DECAYS = {}
 
-POOLING_LAYER = tf.keras.layers.MaxPool2D([5, 5], data_format='channels_last')
+POOLING_LAYER = torch.nn.MaxPool2d([5, 5])
 
 
 def add(target_map: np.ndarray,
@@ -120,5 +120,5 @@ def pooling2D(maps: np.ndarray):
 
     :param maps: Maps, shape = (batch, a, b).
     """
-    maps = maps[..., np.newaxis]
-    return POOLING_LAYER(maps).numpy()[..., 0]
+    maps = maps[:, np.newaxis]
+    return POOLING_LAYER(maps).numpy()[:, 0]

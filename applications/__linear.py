@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-15 20:13:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-05-30 09:53:59
+@LastEditTime: 2023-10-10 20:40:50
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -16,7 +16,7 @@ from ..training import Structure
 class LinearArgs(Args):
     def __init__(self, terminal_args: list[str] = None, is_temporary=False) -> None:
         super().__init__(terminal_args, is_temporary)
-    
+
     @property
     def weights(self) -> float:
         """
@@ -35,7 +35,7 @@ class LinearModel(Model):
                                            pred_frames=self.args.pred_frames,
                                            diff=Args.weights)
 
-    def call(self, inputs, training=None, *args, **kwargs):
+    def forward(self, inputs, training=None, *args, **kwargs):
         trajs = inputs[0]
         return self.linear(trajs)
 
@@ -49,8 +49,3 @@ class Linear(Structure):
 
     def create_model(self, *args, **kwargs) -> Model:
         return LinearModel(self.args, structure=self)
-
-
-
-
-    

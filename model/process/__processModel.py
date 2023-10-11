@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 15:28:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 15:48:15
+@LastEditTime: 2023-10-10 16:30:22
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 from ...args import Args
 from ...constant import OUTPUT_TYPES, PROCESS_TYPES
@@ -23,7 +23,7 @@ PROCESS_DICT: dict[str, type[BaseProcessLayer]] = {
     PROCESS_TYPES.ROTATE: Rotate}
 
 
-class ProcessModel(tf.keras.Model):
+class ProcessModel(torch.nn.Module):
 
     def __init__(self, Args: Args,
                  layers: list[BaseProcessLayer] = [],
@@ -107,11 +107,11 @@ class ProcessModel(tf.keras.Model):
     def set_postprocess_input_types(self, types: list[str]):
         self.postprocess_input_types = types
 
-    def call(self, inputs: list[tf.Tensor],
-             preprocess: bool,
-             update_paras=True,
-             training=None,
-             *args, **kwargs) -> list[tf.Tensor]:
+    def forward(self, inputs: list[torch.Tensor],
+                preprocess: bool,
+                update_paras=True,
+                training=None,
+                *args, **kwargs) -> list[torch.Tensor]:
 
         if preprocess:
             layers = self.players
