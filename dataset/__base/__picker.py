@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-30 09:52:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 20:14:58
+@LastEditTime: 2023-10-11 21:05:34
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -80,7 +80,8 @@ class Annotation():
         """
         Get the center points of the input trajectories.
 
-        :param inputs: Input trajectories. Accept `np.ndarray` or `tf.Tensor`.
+        :param inputs: Input trajectories. Accept `np.ndarray` or 
+            `torch.Tensor`.
         """
 
         coordinates = self.get_coordinate_series(inputs)
@@ -101,7 +102,7 @@ class Annotation():
         slices of single 2D coordinates with shapes `(..., steps, 2)`,
         and then return a list containing them.
 
-        :param inputs: Input trajectories. Accept `np.ndarray` or `tf.Tensor`.
+        :param inputs: Input trajectories. Accept `np.ndarray` or `torch.Tensor`.
         """
         if -1 in [self.base_dim, self.base_len]:
             raise ValueError(f'Can not get a series of coordinates from \

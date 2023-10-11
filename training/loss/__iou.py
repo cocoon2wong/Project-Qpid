@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 10:50:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:46:39
+@LastEditTime: 2023-10-11 19:28:58
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -45,7 +45,7 @@ class AIOU(BaseLossLayer):
         iou = func(pred, GT)
         iou = torch.mean(iou, dim=-1)
         iou = torch.max(iou, dim=-1)[0]
-        iou = torch.maximum(iou, 0.0)
+        iou = torch.maximum(iou, torch.tensor(0.0))
         return torch.sum(iou * mask)/mask_count
 
 
@@ -147,7 +147,7 @@ def __get_len_1Dbox(box1: torch.Tensor, box2: torch.Tensor):
         for j in [0, 1]:
             len_all.append(box1[..., i] - box2[..., j])
 
-    len_max = torch.max(torch.abs(len_all), dim=0)[0]
-    len_inter = torch.maximum(len1 + len2 - len_max, 0.0)
+    len_max = torch.max(torch.abs(torch.stack(len_all)), dim=0)[0]
+    len_inter = torch.maximum(len1 + len2 - len_max, torch.tensor(0.0))
 
     return len1, len2, len_inter
