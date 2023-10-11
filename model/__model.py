@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 12:47:33
+@LastEditTime: 2023-10-11 17:25:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -196,12 +196,13 @@ class Model(torch.nn.Module, BaseManager):
 
         weights_name = weights_files[-1]
         p = os.path.join(weights_dir, weights_name)
-        self.load_state_dict(torch.load(p, map_location=self.structure.device_cpu))
+        dic = torch.load(p, map_location=self.structure.device_cpu)
+        self.load_state_dict(dic)
         self.log(f'Successfully load weights from `{p}`.', verbose_mode=True)
 
     def print_info(self, **kwargs):
         try:
-            p_layers = [l.name for l in self.processor.layers]
+            p_layers = self.processor.get_layer_names()
         except:
             p_layers = None
 

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 15:28:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 16:30:22
+@LastEditTime: 2023-10-11 17:27:19
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -31,12 +31,29 @@ class ProcessModel(torch.nn.Module):
         super().__init__(*args, **kwargs)
 
         self.args = Args
-        self.players = layers
+        self.valid_layer_count: int = None
+        self.layer_indices: list[int] = None
 
         self.preprocess_input_types: list[str] = None
         self.postprocess_input_types = [OUTPUT_TYPES.PREDICTED_TRAJ]
-
         self.process_paras = {PROCESS_TYPES.MOVE: Args.pmove}
+
+        # Init layers
+        self._set_new_process_layers(layers)
+
+    def _set_new_process_layers(self, layers: list[BaseProcessLayer]):
+        self.valid_layer_count = len(layers)
+        self.layer_indices = list(range(self.valid_layer_count))
+        for i, layer in enumerate(layers):
+            self.add_module(f'process_layer_{i}', layer)
+        return self
+
+    def get_layer_names(self) -> list[str]:
+        res = []
+        for i in range(self.valid_layer_count):
+            p: BaseProcessLayer = self.get_submodule(f'process_layer_{i}')
+            res.append(p.name)
+        return res
 
     def set_layers(self, layers: list[BaseProcessLayer] = [],
                    built_in: bool = True):
@@ -48,7 +65,7 @@ class ProcessModel(torch.nn.Module):
             pre/post-process model or generate a new process model.
         """
         if built_in:
-            self.players = layers
+            self._set_new_process_layers(layers)
             return self
         else:
             return ProcessModel(self.args, layers)
@@ -114,11 +131,11 @@ class ProcessModel(torch.nn.Module):
                 *args, **kwargs) -> list[torch.Tensor]:
 
         if preprocess:
-            layers = self.players
+            layer_indices = self.layer_indices
             type_var_name = 'preprocess_input_types'
             input_types = self.preprocess_input_types
         else:
-            layers = self.players[::-1]
+            layer_indices = self.layer_indices[::-1]
             type_var_name = 'postprocess_input_types'
             input_types = self.postprocess_input_types
 
@@ -131,7 +148,8 @@ class ProcessModel(torch.nn.Module):
         if type(inputs) is tuple:
             inputs = list(inputs)
 
-        for p in layers:
+        for i in layer_indices:
+            p: BaseProcessLayer = self.get_submodule(f'process_layer_{i}')
             # Prepare tensors to be processed
             p_dict = {}
             for _type in getattr(p, type_var_name):
