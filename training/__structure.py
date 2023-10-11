@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 13:35:06
+@LastEditTime: 2023-10-11 17:10:56
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -175,7 +175,7 @@ class Structure(BaseManager):
         """
         self.label_types = [item for item in args]
 
-    def set_optimizer(self, epoch: int = None) -> torch.optim.Optimizer:
+    def set_optimizer(self) -> torch.optim.Optimizer:
         if self.noTraining:
             return None
 
@@ -219,7 +219,7 @@ class Structure(BaseManager):
         outputs = self.model.implement(inputs, training=True)
         loss, loss_dict = self.loss.forward(
             outputs, labels, inputs=inputs, training=True)
-        loss_move_average = 0.7 * loss + 0.3 * loss_move_average
+        loss_move_average = 0.7 * loss + 0.3 * loss_move_average.item()
 
         # Compute gradients
         loss.backward()
@@ -369,17 +369,13 @@ class Structure(BaseManager):
         # start training
         for epoch in self.timebar(range(self.args.epochs), text='Training...'):
 
-            # Update learning rate and optimizer
-            self.set_optimizer(epoch)
-
             # Split into batches
             for inputs, labels in ds_train:
                 # Move data to GPU
-                inputs = [i.to(self.device) for i in inputs]
-                labels = [i.to(self.device) for i in labels]
+                inputs = move_to_device(inputs, self.device)
+                labels = move_to_device(labels, self.device)
 
                 # Run training once
-                len_labels = len(self.label_types)
                 loss, loss_dict, loss_move = self.gradient_operations(
                     inputs=inputs,
                     labels=labels,
@@ -524,8 +520,8 @@ class Structure(BaseManager):
         count = []
         for x, gt in timebar:
             # Move data to GPU
-            x = [i.to(self.device) for i in x]
-            gt = [i.to(self.device) for i in gt]
+            x = move_to_device(x, self.device)
+            gt = move_to_device(gt, self.device)
 
             mask = get_loss_mask(x[0], gt[0])
             valid_count = torch.sum(mask)
