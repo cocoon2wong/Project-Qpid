@@ -10,7 +10,7 @@
 
 from .__base import NoneTransformLayer, _BaseTransformLayer
 from .fft import FFT2DLayer, FFTLayer, IFFT2Dlayer, IFFTLayer
-from .__wavetf import DB2_1D, Haar1D, InverseDB2_1D, InverseHaar1D
+from .wavelets import DB2_1D, Haar1D, InverseDB2_1D, InverseHaar1D
 
 
 def get_transform_layers(Tname: str) -> \

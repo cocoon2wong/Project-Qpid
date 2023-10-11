@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-09 20:28:47
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-05-30 09:53:29
+@LastEditTime: 2023-10-11 20:41:27
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -10,10 +10,10 @@
 
 from typing import Union
 
-import tensorflow as tf
+import torch
 
-from ...wavetf import WaveTFFactory
 from .__base import _BaseTransformLayer
+from .wavetf import WaveTFFactory
 
 
 class Haar1D(_BaseTransformLayer):
@@ -30,7 +30,7 @@ class Haar1D(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return (self.steps//2, self.channels*2)
 
-    def kernel_function(self, inputs: tf.Tensor, *args, **kwargs):
+    def kernel_function(self, inputs: torch.Tensor, *args, **kwargs):
 
         # (batch, steps, channels) -> (batch, steps//2, 2*channels)
         haar = self.haar(inputs)
@@ -53,8 +53,8 @@ class InverseHaar1D(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return (self.steps//2, self.channels*2)
 
-    def kernel_function(self, inputs: tf.Tensor,
-                        *args, **kwargs) -> tf.Tensor:
+    def kernel_function(self, inputs: torch.Tensor,
+                        *args, **kwargs) -> torch.Tensor:
 
         # (batch, steps//2, 2*channels) -> (batch, steps, channels)
         r = self.haar(inputs)
@@ -74,7 +74,7 @@ class DB2_1D(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return (self.steps//2, self.channels*2)
 
-    def kernel_function(self, inputs: tf.Tensor, *args, **kwargs):
+    def kernel_function(self, inputs: torch.Tensor, *args, **kwargs):
         return self.daub(inputs)
 
 
@@ -90,5 +90,5 @@ class InverseDB2_1D(_BaseTransformLayer):
     def set_Tshape(self) -> Union[list[int], tuple[int, int]]:
         return (self.steps//2, self.channels*2)
 
-    def kernel_function(self, inputs: tf.Tensor, *args, **kwargs):
+    def kernel_function(self, inputs: torch.Tensor, *args, **kwargs):
         return self.daub(inputs)

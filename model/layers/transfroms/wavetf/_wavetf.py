@@ -12,53 +12,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-import tensorflow as tf
-from tensorflow import keras
-from ._haar_conv import *
 # use MM implementations for 1D Haar, since they're faster than conv
+from ._daubachies_conv import DaubWaveLayer1D, InvDaubWaveLayer1D
 from ._haar_mm import HaarWaveLayer1D, InvHaarWaveLayer1D
-from ._daubachies_conv import *
 
-class WaveTFFactory(object) :
+
+class WaveTFFactory(object):
     """Factory for different wavelet transforms (1D/2D, haar/db2)"""
     @staticmethod
-    def build(kernel_type= 'db2', dim = 2, inverse = False):
+    def build(kernel_type='db2', dim=2, inverse=False):
         """Build chosen wavelet layer
 
         :param kernel_type: 'haar' or 'db2'
         :param dim: 1 or 2
         :param inverse: True if computing anti-transform
         :returns: Chosen wavelet layer
-        :rtype: keras.layers.Layer
+        :rtype: torch.nn.Module
 
         """
-        if (dim !=1 and dim != 2) :
-            raise ValueError('Only 1- and 2-dimensional wavelet supported yet.')
-        elif (kernel_type not in ['haar', 'db2']) :
+        if (dim != 1 and dim != 2):
+            raise ValueError(
+                'Only 1- and 2-dimensional wavelet supported yet.')
+        elif (kernel_type not in ['haar', 'db2']):
             raise ValueError('Kernel type can be either "haar" or "db2".')
         # direct wavelet
-        elif (inverse == False) :
-            if(kernel_type == 'haar') :
-                if (dim == 1) :
+        elif (inverse == False):
+            if (kernel_type == 'haar'):
+                if (dim == 1):
                     return HaarWaveLayer1D()
-                else :
-                    return HaarWaveLayer2D()
-            elif (kernel_type == 'db2') :
-                if (dim == 1) :
+                else:
+                    raise NotImplementedError
+                    # return HaarWaveLayer2D()
+            elif (kernel_type == 'db2'):
+                if (dim == 1):
                     return DaubWaveLayer1D()
-                else :
-                    return DaubWaveLayer2D()
+                else:
+                    raise NotImplementedError
+                    # return DaubWaveLayer2D()
         # inverse wavelet
-        else :
-            if(kernel_type == 'haar') :
-                if (dim == 1) :
+        else:
+            if (kernel_type == 'haar'):
+                if (dim == 1):
                     return InvHaarWaveLayer1D()
-                else :
-                    return InvHaarWaveLayer2D()
-            elif (kernel_type == 'db2') :
-                if (dim == 1) :
+                else:
+                    raise NotImplementedError
+                    # return InvHaarWaveLayer2D()
+            elif (kernel_type == 'db2'):
+                if (dim == 1):
                     return InvDaubWaveLayer1D()
-                else :
-                    return InvDaubWaveLayer2D()
-
+                else:
+                    raise NotImplementedError
+                    # return InvDaubWaveLayer2D()
