@@ -2,27 +2,24 @@
 @Author: Conghao Wong
 @Date: 2022-11-28 21:08:27
 @LastEditors: Conghao Wong
-@LastEditTime: 2022-11-29 09:20:32
+@LastEditTime: 2023-10-11 13:00:20
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 
-class LinearAccInterpolation(tf.keras.layers.Layer):
+class LinearAccInterpolation(torch.nn.Module):
     """
     Piecewise linear interpolation on the acceleration.
     For a trajectory `y(t)`, this interpolation method considers
     the acceleration as `a(t) = a0 + delta_a * t`.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def call(self, index: tf.Tensor, value: tf.Tensor,
-             init_speed: tf.Tensor, init_acc: tf.Tensor):
+    def forward(self, index: torch.Tensor, value: torch.Tensor,
+                init_speed: torch.Tensor, init_acc: torch.Tensor):
         """
         Piecewise linear interpolation on the acceleration.
         The results do not contain the start point.
@@ -38,7 +35,7 @@ class LinearAccInterpolation(tf.keras.layers.Layer):
         `m = index[-1] - index[0]`.
         """
 
-        x = index
+        x = index.to(torch.int32)
         y = value
 
         accs = [init_acc]
@@ -66,9 +63,9 @@ class LinearAccInterpolation(tf.keras.layers.Layer):
             delta_a = ((delta_y - n*v0) - (n*(n+1) * a0)/2) / \
                 (n*(n+1)/4 + n*(n+1)*(2*n+1)/12)
 
-            for _ in tf.range(x_start + 1, x_end + 1):
+            for _ in range(x_start + 1, x_end + 1):
                 accs.append(accs[-1] + delta_a)
                 speeds.append(speeds[-1] + accs[-1])
                 results.append(results[-1] + speeds[-1])
 
-        return tf.concat(results[1:], axis=-2)
+        return torch.concat(results[1:], dim=-2)

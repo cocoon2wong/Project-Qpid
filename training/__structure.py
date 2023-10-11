@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:45:03
+@LastEditTime: 2023-10-11 13:35:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -21,7 +21,7 @@ from ..base import BaseManager
 from ..constant import ANN_TYPES, INPUT_TYPES
 from ..dataset import AgentManager, Annotation, AnnotationManager, SplitManager
 from ..model import Model
-from ..utils import WEIGHTS_FORMAT, dir_check, get_loss_mask
+from ..utils import WEIGHTS_FORMAT, dir_check, get_loss_mask, move_to_device
 from . import loss
 from .loss import LossManager
 
@@ -65,6 +65,11 @@ class Structure(BaseManager):
         if not self.manager:
             self.args._check_terminal_args()
 
+        # init device
+        self.set_gpu()
+        self._device: torch.device = None
+        self._device_local: torch.device = None
+
         # init managers
         self._am = AgentManager(self)
         self.annmanager = AnnotationManager(self, self.split_manager.anntype)
@@ -76,10 +81,6 @@ class Structure(BaseManager):
         self.model: Model = None
         self.optimizer: torch.optim.Optimizer = None
         self.noTraining = False
-
-        # init compute devices
-        self._device: torch.device = None
-        self._device_local: torch.device = None
 
         # Set labels, loss functions, and metrics
         self.label_types: list[str] = []
@@ -137,11 +138,18 @@ class Structure(BaseManager):
         Compute device (use GPU if available).
         """
         if self._device is None:
-            self._device = torch.device("cpu")
+            if torch.cuda.is_available():
+                d = torch.device("cuda")
+            elif torch.backends.mps.is_available() and self.args.macos:
+                d = torch.device("mps")
+            else:
+                d = torch.device("cpu")
+
+            self._device = d
         return self._device
 
     @property
-    def device_local(self):
+    def device_cpu(self):
         """
         Basic compute device (like CPU).
         """
@@ -176,10 +184,12 @@ class Structure(BaseManager):
         return self.optimizer
 
     def set_gpu(self):
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = self.args.gpu.replace('_', ',')
+        # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        # os.environ["CUDA_VISIBLE_DEVICES"] = self.args.gpu.replace('_', ',')
         os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-        # FIXME: Set GPU
+        if torch.cuda.is_available():
+            gpu_id = int(self.args.gpu.split('_')[0])
+            torch.cuda.set_device(gpu_id)
 
     def create_model(self) -> Model:
         """
@@ -214,6 +224,7 @@ class Structure(BaseManager):
         # Compute gradients
         loss.backward()
         self.optimizer.step()
+        self.optimizer.zero_grad()
 
         return loss, loss_dict, loss_move_average
 
@@ -249,7 +260,6 @@ class Structure(BaseManager):
         # init model and dataset manager
         self.model = self.create_model().to(self.device)
         self.optimizer = self.set_optimizer()
-        self.set_gpu()
         self.agent_manager.set_types(inputs_type=self.model.input_types,
                                      labels_type=self.label_types)
 
@@ -348,16 +358,13 @@ class Structure(BaseManager):
         tb = SummaryWriter(self.args.log_dir)
 
         # init variables for training
-        loss_move = torch.autograd.Variable(
-            torch.tensor(0, dtype=torch.float32))
+        loss_move = torch.tensor(0, dtype=torch.float32)
         loss_dict = {}
         metrics_dict = {}
 
         best_epoch = 0
         best_metric = 10000.0
         best_metrics_dict = {'-': best_metric}
-        test_epochs = []
-        train_number = len(ds_train)
 
         # start training
         for epoch in self.timebar(range(self.args.epochs), text='Training...'):
@@ -606,6 +613,8 @@ class Structure(BaseManager):
         """
         Save visualized prediction results.
         """
+        # Move data to cpu
+        outputs = move_to_device(outputs, self.device_cpu)
 
         if (((self.args.draw_results != 'null') or
              (self.args.draw_videos != 'null'))

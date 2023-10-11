@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-10 15:25:33
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:37:43
+@LastEditTime: 2023-10-11 12:20:19
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -33,4 +33,5 @@ class Dropout(torch.nn.Module):
         self.p = p
 
     def forward(self, x: torch.Tensor, training=None):
+        training = True if training else False
         return torch.nn.functional.dropout(x, self.p, training)

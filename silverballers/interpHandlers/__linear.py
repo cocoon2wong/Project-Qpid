@@ -2,47 +2,35 @@
 @Author: Conghao Wong
 @Date: 2022-11-29 09:39:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:58:28
+@LastEditTime: 2023-10-11 12:33:27
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 from ...model.layers import interpolation
-from ...training import Structure
-from ..__handlerModel import HandlerArgs
 from .__baseInterpHandler import _BaseInterpHandlerModel
 
 
 class LinearHandlerModel(_BaseInterpHandlerModel):
+    INTERP_LAYER_TYPE = interpolation.LinearPositionInterpolation
 
-    def __init__(self, Args: HandlerArgs, as_single_model: bool = True, structure: Structure = None, *args, **kwargs):
-        super().__init__(Args, as_single_model, structure, *args, **kwargs)
-        self.interp_layer = interpolation.LinearPositionInterpolation()
-
-    def interp(self, index: tf.Tensor, value: tf.Tensor, obs_traj: tf.Tensor) -> tf.Tensor:
-        # Concat keypoints with the last observed point
-        index = tf.concat([[-1], index], axis=0)
-        obs_position = obs_traj[..., -1:, :]
-        value = tf.concat([obs_position, value], axis=-2)
+    def interp(self, index: torch.Tensor,
+               value: torch.Tensor,
+               obs_traj: torch.Tensor) -> torch.Tensor:
 
         # Calculate linear interpolation -> (batch, pred, 2)
         return self.interp_layer(index, value)
 
 
 class LinearSpeedHandlerModel(_BaseInterpHandlerModel):
+    INTERP_LAYER_TYPE = interpolation.LinearSpeedInterpolation
 
-    def __init__(self, Args: HandlerArgs, as_single_model: bool = True, structure: Structure = None, *args, **kwargs):
-        super().__init__(Args, as_single_model, structure, *args, **kwargs)
-        self.interp_layer = interpolation.LinearSpeedInterpolation()
-
-    def interp(self, index: tf.Tensor, value: tf.Tensor, obs_traj: tf.Tensor) -> tf.Tensor:
-        # Concat keypoints with the last observed point
-        index = tf.concat([[-1], index], axis=0)
-        obs_position = obs_traj[..., -1:, :]
-        value = tf.concat([obs_position, value], axis=-2)
+    def interp(self, index: torch.Tensor,
+               value: torch.Tensor,
+               obs_traj: torch.Tensor) -> torch.Tensor:
 
         # Calculate linear interpolation -> (batch, pred, 2)
         v0 = obs_traj[..., -1:, :] - obs_traj[..., -2:-1, :]
@@ -50,16 +38,11 @@ class LinearSpeedHandlerModel(_BaseInterpHandlerModel):
 
 
 class LinearAccHandlerModel(_BaseInterpHandlerModel):
+    INTERP_LAYER_TYPE = interpolation.LinearAccInterpolation
 
-    def __init__(self, Args: HandlerArgs, as_single_model: bool = True, structure: Structure = None, *args, **kwargs):
-        super().__init__(Args, as_single_model, structure, *args, **kwargs)
-        self.interp_layer = interpolation.LinearAccInterpolation()
-
-    def interp(self, index: tf.Tensor, value: tf.Tensor, obs_traj: tf.Tensor) -> tf.Tensor:
-        # Concat keypoints with the last observed point
-        index = tf.concat([[-1], index], axis=0)
-        obs_position = obs_traj[..., -1:, :]
-        value = tf.concat([obs_position, value], axis=-2)
+    def interp(self, index: torch.Tensor,
+               value: torch.Tensor,
+               obs_traj: torch.Tensor) -> torch.Tensor:
 
         # Calculate linear interpolation -> (batch, pred, 2)
         v_last = obs_traj[..., -1:, :] - obs_traj[..., -2:-1, :]

@@ -2,16 +2,16 @@
 @Author: Conghao Wong
 @Date: 2022-11-28 21:16:28
 @LastEditors: Conghao Wong
-@LastEditTime: 2022-11-29 09:23:34
+@LastEditTime: 2023-10-11 13:33:07
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 
-class NewtonInterpolation(tf.keras.layers.Layer):
+class NewtonInterpolation(torch.nn.Module):
     """
     Newton interpolation layer.
     """
@@ -19,8 +19,9 @@ class NewtonInterpolation(tf.keras.layers.Layer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def call(self, index: tf.Tensor, value: tf.Tensor,
-             ord: int, interval: float = 1):
+    def forward(self, index: torch.Tensor,
+                value: torch.Tensor,
+                ord: int, interval: float = 1):
         """
         Newton interpolation.
         The results do not contain the start point.
@@ -34,31 +35,33 @@ class NewtonInterpolation(tf.keras.layers.Layer):
         `m = index[-1] - index[0]`.
         """
 
-        x = index
+        x = index.to(torch.int32)
         y = value
+        device = x.device
 
         diff_quotient = [y]
         for i in range(ord):
             last_res = diff_quotient[i]
             diff_y = last_res[..., :-1, :] - last_res[..., 1:, :]
-            diff_x = (x[:-1-i] - x[1+i:])[:, tf.newaxis]
+            diff_x = (x[:-1-i] - x[1+i:])[:, None]
             diff_quotient.append(diff_y/diff_x)
 
         # shape = (m)
-        x_p = tf.range(x[0]+1, x[-1]+1, delta=interval)
+        x_p = torch.arange(x[0]+1, x[-1]+1, step=interval).to(device)
 
         # shape = (ord+1, ..., dim)
-        coe = tf.stack([d[..., 0, :] for d in diff_quotient])
+        coe = torch.stack([d[..., 0, :] for d in diff_quotient]).to(device)
 
         # shape = (m, n)
-        xs = x_p[:, tf.newaxis] - x
+        xs = x_p[:, None] - x
 
-        xs_prod = [tf.ones_like(x_p)[:, tf.newaxis]]
+        xs_prod = [torch.ones_like(x_p)[:, None]]
         for i in range(ord):
-            xs_prod.append(tf.reduce_prod(xs[:, :i+1], axis=-1, keepdims=True))
+            xs_prod.append(torch.prod(xs[:, :i+1], dim=-1, keepdim=True))
 
         # shape = (m, ord+1)
-        xs_prod = tf.concat(xs_prod, axis=-1)
+        xs_prod = torch.concat(xs_prod, dim=-1).to(torch.float32)
 
-        res = tf.tensordot(xs_prod, coe, axes=1)
-        return tf.stack(tf.unstack(res, axis=0), axis=-2)
+        xs_prod = xs_prod[None, None]
+        coe = torch.permute(coe, [1, 2, 0, 3])
+        return xs_prod @ coe

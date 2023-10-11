@@ -2,16 +2,16 @@
 @Author: Conghao Wong
 @Date: 2022-11-28 20:58:04
 @LastEditors: Conghao Wong
-@LastEditTime: 2022-11-29 09:15:09
+@LastEditTime: 2023-10-11 13:07:48
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 
-class LinearPositionInterpolation(tf.keras.layers.Layer):
+class LinearPositionInterpolation(torch.nn.Module):
     """
     Piecewise linear interpolation.
     For a trajectory `y(t)`, this interpolation method considers
@@ -21,7 +21,7 @@ class LinearPositionInterpolation(tf.keras.layers.Layer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def call(self, index: tf.Tensor, value: tf.Tensor):
+    def forward(self, index: torch.Tensor, value: torch.Tensor):
         """
         Piecewise linear interpolation.
         The results do not contain the start point.
@@ -33,7 +33,7 @@ class LinearPositionInterpolation(tf.keras.layers.Layer):
         `m = index[-1] - index[0]`.
         """
 
-        x = index
+        x = index.to(torch.int32)
         y = value
 
         results = []
@@ -47,8 +47,8 @@ class LinearPositionInterpolation(tf.keras.layers.Layer):
             y_end = y[..., output_index+1:output_index+2, :]
             delta_y = y_end - y_start
 
-            for x_p in tf.range(x_start+1, x_end+1):
+            for x_p in range(x_start+1, x_end+1):
                 results.append(delta_y * (x_p - x_start) / n + y_start)
 
         # shape = (..., m, dim)
-        return tf.concat(results, axis=-2)
+        return torch.concat(results, dim=-2)

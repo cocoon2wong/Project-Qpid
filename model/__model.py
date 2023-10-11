@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 20:43:20
+@LastEditTime: 2023-10-11 12:47:33
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -195,8 +195,8 @@ class Model(torch.nn.Module, BaseManager):
                              if f'_epoch{epoch}{WEIGHTS_FORMAT}' in f]
 
         weights_name = weights_files[-1]
-        self.load_state_dict(torch.load(
-            p := os.path.join(weights_dir, weights_name)))
+        p = os.path.join(weights_dir, weights_name)
+        self.load_state_dict(torch.load(p, map_location=self.structure.device_cpu))
         self.log(f'Successfully load weights from `{p}`.', verbose_mode=True)
 
     def print_info(self, **kwargs):

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:29:43
+@LastEditTime: 2023-10-11 10:55:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -232,7 +232,7 @@ class AgentManager(BaseManager):
         if training:
             random.shuffle(clips)
 
-        mode = 'training' if training else 'test'
+        mode = 'train' if training else 'test'
 
         # load agent data in each video clip
         for clip_name in self.timebar(clips):

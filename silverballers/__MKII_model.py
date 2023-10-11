@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:44:50
+@LastEditTime: 2023-10-11 13:34:37
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 from ..__root import BaseObject
 from ..args import Args
@@ -79,9 +79,9 @@ class SilverballersModel(Model):
     def get_input_index(self, input_type: list[str]):
         return [self.input_types.index(t) for t in input_type]
 
-    def call(self, inputs: list[tf.Tensor],
-             training=None, mask=None,
-             *args, **kwargs):
+    def forward(self, inputs: list[torch.Tensor],
+                training=None, mask=None,
+                *args, **kwargs):
 
         # Prepare model inputs
         traj_index = self.agent_input_index[0]
@@ -109,24 +109,24 @@ class SilverballersModel(Model):
             y_all_agent.append(o := self.agent.implement(x_agent))
             y_agent.append(o[0])
 
-        y_agent = tf.concat(y_agent, axis=-1)
+        y_agent = torch.concat(y_agent, dim=-1)
 
         # Down sampling from K*Kc generations (if needed)
         if self.args.down_sampling_rate < 1.0:
             K_current = y_agent.shape[-3]
             K_new = K_current * self.args.down_sampling_rate
-            new_index = tf.random.shuffle(tf.range(K_current))[:int(K_new)]
-            y_agent = tf.gather(y_agent, new_index, axis=-3)
+            new_index = torch.randperm(K_current)[:int(K_new)]
+            y_agent = y_agent[..., new_index, :, :]
 
         ######################
         # Stage-2 Subnetwork #
         ######################
         x_handler = [inputs[i] for i in self.handler_input_index]
         x_handler.append(y_agent)
-        y_handler = self.handler.forward(x_handler)
+        y_handler = self.handler.implement(x_handler)
 
         if not training and (c := self.args.channel) != -1:
-            y_handler[0] = y_handler[0][..., c, tf.newaxis, :, :]
+            y_handler[0] = y_handler[0][..., c, None, :, :]
 
         return [y_handler[0]] + y_all_agent + [y_handler]
 

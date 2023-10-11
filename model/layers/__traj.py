@@ -2,16 +2,15 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:25:47
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 20:21:54
+@LastEditTime: 2023-10-11 12:57:05
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
 import torch
 
-from ...utils import POOLING_BEFORE_SAVING
+from ...utils import MAP_HALF_SIZE, POOLING_BEFORE_SAVING
 from .__base import Dense
 from .transfroms import _BaseTransformLayer
 
@@ -43,7 +42,7 @@ class TrajEncoding(torch.nn.Module):
         self.Tlayer = None
         self.channels_first = channels_first
         fc_input_units = input_units
-        
+
         if transform_layer:
             fc_input_units = output_units
             self.Tlayer = transform_layer
@@ -76,10 +75,9 @@ class TrajEncoding(torch.nn.Module):
             return self.fc1(trajs)
 
 
-class ContextEncoding(tf.keras.layers.Layer):
+class ContextEncoding(torch.nn.Module):
     """
     Encode context maps into the context feature
-    FIXME: It DOES NOT SUPPORT torch.
     """
 
     def __init__(self, output_channels: int,
@@ -99,14 +97,16 @@ class ContextEncoding(tf.keras.layers.Layer):
         super().__init__(*args, **kwargs)
 
         if not POOLING_BEFORE_SAVING:
-            self.pool = tf.keras.layers.MaxPooling2D(pool_size=[5, 5],
-                                                     data_format='channels_last')
+            self.pool = torch.nn.MaxPool2d([5, 5])
 
-        self.flatten = tf.keras.layers.Flatten()
-        self.fc = tf.keras.layers.Dense(output_channels * units, activation)
-        self.reshape = tf.keras.layers.Reshape((output_channels, units))
+        self.flatten = torch.nn.Flatten()
 
-    def call(self, context_map: torch.Tensor, **kwargs) -> torch.Tensor:
+        feature_len = (MAP_HALF_SIZE*2 / 5)**2
+        self.fc = Dense(feature_len, output_channels * units, activation)
+
+        self.reshape_size = (output_channels, units)
+
+    def forward(self, context_map: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Encode context maps into context features.
 
@@ -114,8 +114,8 @@ class ContextEncoding(tf.keras.layers.Layer):
         :return feature: Features, shape = `(batch, output_channels, units)`.
         """
         if not POOLING_BEFORE_SAVING:
-            context_map = self.pool(context_map[:, :, :, tf.newaxis])
+            context_map = self.pool(context_map[:, None])
 
         flat = self.flatten(context_map)
         fc = self.fc(flat)
-        return self.reshape(fc)
+        return torch.reshape(fc, self.reshape_size)

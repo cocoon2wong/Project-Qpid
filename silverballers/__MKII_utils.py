@@ -2,14 +2,14 @@
 @Author: Conghao Wong
 @Date: 2022-07-27 20:47:50
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 19:05:41
+@LastEditTime: 2023-10-11 13:34:53
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from .__baseSubnetwork import BaseSubnetwork, BaseSubnetworkStructure
 from . import interpHandlers
+from .__baseSubnetwork import BaseSubnetwork, BaseSubnetworkStructure
 
 
 class SILVERBALLERS_DICT():
@@ -42,7 +42,7 @@ class SILVERBALLERS_DICT():
     __S_DICT: dict[str, tuple[type[BaseSubnetworkStructure],
                               type[BaseSubnetwork]]] = {}
     __S_DICT.update(dict(
-        
+
     ))
 
     # Interpolation Handlers

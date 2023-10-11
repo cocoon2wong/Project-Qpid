@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-07 09:46:08
+@LastEditTime: 2023-10-11 13:10:27
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -503,3 +503,11 @@ class Args(ArgsManager):
         on the visualized images.
         """
         return self._arg('draw_extra_outputs', 0, argtype=TEMPORARY)
+
+    @property
+    def macos(self) -> int:
+        """
+        (Experimental) Choose whether enable the `MPS (Metal Performance Shaders)`
+        on Apple platforms (instead of running on CPUs).
+        """
+        return self._arg('macos', 0, argtype=TEMPORARY)

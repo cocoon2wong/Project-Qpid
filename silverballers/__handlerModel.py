@@ -2,21 +2,19 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:52:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 17:43:44
+@LastEditTime: 2023-10-11 13:34:13
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
-import numpy as np
-import tensorflow as tf
+import torch
 
 from ..args import DYNAMIC, STATIC, TEMPORARY
 from ..base import SecondaryBar
 from ..constant import INPUT_TYPES
 from ..dataset import AgentManager
 from ..training import Structure, loss
-from ..utils import POOLING_BEFORE_SAVING
 from .__baseArgs import BaseSilverballersArgs, SilverballersArgs
 from .__baseSubnetwork import BaseSubnetwork, BaseSubnetworkStructure
 from .__loss import avgKey
@@ -68,21 +66,17 @@ class BaseHandlerModel(BaseSubnetwork):
 
         self.ext_traj_wise_outputs[1] = 'Interaction Scores'
 
-        if POOLING_BEFORE_SAVING:
-            self._upsampling = tf.keras.layers.UpSampling2D(
-                size=[5, 5], data_format='channels_last')
-
-    def call(self, inputs: list[tf.Tensor],
-             keypoints: tf.Tensor,
-             keypoints_index: tf.Tensor,
-             training=None, mask=None):
+    def forward(self, inputs: list[torch.Tensor],
+                keypoints: torch.Tensor,
+                keypoints_index: torch.Tensor,
+                training=None, mask=None):
 
         raise NotImplementedError
 
-    def call_as_handler(self, inputs: list[tf.Tensor],
-                        keypoints: tf.Tensor,
-                        keypoints_index: tf.Tensor,
-                        training=None, mask=None):
+    def forward_as_handler(self, inputs: list[torch.Tensor],
+                           keypoints: torch.Tensor,
+                           keypoints_index: torch.Tensor,
+                           training=None, mask=None):
         """
         Call as the second stage handler model.
         Do NOT call this method when training.
@@ -110,51 +104,54 @@ class BaseHandlerModel(BaseSubnetwork):
                 # A single output shape is (batch, pred, dim).
                 p_all.append(pred[0])
 
-            return tf.transpose(tf.stack(p_all), [1, 0, 2, 3])
+            return torch.permute(torch.stack(p_all), [1, 0, 2, 3])
 
         else:
             return self(inputs=inputs,
                         keypoints=keypoints,
                         keypoints_index=keypoints_index)
 
-    def forward(self, inputs: list[tf.Tensor],
-                training=None,
-                *args, **kwargs):
+    def implement(self, inputs: list[torch.Tensor],
+                  training=None,
+                  *args, **kwargs):
 
+        # Preprocess (include keypoints)
         keypoints = [inputs[-1]]
-
         inputs_p = self.processor(inputs, preprocess=True, training=training)
         keypoints_p = self.processor(keypoints, preprocess=True,
                                      update_paras=False,
                                      training=training)
 
         # only when training the single model
+        device = inputs[0].device
         if self.as_single_model:
             gt_processed = keypoints_p[0]
 
             if self.key_points == 'null':
-                index = np.arange(self.args.pred_frames-1)
-                np.random.shuffle(index)
-                index = tf.concat([np.sort(index[:self.points-1]),
-                                   [self.args.pred_frames-1]], axis=0)
+                index = torch.randperm(self.args.pred_frames-1, device=device)
+                index = index[:self.points-1].sort()[0]
+                index = torch.concat(
+                    [index, torch.tensor([self.args.pred_frames-1])])
+
             else:
                 index = self.key_indices_future
 
-            points = tf.gather(gt_processed, index, axis=1)
-            index = tf.cast(index, tf.float32)
+            points = gt_processed[:, index]
             outputs = self(inputs_p,
                            keypoints=points,
-                           keypoints_index=index,
+                           keypoints_index=index.to(torch.float32),
                            training=True)
 
-        # use as the second stage model
+        # Or use it as the second stage model
         else:
-            outputs = self.call_as_handler(
+            outputs = self.forward_as_handler(
                 inputs_p,
                 keypoints=keypoints_p[0],
-                keypoints_index=tf.cast(self.key_indices_future, tf.float32),
+                keypoints_index=self.key_indices_future.to(
+                    torch.float32).to(device),
                 training=None)
 
+        # Run post-process
         outputs_p = self.processor(outputs, preprocess=False,
                                    training=training)
         pred_o = outputs_p[0]

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 18:47:03
+@LastEditTime: 2023-10-11 12:46:41
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -97,6 +97,16 @@ def dir_check(target_dir: str) -> str:
 
 def get_relative_path(reference_file_path: str, relative_path: str):
     return os.path.join(os.path.dirname(reference_file_path), relative_path)
+
+
+def move_to_device(item, d: torch.device):
+    T = type(item)
+    if T in [list, tuple]:
+        return [move_to_device(i, d) for i in item]
+    elif issubclass(T, torch.Tensor):
+        return item.to(d)
+    else:
+        return item
 
 
 def load_from_plist(path: str) -> dict:

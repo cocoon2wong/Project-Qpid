@@ -2,16 +2,16 @@
 @Author: Conghao Wong
 @Date: 2022-11-28 21:03:40
 @LastEditors: Conghao Wong
-@LastEditTime: 2022-11-29 09:20:12
+@LastEditTime: 2023-10-11 12:38:01
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-import tensorflow as tf
+import torch
 
 
-class LinearSpeedInterpolation(tf.keras.layers.Layer):
+class LinearSpeedInterpolation(torch.nn.Module):
     """
     Piecewise linear interpolation on the speed.
     For a trajectory `y(t)`, this interpolation method considers
@@ -21,8 +21,9 @@ class LinearSpeedInterpolation(tf.keras.layers.Layer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def call(self, index: tf.Tensor, value: tf.Tensor,
-             init_speed: tf.Tensor):
+    def forward(self, index: torch.Tensor, 
+             value: torch.Tensor,
+             init_speed: torch.Tensor):
         """
         Piecewise linear interpolation on the speed.
         The results do not contain the start point.
@@ -36,7 +37,7 @@ class LinearSpeedInterpolation(tf.keras.layers.Layer):
         `m = index[-1] - index[0]`.
         """
 
-        x = index
+        x = index.to(torch.int32)
         y = value
 
         speeds = [init_speed]
@@ -60,8 +61,8 @@ class LinearSpeedInterpolation(tf.keras.layers.Layer):
             v0 = speeds[-1]
             delta_v = 2 * (delta_y - n*v0) / (n * (n+1))
 
-            for _ in tf.range(x_start + 1, x_end + 1):
+            for _ in range(x_start + 1, x_end + 1):
                 speeds.append(speeds[-1] + delta_v)
                 results.append(results[-1] + speeds[-1])
 
-        return tf.concat(results[1:], axis=-2)
+        return torch.concat(results[1:], dim=-2)

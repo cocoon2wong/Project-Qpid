@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-06 16:45:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 18:02:21
+@LastEditTime: 2023-10-11 12:13:10
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -78,7 +78,7 @@ class BaseSubnetwork(Model):
     def key_indices_future(self) -> torch.Tensor:
         """
         Indices of the future keypoints.
-        Data type is `tf.int32`.
+        Data type is `torch.int32`.
         """
         return self.__ki[self.n_key_past:]
 
@@ -86,7 +86,7 @@ class BaseSubnetwork(Model):
     def key_indices_past(self) -> torch.Tensor:
         """
         Indices of the past keypoints.
-        Data type is `tf.int32`.
+        Data type is `torch.int32`.
         It starts with `0`.
         """
         if self.n_key_past:
