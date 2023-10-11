@@ -28,7 +28,7 @@ from tensorflow import keras
 class DirWaveLayer1D(keras.layers.Layer):
     """Abstract class with general methods for 1D wavelet transforms"""
     # in : (b, x, c) --> out: (b, nx, 2*c)
-    def call(self, batch):
+    def forward(self, batch):
         """Call the direct 1D wavelet
 
         :param batch: tensor of shape (batch_size, dim_x, chans)
@@ -56,7 +56,7 @@ class DirWaveLayer1D(keras.layers.Layer):
 class InvWaveLayer1D(keras.layers.Layer):
     """Abstract class with general methods for 1D inverse wavelet transforms"""
     # in : (b, x, 2*c) --> out: (b, 2x, c)
-    def call(self, batch):
+    def forward(self, batch):
         """Call the inverse 1D wavelet
 
         :param batch: tensor of shape (batch_size, dim_x, 2*chans)
@@ -92,7 +92,7 @@ class InvWaveLayer1D(keras.layers.Layer):
 class DirWaveLayer2D(keras.layers.Layer):
     """Abstract class with general methods for 2D wavelet transforms"""
     # in : (b, x, y, c) --> out: (b, nx, ny, 4*c)
-    def call(self, batch):
+    def forward(self, batch):
         """Call the direct 2D wavelet.
 
         :param batch: tensor of shape (batch_size, dim_x, dim_y, chans)
@@ -127,7 +127,7 @@ class DirWaveLayer2D(keras.layers.Layer):
 class InvWaveLayer2D(keras.layers.Layer):
     """Abstract class with general methods for 2D inverse wavelet transforms"""
     # in : (b, x, y, 4*c) --> out: (b, 2*x, 2*y, c)
-    def call(self, batch):
+    def forward(self, batch):
         """Call the inverse 2D wavelet
 
         :param batch: tensor of shape

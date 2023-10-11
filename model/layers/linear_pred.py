@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:19:11
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 20:46:59
+@LastEditTime: 2023-10-11 19:36:13
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -67,7 +67,7 @@ class LinearLayerND(LinearLayer):
 
         super().__init__(obs_frames, pred_frames, diff, *args, **kwargs)
 
-    def call(self, inputs: torch.Tensor, **kwargs):
+    def forward(self, inputs: torch.Tensor, **kwargs):
         """
         Linear prediction
 
@@ -75,52 +75,13 @@ class LinearLayerND(LinearLayer):
         :param results: linear pred, shape = (batch, pred, dim)
         """
         dim = inputs.shape[-1]
+        device = inputs.device
 
         results = []
         for d in range(dim):
             x = inputs[..., [d]].to(dtype=torch.float32)
-            Bx = self.W @ x
-            results.append(self.A_p @ Bx)
+            Bx = self.W.to(device) @ x
+            results.append(self.A_p.to(device) @ Bx)
 
         results = torch.concat(results, dim=-1)
         return results[..., -self.f:, :]
-
-
-class LinearInterpolation(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
-        """
-        Piecewise linear interpolation
-        (Results do not contain the start point)
-        """
-
-        super().__init__(*args, **kwargs)
-
-    def call(self, index, value):
-        """
-        Piecewise linear interpolation
-        (Results do not contain the start point)
-
-        :param index: index, shape = `(n)`, where `m = index[-1] - index[0]`
-        :param value: values, shape = `(..., n, 2)`
-        :return yp: linear interpolations, shape = `(..., m, 2)`
-        """
-
-        x = index
-        y = value
-
-        linear_results = []
-        for output_index in range(x.shape[0] - 1):
-            p_start = x[output_index]
-            p_end = x[output_index+1]
-
-            # shape = (..., 2)
-            start = y[..., output_index, :]
-            end = y[..., output_index+1, :]
-
-            for p in range(p_start+1, p_end+1):
-                linear_results.append(torch.unsqueeze(
-                    (end - start) * (p - p_start) / (p_end - p_start)
-                    + start, dim=-2))   # (..., 1, 2)
-
-        # shape = (..., n, 2)
-        return torch.concat(linear_results, dim=-2)

@@ -8,7 +8,7 @@
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from .__linearAcc import LinearAccInterpolation
-from .__linearPos import LinearPositionInterpolation
-from .__linearSpeed import LinearSpeedInterpolation
-from .__newton import NewtonInterpolation
+from .linear import LinearPositionInterpolation
+from .linear_acc import LinearAccInterpolation
+from .linear_speed import LinearSpeedInterpolation
+from .newton import NewtonInterpolation

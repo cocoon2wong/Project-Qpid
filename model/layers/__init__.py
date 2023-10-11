@@ -9,11 +9,11 @@
 """
 
 from . import interpolation, transfroms
-from .__base import Dense, Dropout
-from .__flatten import Flatten
-from .__graphConv import GraphConv
-from .__linear import LinearLayer, LinearLayerND
-from .__outer import OuterLayer
-from .__pooling import MaxPooling2D
-from .__traj import ContextEncoding, TrajEncoding
+from .basic import Dense, Dropout
+from .embedding import ContextEncoding, TrajEncoding
+from .flatten import Flatten
+from .graph_conv import GraphConv
+from .linear_pred import LinearLayer, LinearLayerND
+from .outer_product import OuterLayer
+from .pooling import MaxPooling2D
 from .transfroms import get_transform_layers

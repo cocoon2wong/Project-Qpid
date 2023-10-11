@@ -2,15 +2,14 @@
 @Author: Conghao Wong
 @Date: 2023-05-09 20:24:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-05-09 20:29:44
+@LastEditTime: 2023-10-11 19:42:30
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 from .__base import NoneTransformLayer, _BaseTransformLayer
-from .__dct import DCTLayer, IDCTLayer
-from .__fft import FFT2DLayer, FFTLayer, IFFT2Dlayer, IFFTLayer
+from .fft import FFT2DLayer, FFTLayer, IFFT2Dlayer, IFFTLayer
 from .__wavetf import DB2_1D, Haar1D, InverseDB2_1D, InverseHaar1D
 
 
@@ -49,11 +48,7 @@ def get_transform_layers(Tname: str) -> \
         Tlayer = DB2_1D
         ITlayer = InverseDB2_1D
 
-    elif Tname == 'dct':
-        Tlayer = DCTLayer
-        ITlayer = IDCTLayer
-
     else:
-        raise ValueError('Transform name not found.')
+        raise ValueError(f'Transform `{Tname}` not supported.')
 
     return Tlayer, ITlayer

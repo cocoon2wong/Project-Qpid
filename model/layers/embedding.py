@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:25:47
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 12:57:05
+@LastEditTime: 2023-10-11 19:44:58
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,7 @@
 import torch
 
 from ...utils import MAP_HALF_SIZE, POOLING_BEFORE_SAVING
-from .__base import Dense
+from .basic import Dense
 from .transfroms import _BaseTransformLayer
 
 

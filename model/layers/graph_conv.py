@@ -10,7 +10,7 @@
 
 import torch
 
-from .__base import Dense
+from .basic import Dense
 
 
 class GraphConv(torch.nn.Module):
