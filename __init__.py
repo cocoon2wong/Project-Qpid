@@ -1,7 +1,7 @@
 """
 Q-Pid
 ---
-A training "engine" for trajectory prediction models (based on TensorFlow 2).
+A training "engine" for trajectory prediction models (based on PyTorch).
 """
 
 from . import (applications, args, base, help, model, silverballers, training,
