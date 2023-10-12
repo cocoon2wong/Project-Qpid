@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:52:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 13:34:13
+@LastEditTime: 2023-10-12 11:30:30
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -157,8 +157,10 @@ class BaseHandlerModel(BaseSubnetwork):
         pred_o = outputs_p[0]
 
         # Calculate scores
-        if ((INPUT_TYPES.MAP in self.input_types)
-                and (INPUT_TYPES.MAP_PARAS in self.input_types)):
+        if (not training) and (
+            (INPUT_TYPES.MAP in self.input_types)
+            and (INPUT_TYPES.MAP_PARAS in self.input_types)
+        ):
 
             from qpid.mods import contextMaps as maps
             map_mgr = self.get_top_manager().get_member(

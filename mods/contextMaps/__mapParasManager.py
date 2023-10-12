@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-25 14:51:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 13:34:19
+@LastEditTime: 2023-10-12 14:34:01
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -18,9 +18,9 @@ from ...base import BaseManager
 from ...constant import INPUT_TYPES
 from ...dataset import Clip
 from ...dataset.__base import BaseInputManager
-from ...utils import (POOLING_BEFORE_SAVING, SEG_IMG, WINDOW_EXPAND_METER,
-                      WINDOW_EXPAND_PIXEL, WINDOW_SIZE_METER,
-                      WINDOW_SIZE_PIXEL)
+from ...utils import (MAP_HALF_SIZE, POOLING_BEFORE_SAVING, SEG_IMG,
+                      WINDOW_EXPAND_METER, WINDOW_EXPAND_PIXEL,
+                      WINDOW_SIZE_METER, WINDOW_SIZE_PIXEL)
 
 
 class MapParasManager(BaseInputManager):
@@ -49,7 +49,8 @@ class MapParasManager(BaseInputManager):
         self.b: np.ndarray = None
 
         if POOLING_BEFORE_SAVING:
-            self._upsampling = torch.nn.MaxUnpool2d([5, 5])
+            a = MAP_HALF_SIZE * 2
+            self._upsampling = torch.nn.UpsamplingNearest2d((a, a))
 
     @property
     def void_map(self) -> np.ndarray:
@@ -184,7 +185,10 @@ class MapParasManager(BaseInputManager):
         s = maps.shape
         map_center = torch.tensor([s[-2]//2, s[-1]//2], dtype=torch.int32)
         trajs_grid = map_center[None] + bias_grid
-        trajs_grid = torch.minimum(torch.maximum(trajs_grid, 0), s[-2]-1)
+        trajs_grid = torch.minimum(
+            torch.maximum(trajs_grid, torch.tensor(0)),
+            torch.tensor(s[-2]-1),
+        )
 
         count = torch.arange(s[0])
         while count.ndim != trajs_grid.ndim:
@@ -193,10 +197,11 @@ class MapParasManager(BaseInputManager):
         agent_count = count * torch.ones_like(trajs_grid[..., :1])
         index = torch.concat([agent_count, trajs_grid], dim=-1)
 
-        # FIXME: Compute map scores with torch
-        all_scores = tf.gather_nd(maps, index)
-        avg_scores = tf.reduce_sum(all_scores, axis=-1)
-
+        # Compute map scores
+        all_scores = torch.stack([maps[i[0], i[1], i[2]]
+                                 for i in index.reshape([-1, 3])])
+        avg_scores = torch.mean(all_scores.reshape(
+            list(index.shape[:-2]) + [-1]), dim=-1)
         return avg_scores
 
     def pick_trajectories(self, traj: torch.Tensor,
@@ -212,22 +217,16 @@ class MapParasManager(BaseInputManager):
         if scores.ndim < 2:
             return traj
 
-        # FIXME: Pick trajectories with torch
-        bs = tf.shape(scores)[0]
-        _index = tf.argsort(scores, axis=-1, direction='ASCENDING')
-        _index = _index[..., :int(percent * scores.shape[-1])]
+        index = torch.argsort(scores, dim=-1, descending=False)
+        index = index[..., :(n := int(percent * scores.shape[-1]))]
 
         # Calculate indices
-        _index = _index[..., None]
-        count = tf.range(bs)
-
-        while count.ndim < _index.ndim:
-            count = count[:, None]
-
-        count = count * tf.ones_like(_index)
-        new_index = tf.concat([count, _index], axis=-1)
+        _traj = traj.reshape([-1] + list(traj.shape[-3:]))
+        _index = index.reshape([-1, n])
+        _traj_picked = torch.stack([_traj[index, i]
+                                   for index, i in enumerate(_index)])
 
         # Pick trajectories
-        traj_picked = tf.gather_nd(traj, new_index)
-
+        traj_picked = _traj_picked.reshape(list(traj.shape[:-3]) +
+                                           list(_traj_picked.shape[-3:]))
         return traj_picked

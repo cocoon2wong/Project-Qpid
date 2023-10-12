@@ -2,11 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-07-15 20:13:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 20:40:50
+@LastEditTime: 2023-10-12 14:32:43
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
+
+import torch
 
 from ..args import DYNAMIC, Args
 from ..model import Model, layers
@@ -35,7 +37,7 @@ class LinearModel(Model):
                                            pred_frames=self.args.pred_frames,
                                            diff=Args.weights)
 
-    def forward(self, inputs, training=None, *args, **kwargs):
+    def forward(self, inputs: list[torch.Tensor], training=None, *args, **kwargs):
         trajs = inputs[0]
         return self.linear(trajs)
 

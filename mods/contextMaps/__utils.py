@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-10 09:38:32
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 13:25:18
+@LastEditTime: 2023-10-12 10:13:45
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -121,4 +121,4 @@ def pooling2D(maps: np.ndarray):
     :param maps: Maps, shape = (batch, a, b).
     """
     maps = maps[:, np.newaxis]
-    return POOLING_LAYER(maps).numpy()[:, 0]
+    return POOLING_LAYER(torch.from_numpy(maps)).numpy()[:, 0]
