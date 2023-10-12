@@ -140,7 +140,7 @@ class BaseHandlerModel(BaseSubnetwork):
             outputs = self(inputs_p,
                            keypoints=points,
                            keypoints_index=index.to(torch.float32),
-                           training=True)
+                           training=training)
 
         # Or use it as the second stage model
         else:

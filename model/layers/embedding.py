@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:25:47
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 19:44:58
+@LastEditTime: 2023-10-12 15:16:16
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -101,10 +101,10 @@ class ContextEncoding(torch.nn.Module):
 
         self.flatten = torch.nn.Flatten()
 
-        feature_len = (MAP_HALF_SIZE*2 / 5)**2
+        feature_len = (MAP_HALF_SIZE*2 // 5)**2
         self.fc = Dense(feature_len, output_channels * units, activation)
 
-        self.reshape_size = (output_channels, units)
+        self.reshape_size = (-1, output_channels, units)
 
     def forward(self, context_map: torch.Tensor, **kwargs) -> torch.Tensor:
         """

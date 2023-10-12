@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-30 09:52:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 21:05:34
+@LastEditTime: 2023-10-12 15:11:22
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -94,7 +94,7 @@ class Annotation():
 
         return center
 
-    def get_coordinate_series(self, inputs: T) -> T:
+    def get_coordinate_series(self, inputs: T) -> list[T]:
         """
         Reshape the **predicted trajectories** into a series of single
         coordinates. For example, when inputs have the annotation type
