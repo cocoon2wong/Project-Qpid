@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:46:48
+@LastEditTime: 2023-10-13 10:14:04
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -16,6 +16,12 @@ from .__ade import ADE_2D
 
 
 class BaseLossLayer(torch.nn.Module):
+
+    # Config whether this loss or metric is with some units.
+    # For example, l2 loss is with units (like 0.99 meters),
+    # while IoU has no units (or its unit is `1`).
+    # The unit is the same as datasets' annotations.
+    HAS_UNIT = False
 
     def __init__(self, coe: float,
                  manager: BaseManager,
@@ -40,6 +46,7 @@ class l2(BaseLossLayer):
     l2 loss on the keypoints.
     Support M-dimensional trajectories.
     """
+    HAS_UNIT = True
 
     def forward(self, outputs: list, labels: list,
                 inputs: list, mask=None,
@@ -53,6 +60,7 @@ class ADE(BaseLossLayer):
     l2 (single-point-wise) loss.
     Support M-dimensional trajectories.
     """
+    HAS_UNIT = True
 
     def forward(self, outputs: list, labels: list,
                 inputs: list, mask=None,
@@ -79,6 +87,7 @@ class FDE(ADE):
     l2 (single-point-wise) loss on the last prediction point.
     Support M-dimensional trajectories.
     """
+    HAS_UNIT = True
 
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, index: int = -1,
@@ -93,7 +102,7 @@ class avgCenter(BaseLossLayer):
     """
     Average displacement error on the center of each prediction.
     """
-
+    HAS_UNIT = True
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
@@ -106,6 +115,7 @@ class finalCenter(avgCenter):
     """
     Final displacement error on the center of each prediction.
     """
+    HAS_UNIT = True
 
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 17:10:56
+@LastEditTime: 2023-10-13 10:31:05
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -556,8 +556,14 @@ class Structure(BaseManager):
         # Make the metric dict
         mdict_avg = dict(zip(metrics_names, all_metrics))
 
-        # Compute the inference time
         if not test_during_training:
+            # Show metrics with units
+            unit = self.get_member(AgentManager).get_member(SplitManager).type
+            for mlayer, mkey in zip(self.metrics.loss_list, mdict_avg.keys()):
+                if mlayer.HAS_UNIT:
+                    mdict_avg[mkey] = f'{mdict_avg[mkey]} ({unit})'
+
+            # Compute the inference time
             if len(self.model.inference_times) < 3:
                 self.log('The "AverageInferenceTime" is for reference only and you can set a lower "batch_size" ' +
                          'or change a bigger dataset to obtain a more accurate result.')
@@ -601,9 +607,10 @@ class Structure(BaseManager):
         self.print_parameters(title='Test Results',
                               **kwargs,
                               **loss_dict)
-        self.log(f'split: {self.args.split}, ' +
+        self.log('Test done. ' +
+                 f'Split: {self.args.split}, ' +
                  f'load: {self.args.load}, ' +
-                 f'metrics: {loss_dict}')
+                 f'metrics: {loss_dict}.')
 
     def write_test_results(self, outputs: list[torch.Tensor], clips: list[str]):
         """
