@@ -2,13 +2,17 @@
 @Author: Conghao Wong
 @Date: 2022-07-15 20:13:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-12 14:32:43
+@LastEditTime: 2023-10-16 21:41:31
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+from typing import Union
 import torch
+
+from qpid.args import Args
+from qpid.base import BaseManager
 
 from ..args import DYNAMIC, Args
 from ..model import Model, layers
@@ -43,11 +47,12 @@ class LinearModel(Model):
 
 
 class Linear(Structure):
+    is_trainable = False
+
     def __init__(self, terminal_args: list[str]):
 
         self.args = LinearArgs(terminal_args)
         super().__init__(self.args)
-        self.noTraining = True
 
     def create_model(self, *args, **kwargs) -> Model:
         return LinearModel(self.args, structure=self)

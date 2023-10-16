@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-13 10:31:05
+@LastEditTime: 2023-10-16 21:35:56
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -18,7 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ..args import Args
 from ..base import BaseManager
-from ..constant import ANN_TYPES, INPUT_TYPES
+from ..constant import ANN_TYPES, INPUT_TYPES, STRUCTURE_STATUS
 from ..dataset import AgentManager, Annotation, AnnotationManager, SplitManager
 from ..model import Model
 from ..utils import WEIGHTS_FORMAT, dir_check, get_loss_mask, move_to_device
@@ -50,6 +50,8 @@ class Structure(BaseManager):
     Other methods should be rewritten when subclassing.
     """
 
+    is_trainable = True
+
     def __init__(self, args: Union[list[str], Args] = None,
                  manager: BaseManager = None,
                  name='Train Manager'):
@@ -80,7 +82,6 @@ class Structure(BaseManager):
         # init model options
         self.model: Model = None
         self.optimizer: torch.optim.Optimizer = None
-        self.noTraining = False
 
         # Set labels, loss functions, and metrics
         self.label_types: list[str] = []
@@ -95,8 +96,10 @@ class Structure(BaseManager):
                               loss.AIOU: 0.0,
                               loss.FIOU: 0.0})
 
-        elif self.args.anntype in [ANN_TYPES.SKE_3D_17]:
-            # These configs are only used on `h36m` dataset
+        # These configs are only used on `Human3.6M` dataset
+        elif ((not self.is_prepared_for_training) and
+              (self.args.dataset == 'Human3.6M') and
+              (self.args.anntype in [ANN_TYPES.SKE_3D_17])):
             i = int(1000 * self.args.interval)  # Sample interval
 
             if self.args.pred_frames == 10:
@@ -113,9 +116,49 @@ class Structure(BaseManager):
                     [loss.FDE, [1.0, {'index': 24, 'name': f'FDE@{25*i}ms'}]],
                 ])
 
+        # Configs for `NBA` dataset
+        elif ((not self.is_prepared_for_training) and
+              (self.args.dataset == 'NBA') and
+              (self.args.obs_frames == 5) and
+              (self.args.pred_frames == 10)):
+            self.metrics.set([
+                [loss.ADE, [0.0, {}]],
+                [loss.FDE, [0.0, {'index': 4, 'name': f'FDE@2.0s'}]],
+                [loss.FDE, [1.0, {'index': 9, 'name': f'FDE@4.0s'}]],
+            ])
+
         else:
             self.metrics.set({loss.ADE: 1.0,
                               loss.FDE: 0.0})
+
+    @property
+    def status(self) -> int:
+        """
+        Status of the training structure.
+        Returns could be one of the
+        ```python
+        [STRUCTURE_STATUS.TEST, 
+         STRUCTURE_STATUS.TEST_WITH_SAVED_WEIGHTS,
+         STRUCTURE_STATUS.TRAIN, 
+         STRUCTURE_STATUS.TRAIN_WITH_SAVED_WEIGHTS]
+        ```
+        """
+        if not self.is_trainable:
+            return STRUCTURE_STATUS.TEST
+        elif self.args.load == 'null':
+            if self.args.restore == 'null':
+                return STRUCTURE_STATUS.TRAIN
+            else:
+                return STRUCTURE_STATUS.TRAIN_WITH_SAVED_WEIGHTS
+        else:
+            return STRUCTURE_STATUS.TEST_WITH_SAVED_WEIGHTS
+
+    @property
+    def is_prepared_for_training(self) -> bool:
+        """
+        Return `True` if it is now preparing for training.
+        """
+        return STRUCTURE_STATUS.is_training(self.status)
 
     @property
     def agent_manager(self) -> AgentManager:
@@ -176,7 +219,7 @@ class Structure(BaseManager):
         self.label_types = [item for item in args]
 
     def set_optimizer(self) -> torch.optim.Optimizer:
-        if self.noTraining:
+        if not self.is_prepared_for_training:
             return None
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),
@@ -257,25 +300,24 @@ class Structure(BaseManager):
         """
         Load models and datasets, then start training or testing.
         """
-        # init model and dataset manager
+        # Init model and dataset manager
         self.model = self.create_model().to(self.device)
         self.optimizer = self.set_optimizer()
         self.agent_manager.set_types(inputs_type=self.model.input_types,
                                      labels_type=self.label_types)
 
-        # start training or testing
-        if self.noTraining:
-            self.test()
-
-        elif self.args.load == 'null':
-            # restore weights before training (optional)
-            if self.args.restore != 'null':
+        # Start training or testing
+        match self.status:
+            case STRUCTURE_STATUS.TEST:
+                self.test()
+            case STRUCTURE_STATUS.TEST_WITH_SAVED_WEIGHTS:
+                self.model.load_weights_from_logDir(self.args.load)
+                self.test()
+            case STRUCTURE_STATUS.TRAIN:
+                self.train()
+            case STRUCTURE_STATUS.TRAIN_WITH_SAVED_WEIGHTS:
                 self.model.load_weights_from_logDir(self.args.restore)
-            self.train()
-
-        else:
-            self.model.load_weights_from_logDir(self.args.load)
-            self.test()
+                self.train()
 
     def train(self):
         """

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 13:34:37
+@LastEditTime: 2023-10-16 21:27:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -161,6 +161,8 @@ class SilverballersMKII(Structure):
     AGENT_STRUCTURE_TYPE = BaseAgentStructure
     HANDLER_STRUCTURE_TYPE = BaseHandlerStructure
 
+    is_trainable = False
+
     def __init__(self, terminal_args: list[str]):
 
         min_args = SilverballersArgs(terminal_args, is_temporary=True)
@@ -245,8 +247,6 @@ class SilverballersMKII(Structure):
 
         if (k := '--force_anntype') in terminal_args:
             terminal_args.remove(k)
-
-        self.noTraining = True
 
         # config second-stage model
         if self.handler_model_type.is_interp_handler:

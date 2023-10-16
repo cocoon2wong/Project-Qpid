@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-23 18:01:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 17:38:21
+@LastEditTime: 2023-10-16 21:10:33
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -81,3 +81,18 @@ class INTERPOLATION_TYPES():
             if s.startswith(_s):
                 return _s
         return None
+
+
+class STRUCTURE_STATUS():
+    """
+    Status of training structures.
+    """
+    TRAIN = 0
+    TRAIN_WITH_SAVED_WEIGHTS = 1
+
+    TEST = 10
+    TEST_WITH_SAVED_WEIGHTS = 11
+
+    @staticmethod
+    def is_training(s: int):
+        return True if s < 10 else False
