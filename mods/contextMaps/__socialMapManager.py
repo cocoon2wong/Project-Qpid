@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 16:28:36
+@LastEditTime: 2023-10-17 18:02:39
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -15,9 +15,9 @@ from ...constant import INPUT_TYPES
 from ...dataset import Clip
 from ...dataset.__base import BaseInputManager
 from ...dataset.agent_based import Agent
-from ...utils import AVOID_SIZE, INTEREST_SIZE
 from .__trajMapManager import TrajMapManager
-from .__utils import add, cut, pooling2D
+from .settings import AVOID_SIZE, INTEREST_SIZE
+from .utils import add, cut, pooling2D
 
 
 class SocialMapManager(TrajMapManager):

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-25 14:51:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-12 14:34:01
+@LastEditTime: 2023-10-17 18:02:10
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -18,9 +18,10 @@ from ...base import BaseManager
 from ...constant import INPUT_TYPES
 from ...dataset import Clip
 from ...dataset.__base import BaseInputManager
-from ...utils import (MAP_HALF_SIZE, POOLING_BEFORE_SAVING, SEG_IMG,
-                      WINDOW_EXPAND_METER, WINDOW_EXPAND_PIXEL,
-                      WINDOW_SIZE_METER, WINDOW_SIZE_PIXEL)
+from .__args import ContextMapsArgs
+from .settings import (MAP_HALF_SIZE, POOLING_BEFORE_SAVING, SEG_IMG,
+                       WINDOW_EXPAND_METER, WINDOW_EXPAND_PIXEL,
+                       WINDOW_SIZE_METER, WINDOW_SIZE_PIXEL)
 
 
 class MapParasManager(BaseInputManager):
@@ -37,6 +38,9 @@ class MapParasManager(BaseInputManager):
                  name='Map Parameters Manager'):
 
         super().__init__(manager, name)
+
+        self.context_args = self.args._register_mod_args(ContextMapsArgs,
+                                                         __package__)
 
         # Parameters
         self.map_type: str = None
@@ -65,7 +69,7 @@ class MapParasManager(BaseInputManager):
         Whether to use segmentation maps instead of
         the calculated trajectory maps.
         """
-        if (self.args.use_seg_maps and
+        if (self.context_args.use_seg_maps and
             SEG_IMG in self.working_clip.other_files.keys() and
                 os.path.exists(self.working_clip.other_files[SEG_IMG])):
             return True

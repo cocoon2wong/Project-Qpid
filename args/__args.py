@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 15:55:32
+@LastEditTime: 2023-10-17 17:46:27
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -397,14 +397,6 @@ class Args(ArgsManager):
         This arg only works for multiple-generation models.
         """
         return self._arg('K_train', 10, argtype=STATIC)
-
-    @property
-    def use_seg_maps(self) -> int:
-        """
-        Controls whether to use segmentation maps instead of the
-        calculated trajectory maps.
-        """
-        return self._arg('use_seg_maps', 0, argtype=DYNAMIC)
 
     @property
     def anntype(self) -> str:

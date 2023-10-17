@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 16:29:55
+@LastEditTime: 2023-10-17 18:03:21
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -18,9 +18,9 @@ from ...constant import INPUT_TYPES
 from ...dataset import Clip
 from ...dataset.__base import BaseInputManager
 from ...dataset.agent_based import Agent
-from ...utils import MAP_HALF_SIZE
 from .__mapParasManager import MapParasManager
-from .__utils import add, cut, pooling2D
+from .settings import MAP_HALF_SIZE
+from .utils import add, cut, pooling2D
 
 
 class TrajMapManager(BaseInputManager):

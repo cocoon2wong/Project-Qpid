@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 16:29:01
+@LastEditTime: 2023-10-17 18:03:09
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -16,8 +16,8 @@ from ...constant import INPUT_TYPES
 from ...dataset import Clip, SplitManager
 from ...dataset.__base import BaseInputManager
 from ...dataset.agent_based import Agent
-from ...utils import SEG_IMG
 from .__trajMapManager import TrajMapManager
+from .settings import SEG_IMG
 
 
 class TrajMapManager_seg(TrajMapManager):

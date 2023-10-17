@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:55:04
+@LastEditTime: 2023-10-17 18:06:50
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -18,7 +18,7 @@ from tqdm import tqdm
 from ..base import BaseManager
 from ..constant import INPUT_TYPES
 from ..model.layers.transfroms import _BaseTransformLayer, get_transform_layers
-from ..utils import POOLING_BEFORE_SAVING, dir_check
+from ..utils import dir_check
 from .__base import Annotation, AnnotationManager, BaseInputManager
 from .__splitManager import SplitManager
 from .agent_based import Agent, AgentFilesManager, TrajectoryManager
@@ -169,7 +169,7 @@ class AgentManager(BaseManager):
         """
         if (t := INPUT_TYPES.MAP) in inputs_type:
             from qpid.mods import contextMaps as maps
-            p = POOLING_BEFORE_SAVING
+            p = maps.settings.POOLING_BEFORE_SAVING
             self.ext_types.append(t)
             self.ext_mgrs.append(maps.MapParasManager(self))
             self.ext_mgrs.append(maps.TrajMapManager(self, p))

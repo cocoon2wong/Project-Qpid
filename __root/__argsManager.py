@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 16:59:52
+@LastEditTime: 2023-10-17 17:44:52
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 
 import json
 import os
-from typing import Any, Self
+from typing import Any, Self, TypeVar
 
 from ..constant import ARG_TYPES
 from ..utils import dir_check
@@ -22,6 +22,8 @@ TEMPORARY = ARG_TYPES.TEMPORARY
 
 extra_args_names = []
 extra_args_packages = []
+
+T = TypeVar('T')
 
 
 def register_new_args(names: list[str], package_name: str):
@@ -152,13 +154,15 @@ class ArgsManager(BaseObject):
                          ' Check your spelling.',
                          level='error', raiseError=KeyError)
 
-    def _register_mod_args(self, arg_type: type[Self], mod_name: str):
+    def _register_mod_args(self, arg_type: type[T], mod_name: str) -> T:
         """
         Register new args that used in extra mods to the current args.
         """
-        self._mod_arg_types[mod_name] = arg_type
-        self._mod_args[mod_name] = arg_type(terminal_args=self._terminal_args,
-                                            is_temporary=True)
+        if ((not mod_name in self._mod_arg_types.keys()) or
+                (not mod_name in self._mod_args.keys())):
+            self._mod_arg_types[mod_name] = arg_type
+            self._mod_args[mod_name] = arg_type(terminal_args=self._terminal_args,
+                                                is_temporary=True)
         return self._mod_args[mod_name]
 
     @classmethod
@@ -265,9 +269,13 @@ class ArgsManager(BaseObject):
 
         names = []
         values = []
-        for arg in all_args:
+        for index, arg in enumerate(all_args):
+            names.append(f'#---------- {type(arg).__name__} ----------')
+            values.append(index)
+
             _names = [n for (n, v) in arg._arg_type.items() if v != TEMPORARY]
             _names.sort()
+
             names += _names
             values += [getattr(arg, n) for n in _names]
 
