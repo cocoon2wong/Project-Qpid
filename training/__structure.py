@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 09:35:03
+@LastEditTime: 2023-10-17 11:10:28
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -657,70 +657,7 @@ class Structure(BaseManager):
             # draw results on video frames
             clip = clips[0]
             tv = vis.Visualization(self, self.args.dataset, clip)
-
-            save_base_path = dir_check(self.args.log_dir) \
-                if self.args.load == 'null' \
-                else self.args.load
-
-            img_dir = dir_check(os.path.join(save_base_path, 'VisualTrajs'))
-            save_format = os.path.join(img_dir, clip + '_{}')
-            tv.log(f'Start saving images into `{img_dir}`...')
-
-            pred_all = outputs[0].numpy()
-            traj_wise_outputs = dict([
-                (key, outputs[i].numpy())
-                for i, key in self.model.ext_traj_wise_outputs.items()])
-
-            agent_wise_outputs = dict([
-                (key, outputs[i].numpy())
-                for i, key in self.model.ext_agent_wise_outputs.items()])
-
-            if self.args.draw_index == 'all':
-                agent_indexes = list(range(len(pred_all)))
-            else:
-                _indexes = self.args.draw_index.split('_')
-                agent_indexes = [int(i) for i in _indexes]
-
-            ex_types: list[str] = []
-            if self.args.draw_exclude_type != 'null':
-                ex_types = self.args.draw_exclude_type.split("_")
-
-            for index in self.timebar(agent_indexes, 'Saving...'):
-                # write traj
-                agent = self.agent_manager.agents[index]
-                agent.write_pred(pred_all[index])
-
-                # extra outputs
-                to = dict([(k, v[index])
-                          for (k, v) in traj_wise_outputs.items()])
-                ao = dict([(k, v[index])
-                          for (k, v) in agent_wise_outputs.items()])
-
-                # choose to draw as a video or a single image
-                if self.args.draw_videos != 'null':
-                    save_image = False
-                    frames = agent.frames
-                else:
-                    save_image = True
-                    frames = [agent.frames[self.args.obs_frames-1]]
-
-                skip = False
-                for extype in ex_types:
-                    if extype in agent.type:
-                        skip = True
-                        break
-                if skip:
-                    continue
-
-                tv.draw(agent=agent,
-                        frames=frames,
-                        save_name=save_format.format(index),
-                        draw_dis=self.args.draw_distribution,
-                        save_as_images=save_image,
-                        traj_wise_outputs=to,
-                        agent_wise_outputs=ao)
-
-            self.log(f'Prediction result images are saved at {img_dir}')
+            tv.run_commands(outputs)
 
 
 def _get_item(item, indices: list):

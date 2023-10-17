@@ -2,27 +2,33 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-09 17:50:14
+@LastEditTime: 2023-10-17 11:25:38
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+import os
+
 import cv2
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
 
 from ...base import BaseManager, SecondaryBar
 from ...dataset import AnnotationManager, Clip
 from ...dataset.agent_based import Agent
-from ...utils import (DRAW_TEXT_IN_IMAGES, DRAW_TEXT_IN_VIDEOS, SMALL_POINTS,
-                      get_relative_path)
+from ...model import Model
+from ...training import Structure
+from ...utils import dir_check, get_relative_path
+from .__args import VisArgs
 from .__helper import ADD, get_helper
+from .settings import IF_PUT_TEXT_IN_VIDEOS, IF_USE_SMALL_POINTS
 
-OBS_IMAGE = 'obs_small.png' if SMALL_POINTS else 'obs.png'
-NEIGHBOR_IMAGE = 'neighbor_small.png' if SMALL_POINTS else 'neighbor.png'
-GT_IMAGE = 'gt_small.png' if SMALL_POINTS else 'gt.png'
-PRED_IMAGE = 'pred_small.png' if SMALL_POINTS else 'pred.png'
+OBS_IMAGE = 'obs_small.png' if IF_USE_SMALL_POINTS else 'obs.png'
+NEIGHBOR_IMAGE = 'neighbor_small.png' if IF_USE_SMALL_POINTS else 'neighbor.png'
+GT_IMAGE = 'gt_small.png' if IF_USE_SMALL_POINTS else 'gt.png'
+PRED_IMAGE = 'pred_small.png' if IF_USE_SMALL_POINTS else 'pred.png'
 DISTRIBUTION_IMAGE = 'dis.png'
 
 OBS_IMAGE = get_relative_path(__file__, OBS_IMAGE)
@@ -43,6 +49,13 @@ class Visualization(BaseManager):
                  name='Visualization Manager'):
 
         super().__init__(manager=manager, name=name)
+
+        # For type hinting
+        self.manager: Structure
+
+        # Init vis-related args
+        self.vis_args = VisArgs(self.args._terminal_args,
+                                is_temporary=True)
 
         # Get information of the video clip
         self.info: Clip = self.manager.split_manager.clips_dict[clip]
@@ -76,6 +89,76 @@ class Visualization(BaseManager):
     @property
     def picker(self) -> AnnotationManager:
         return self.manager.get_member(AnnotationManager)
+
+    @property
+    def model(self) -> Model:
+        return self.manager.model
+
+    def run_commands(self, outputs: list[torch.Tensor]):
+        # Make the dir to save images
+        save_base_path = dir_check(self.args.log_dir) \
+            if self.args.load == 'null' \
+            else self.args.load
+
+        img_dir = dir_check(os.path.join(save_base_path, 'VisualTrajs'))
+        save_format = os.path.join(img_dir, self.info.clip_name + '_{}')
+
+        # Unpack model outputs
+        pred_all = outputs[0].numpy()
+        traj_wise_outputs = dict([
+            (key, outputs[i].numpy())
+            for i, key in self.model.ext_traj_wise_outputs.items()])
+
+        agent_wise_outputs = dict([
+            (key, outputs[i].numpy())
+            for i, key in self.model.ext_agent_wise_outputs.items()])
+
+        if self.vis_args.draw_index == 'all':
+            agent_indexes = list(range(len(pred_all)))
+        else:
+            _indexes = self.vis_args.draw_index.split('_')
+            agent_indexes = [int(i) for i in _indexes]
+
+        ex_types: list[str] = []
+        if self.vis_args.draw_exclude_type != 'null':
+            ex_types = self.vis_args.draw_exclude_type.split("_")
+
+        self.log(f'Start saving images into `{img_dir}`...')
+        for index in self.timebar(agent_indexes, 'Saving...'):
+            # Write traj into the agent
+            agent = self.manager.agent_manager.agents[index]
+            agent.write_pred(pred_all[index])
+
+            # Get extra model outputs
+            to = dict([(k, v[index])
+                       for (k, v) in traj_wise_outputs.items()])
+            ao = dict([(k, v[index])
+                       for (k, v) in agent_wise_outputs.items()])
+
+            # choose to draw as a video or a single image
+            if self.args.draw_videos != 'null':
+                save_image = False
+                frames = agent.frames
+            else:
+                save_image = True
+                frames = [agent.frames[self.args.obs_frames-1]]
+
+            skip = False
+            for extype in ex_types:
+                if extype in agent.type:
+                    skip = True
+                    break
+            if skip:
+                continue
+
+            self.draw(agent=agent,
+                      frames=frames,
+                      save_name=save_format.format(index),
+                      save_as_images=save_image,
+                      traj_wise_outputs=to,
+                      agent_wise_outputs=ao)
+
+        self.log(f'Prediction result images are saved at {img_dir}')
 
     def get_image(self, frame: int) -> np.ndarray:
         """
@@ -153,7 +236,6 @@ class Visualization(BaseManager):
     def draw(self, agent: Agent,
              frames: list[int],
              save_name: str,
-             draw_dis=False,
              interp=True,
              save_as_images=False,
              traj_wise_outputs: dict = {},
@@ -165,8 +247,6 @@ class Visualization(BaseManager):
         :param frames: A list frames of current observation steps.
         :param save_name: The name to save the output video, which does not contain
             the file format.
-        :param draw_dis: Choose if to draw trajectories as
-            distributions or single dots.
         :param interp: Choose whether to draw the full video or only
             draw on the sampled time steps.
         :param save_as_images: Choose if to save as an image or a video clip.
@@ -224,12 +304,12 @@ class Visualization(BaseManager):
             frame = frames[0]
 
             # Draw trajectories
-            f = vis_func(f, obs, gt, pred, nei, draw_dis=draw_dis)
+            f = vis_func(f, obs, gt, pred, nei)
 
             # Put text (top-left)
             f = text_func(f, self.get_text(frame, agent))
 
-            if self.args.draw_extra_outputs:
+            if self.vis_args.draw_extra_outputs:
                 # Put text (trajectory-wise)
                 for index in range(len(pred)):
                     pos = pred[index, -1]
@@ -249,7 +329,7 @@ class Visualization(BaseManager):
                 plt.close()
             return
 
-        f_pred = vis_func(f_empty, pred=pred, draw_dis=draw_dis)
+        f_pred = vis_func(f_empty, pred=pred)
         f_others = np.zeros_like(f_pred)
 
         for frame in SecondaryBar(frames,
@@ -282,7 +362,7 @@ class Visualization(BaseManager):
             # draw observations and groundtruths
             f = vis_func(f, background=f_others)
 
-            if DRAW_TEXT_IN_VIDEOS:
+            if IF_PUT_TEXT_IN_VIDEOS:
                 f = text_func(f, self.get_text(frame, agent))
 
             VideoWriter.write(f)
@@ -290,8 +370,7 @@ class Visualization(BaseManager):
     def vis(self, source: np.ndarray,
             obs=None, gt=None, pred=None,
             neighbor=None,
-            background: np.ndarray = None,
-            draw_dis: int = 0):
+            background: np.ndarray = None):
         """
         Draw one agent's observations, predictions, and groundtruths.
 
@@ -309,7 +388,7 @@ class Visualization(BaseManager):
 
         # draw predicted trajectories
         if pred is not None:
-            if draw_dis:
+            if self.vis_args.draw_distribution:
                 f = self.helper.draw_dis(f, pred, self.dis_file, alpha=0.8)
             else:
                 for pred_k in pred:

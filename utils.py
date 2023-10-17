@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 12:46:41
+@LastEditTime: 2023-10-17 11:29:30
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -51,9 +51,6 @@ POOLING_BEFORE_SAVING = True
 ROTATE_BIAS = 0.01
 SCALE_THRESHOLD = 0.05
 
-# Visualization configs
-SMALL_POINTS = True
-
 # Log paths and configs
 LOG_FILE = './test.log'
 LOG_MAX_LIST_LEN = 10
@@ -62,26 +59,6 @@ LOG_STREAM_HANDLER = logging.StreamHandler()
 # Weights configs
 WEIGHTS_FORMAT = '.pt'
 CHECKPOINT_FILENAME = 'best_ade_epoch.txt'
-
-# Visualization settings
-# color bar in BGR format
-# rgb(0, 0, 178) -> rgb(252, 0, 0) -> rgb(255, 255, 10)
-DISTRIBUTION_COLORBAR = np.column_stack([
-    np.interp(np.arange(256),
-              np.array([0, 127, 255]),
-              np.array([178, 0, 10])),
-    np.interp(np.arange(256),
-              np.array([0, 127, 255]),
-              np.array([0, 0, 255])),
-    np.interp(np.arange(256),
-              np.array([0, 127, 255]),
-              np.array([0, 252, 255])),
-])
-
-# Whether draw lines and text in images and videos
-DRAW_LINES = False
-DRAW_TEXT_IN_VIDEOS = False
-DRAW_TEXT_IN_IMAGES = True
 
 
 def dir_check(target_dir: str) -> str:

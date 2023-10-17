@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 13:10:19
+@LastEditTime: 2023-10-17 11:27:06
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -13,12 +13,13 @@ import numpy as np
 import torch
 
 from ...constant import ANN_TYPES
-from ...utils import DISTRIBUTION_COLORBAR, DRAW_LINES, INIT_POSITION
+from ...utils import INIT_POSITION
+from .settings import DISTRIBUTION_COLORBAR, IF_DRAW_LINES
 
 
 class BaseVisHelper():
     def __init__(self):
-        self.draw_lines = DRAW_LINES
+        self.draw_lines = IF_DRAW_LINES
 
     def draw_single(self, source: np.ndarray,
                     inputs: np.ndarray,
