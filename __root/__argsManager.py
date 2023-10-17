@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 16:02:46
+@LastEditTime: 2023-10-17 16:59:52
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 
 import json
 import os
-from typing import Any
+from typing import Any, Self
 
 from ..constant import ARG_TYPES
 from ..utils import dir_check
@@ -43,6 +43,9 @@ class ArgsManager(BaseObject):
     ---
     The basic class to manage all args when training or testing models.
     """
+
+    _mod_arg_types: dict[str, type[Self]] = {}
+    _mod_args: dict[str, Self] = {}
 
     def __init__(self, terminal_args: list[str] = None,
                  is_temporary=False) -> None:
@@ -149,6 +152,15 @@ class ArgsManager(BaseObject):
                          ' Check your spelling.',
                          level='error', raiseError=KeyError)
 
+    def _register_mod_args(self, arg_type: type[Self], mod_name: str):
+        """
+        Register new args that used in extra mods to the current args.
+        """
+        self._mod_arg_types[mod_name] = arg_type
+        self._mod_args[mod_name] = arg_type(terminal_args=self._terminal_args,
+                                            is_temporary=True)
+        return self._mod_args[mod_name]
+
     @classmethod
     def _get_args_names(cls) -> list[str]:
         """
@@ -168,9 +180,8 @@ class ArgsManager(BaseObject):
         """
         Vist all args.
         """
-        for arg in self.__dir__():
-            if not arg.startswith('_'):
-                getattr(self, arg)
+        for arg_name in self._get_args_names():
+            getattr(self, arg_name)
 
     def _load_from_json(self, dir_path: str, target='load'):
         """
@@ -250,9 +261,15 @@ class ArgsManager(BaseObject):
         dir_check(target_dir)
         json_path = os.path.join(target_dir, 'args.json')
 
-        names = [n for (n, v) in self._arg_type.items() if v != TEMPORARY]
-        names.sort()
-        values = [getattr(self, n) for n in names]
+        all_args = [self] + list(self._mod_args.values())
+
+        names = []
+        values = []
+        for arg in all_args:
+            _names = [n for (n, v) in arg._arg_type.items() if v != TEMPORARY]
+            _names.sort()
+            names += _names
+            values += [getattr(arg, n) for n in _names]
 
         with open(json_path, 'w+') as f:
             json.dump(dict(zip(names, values)), f,

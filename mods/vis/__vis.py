@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 11:25:38
+@LastEditTime: 2023-10-17 17:06:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -54,8 +54,7 @@ class Visualization(BaseManager):
         self.manager: Structure
 
         # Init vis-related args
-        self.vis_args = VisArgs(self.args._terminal_args,
-                                is_temporary=True)
+        self.vis_args = self.args._register_mod_args(VisArgs, __package__)
 
         # Get information of the video clip
         self.info: Clip = self.manager.split_manager.clips_dict[clip]
