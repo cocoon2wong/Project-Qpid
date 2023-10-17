@@ -2,14 +2,14 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-16 21:35:56
+@LastEditTime: 2023-10-17 09:35:03
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import os
-from typing import Union, overload
+from typing import overload
 
 import numpy as np
 import torch
@@ -52,7 +52,7 @@ class Structure(BaseManager):
 
     is_trainable = True
 
-    def __init__(self, args: Union[list[str], Args] = None,
+    def __init__(self, args: list[str] | Args = None,
                  manager: BaseManager = None,
                  name='Train Manager'):
 
@@ -73,8 +73,9 @@ class Structure(BaseManager):
         self._device_local: torch.device = None
 
         # init managers
-        self._am = AgentManager(self)
-        self.annmanager = AnnotationManager(self, self.split_manager.anntype)
+        self.agent_manager = AgentManager(self)
+        self.split_manager = self.agent_manager.split_manager
+        self.ann_manager = AnnotationManager(self, self.split_manager.anntype)
         self.loss = LossManager(self, name='Loss')
         self.metrics = LossManager(self, name='Metrics',
                                    trajectory_scale=self.split_manager.scale)
@@ -161,19 +162,8 @@ class Structure(BaseManager):
         return STRUCTURE_STATUS.is_training(self.status)
 
     @property
-    def agent_manager(self) -> AgentManager:
-        return self._am
-
-    @property
     def picker(self) -> Annotation:
-        return self.annmanager.annotations[self.args.anntype]
-
-    @property
-    def split_manager(self) -> SplitManager:
-        """
-        The Split Manager is managed by the `AgentManager`.
-        """
-        return self.agent_manager.split_manager
+        return self.ann_manager.annotations[self.args.anntype]
 
     @property
     def device(self):
@@ -246,12 +236,14 @@ class Structure(BaseManager):
     def gradient_operations(self, inputs: list[torch.Tensor],
                             labels: list[torch.Tensor],
                             loss_move_average: torch.Tensor,
-                            *args, **kwargs) -> tuple[torch.Tensor, dict[str, torch.Tensor], torch.Tensor]:
+                            *args, **kwargs) -> tuple[torch.Tensor,
+                                                      dict[str, torch.Tensor],
+                                                      torch.Tensor]:
         """
         Run gradient descent once during training.
 
-        :param inputs: Model inputs.
-        :param labels: Ground truth.
+        :param inputs: Model inputs. It should be a list of tensors.
+        :param labels: Ground truth. It should be a list of tensors.
         :param loss_move_average: Moving average loss.
 
         :return loss: The sum of all single loss functions.
@@ -260,11 +252,11 @@ class Structure(BaseManager):
         """
         # Compute predictions
         outputs = self.model.implement(inputs, training=True)
-        loss, loss_dict = self.loss.forward(
-            outputs, labels, inputs=inputs, training=True)
+        loss, loss_dict = self.loss.forward(outputs, labels,
+                                            inputs, training=True)
         loss_move_average = 0.7 * loss + 0.3 * loss_move_average.item()
 
-        # Compute gradients
+        # Compute gradients and run optimizer
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
@@ -272,13 +264,16 @@ class Structure(BaseManager):
         return loss, loss_dict, loss_move_average
 
     def model_validate(self, inputs: list[torch.Tensor],
-                       labels: torch.Tensor,
-                       training=None) -> tuple[list[torch.Tensor], torch.Tensor, dict[str, torch.Tensor]]:
+                       labels: list[torch.Tensor],
+                       training=None) -> tuple[list[torch.Tensor],
+                                               torch.Tensor,
+                                               dict[str, torch.Tensor]]:
         """
         Run one step forward and calculate metrics.
 
-        :param inputs: Model inputs.
-        :param labels: Ground truth.
+        :param inputs: Model inputs. It should be a list of tensors.
+        :param labels: Ground truth. It should be a list of tensors.
+        :param training: Controls if run model in the training mode.
 
         :return model_output: Model output.
         :return metrics: The weighted sum of all loss.
@@ -318,22 +313,6 @@ class Structure(BaseManager):
             case STRUCTURE_STATUS.TRAIN_WITH_SAVED_WEIGHTS:
                 self.model.load_weights_from_logDir(self.args.restore)
                 self.train()
-
-    def train(self):
-        """
-        Start training according to the args.
-        """
-        self.log(f'Start training with args = {self.args._args_runnning}')
-
-        clips_train = self.split_manager.train_sets
-        clips_val = self.split_manager.test_sets
-        ds_train = self.agent_manager.make(clips_train, training=True)
-        ds_val = self.agent_manager.clean().make(clips_val, training=False)
-
-        # train on all test/train clips
-        _, _, best_metric, best_epoch = self.__train(ds_train, ds_val)
-        self.print_train_results(best_epoch=best_epoch,
-                                 best_metric=best_metric)
 
     @torch.no_grad()
     def test(self):
@@ -375,31 +354,31 @@ class Structure(BaseManager):
             self.write_test_results(outputs=outputs,
                                     clips=self.agent_manager.processed_clips['test'])
 
-    def __train(self, ds_train: DataLoader, ds_val: DataLoader):
+    def train(self):
         """
-        Train the model on the given dataset.
-
-        :param ds_train: The train dataset.
-        :param ds_val: The val dataset.
-
-        :return loss_dict:
-        :return metrics_dict:
-        :return best_metric:
-        :return best_epoch:
+        Start training according to the args.
         """
-        # print training infomation
+        self.log(f'Start training with args = {self.args._args_runnning}')
+
+        # Prepare dataset
+        clips_train = self.split_manager.train_sets
+        clips_val = self.split_manager.test_sets
+        ds_train = self.agent_manager.make(clips_train, training=True)
+        ds_val = self.agent_manager.clean().make(clips_val, training=False)
+
+        # Print training infomation
         self.split_manager.print_info()
         self.agent_manager.print_info()
         self.model.print_info()
         self.print_info()
 
-        # make a log directory and save current args
+        # Make the log directory and save current args
         self.args._save_as_json(self.args.log_dir)
 
-        # open tensorboard
+        # Open tensorboard
         tb = SummaryWriter(self.args.log_dir)
 
-        # init variables for training
+        # Init variables for training
         loss_move = torch.tensor(0, dtype=torch.float32)
         loss_dict = {}
         metrics_dict = {}
@@ -480,7 +459,9 @@ class Structure(BaseManager):
                 else:
                     tb.add_scalar(name, value, epoch)
 
-        return log_dict, metrics_dict, best_metric, best_epoch
+        # Show summary information
+        self.print_train_results(best_epoch=best_epoch,
+                                 best_metric=best_metric)
 
     def __test(self, ds_test: DataLoader) -> \
             tuple[float, dict[str, float], list[torch.Tensor]]:
@@ -499,7 +480,7 @@ class Structure(BaseManager):
         self.model.print_info()
         self.print_info()
 
-        # make a log directory and save current args
+        # Make the log directory and save current args
         if self.args.update_saved_args:
             if self.args.load != 'null':
                 self.args._save_as_json(self.args.load)
@@ -550,13 +531,13 @@ class Structure(BaseManager):
         :return metric: The weighted sum of all metrics.
         :return metric_dict: A dict of all metrics.
         """
-        # init variables for test
+        # Init variables for test
         outputs_all = []
         batch_all_metrics = []
         batch_weightedsum_metrics = []
         metrics_names: list[str] = None
 
-        # hide time bar when training
+        # Hide the time bar when training
         timebar = self.timebar(ds, 'Test...') if show_timebar else ds
 
         count = []

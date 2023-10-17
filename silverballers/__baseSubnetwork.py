@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-06 16:45:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 12:13:10
+@LastEditTime: 2023-10-17 09:38:40
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -29,7 +29,9 @@ class BaseSubnetwork(Model):
 
         super().__init__(Args, structure, *args, **kwargs)
 
+        # For type hinting
         self.args: BaseSilverballersArgs
+        self.structure: Structure
 
         # Parameters
         self.as_single_model = as_single_model
@@ -72,7 +74,7 @@ class BaseSubnetwork(Model):
         Dimension of the predicted trajectory.
         For example, `dim = 4` for 2D bounding boxes.
         """
-        return self.structure.annmanager.dim
+        return self.structure.ann_manager.dim
 
     @property
     def key_indices_future(self) -> torch.Tensor:
