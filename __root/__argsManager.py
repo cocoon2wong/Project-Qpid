@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 15:53:41
+@LastEditTime: 2023-10-17 16:02:46
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -154,11 +154,11 @@ class ArgsManager(BaseObject):
         """
         Get a list of names of all args used in this class.
         """
-        items = []
+        items = [cls.__dict__.items()]
         a = cls
         while a != ArgsManager:
-            items.append(a.__dict__.items())
             a = a.__bases__[0]
+            items.append(a.__dict__.items())
 
         return list(set([i for item in items for i, v in item
                          if ((isinstance(v, property)) and
