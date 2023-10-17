@@ -9,6 +9,10 @@ Argument-related classes and constants.
     for managing the training and testing process for training
     trajectory prediction models.
 
+- `EmptyArgs`:
+    The basic class to manage any args. It contains no training or
+    test args, and it should be subclassed when using.
+
 ## Constants
 
 - `DYNAMIC`:
@@ -42,5 +46,7 @@ Argument-related classes and constants.
     Parse arg alias from a list of args.
 """
 
+from ..__root.__argsManager import ArgsManager as EmptyArgs
+from ..__root.__argsManager import register_new_args
 from .__args import (ARG_ALIAS, DYNAMIC, STATIC, TEMPORARY, Args,
                      add_arg_alias, parse_arg_alias)

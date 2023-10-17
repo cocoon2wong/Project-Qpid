@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 13:10:27
+@LastEditTime: 2023-10-17 15:55:32
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -152,6 +152,11 @@ class Args(ArgsManager):
 
         self._args_need_initialize.remove('log_dir')
 
+        # Import visualization package
+        if ((self.draw_results != 'null') or
+                (self.draw_videos != 'null')):
+            from qpid.mods import vis
+
         if self._verbose_mode:
             self.log('Training args initialized.')
 
@@ -274,15 +279,6 @@ class Args(ArgsManager):
                          need_initialize=True)
 
     @property
-    def load(self) -> str:
-        """
-        Folder to load model (to test). If set to `null`, the
-        training manager will start training new models according
-        to other given args.
-        """
-        return self._arg('load', 'null', argtype=TEMPORARY, short_name='l')
-
-    @property
     def compute_loss(self) -> int:
         """
         Controls whether compute losses when testing.
@@ -310,14 +306,6 @@ class Args(ArgsManager):
         It will not restore any weights if `args.restore == 'null'`.
         """
         return self._arg('restore', 'null', argtype=TEMPORARY)
-
-    @property
-    def restore_args(self) -> str:
-        """
-        Path to restore the reference args before training.
-        It will not restore any args if `args.restore_args == 'null'`.
-        """
-        return self._arg('restore_args', 'null', argtype=TEMPORARY)
 
     @property
     def test_step(self) -> int:
@@ -357,17 +345,6 @@ class Args(ArgsManager):
         return self._arg('draw_results', 'null', argtype=TEMPORARY, short_name='dr')
 
     @property
-    def draw_exclude_type(self) -> str:
-        """
-        Draw visualized results of agents except for user-assigned types.
-        If the assigned types are `"Biker_Cart"` and the `draw_results`
-        or `draw_videos` is not `"null"`, it will draw results of all
-        types of agents except "Biker" and "Cart".
-        It supports partial match, and it is case-sensitive.
-        """
-        return self._arg('draw_exclude_type', 'null', argtype=TEMPORARY, short_name='det')
-
-    @property
     def draw_videos(self) -> str:
         """
         Controls whether draw visualized results on video frames and save as images.
@@ -379,25 +356,6 @@ class Args(ArgsManager):
         will be set to `draw_videos` if `draw_videos != 'null'`.
         """
         return self._arg('draw_videos', 'null', argtype=TEMPORARY)
-
-    @property
-    def draw_index(self) -> str:
-        """
-        Indexes of test agents to visualize.
-        Numbers are split with `_`.
-        For example, `'123_456_789'`.
-        """
-        return self._arg('draw_index', 'all', argtype=TEMPORARY)
-
-    @property
-    def draw_distribution(self) -> int:
-        """
-        Controls whether to draw distributions of predictions instead of points.
-        If `draw_distribution == 0`, it will draw results as normal coordinates;
-        If `draw_distribution == 1`, it will draw all results in the distribution
-        way, and points from different time steps will be drawn with different colors.
-        """
-        return self._arg('draw_distribution', 0, argtype=TEMPORARY, short_name='dd')
 
     @property
     def step(self) -> float:
@@ -495,14 +453,6 @@ class Args(ArgsManager):
         with annotation type `boundingbox`.
         """
         return self._arg('force_anntype', 'null', argtype=TEMPORARY)
-
-    @property
-    def draw_extra_outputs(self) -> int:
-        """
-        Choose whether to draw (put text) extra model outputs
-        on the visualized images.
-        """
-        return self._arg('draw_extra_outputs', 0, argtype=TEMPORARY)
 
     @property
     def macos(self) -> int:

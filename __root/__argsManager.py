@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:06:28
+@LastEditTime: 2023-10-17 15:53:41
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -19,6 +19,22 @@ from .__baseObject import BaseObject
 DYNAMIC = ARG_TYPES.DYNAMIC
 STATIC = ARG_TYPES.STATIC
 TEMPORARY = ARG_TYPES.TEMPORARY
+
+extra_args_names = []
+extra_args_packages = []
+
+
+def register_new_args(names: list[str], package_name: str):
+    """
+    Register new args (defined in new subclasses of `ArgsManager`) to
+    stop the spell check when loading args at the first time.
+    It will not register any new args to the class `ArgsManager`.
+    """
+    global extra_args_names, extra_args_packages
+
+    if not package_name in extra_args_packages:
+        extra_args_packages.append(package_name)
+        extra_args_names += names
 
 
 class ArgsManager(BaseObject):
@@ -38,6 +54,7 @@ class ArgsManager(BaseObject):
         """
         super().__init__(name='Args Manager')
 
+        self._terminal_args = terminal_args
         self._is_temporary = is_temporary
         self._init_done = False
         self._args_need_initialize: list[str] = []
@@ -98,6 +115,23 @@ class ArgsManager(BaseObject):
         return self._arg('verbose', 0, argtype=TEMPORARY, short_name='v')
 
     @property
+    def load(self) -> str:
+        """
+        Folder to load model (to test). If set to `null`, the
+        training manager will start training new models according
+        to other given args.
+        """
+        return self._arg('load', 'null', argtype=TEMPORARY, short_name='l')
+
+    @property
+    def restore_args(self) -> str:
+        """
+        Path to restore the reference args before training.
+        It will not restore any args if `args.restore_args == 'null'`.
+        """
+        return self._arg('restore_args', 'null', argtype=TEMPORARY)
+
+    @property
     def _verbose_mode(self) -> bool:
         if self.verbose and not self._is_temporary:
             return True
@@ -110,10 +144,25 @@ class ArgsManager(BaseObject):
 
     def _check_terminal_args(self):
         for key in self._args_runnning.keys():
-            if not key in self._arg_list:
+            if not key in self._get_args_names() + extra_args_names:
                 self.log(f'Arg key `{key}` is not in the arg dictionary.' +
                          ' Check your spelling.',
                          level='error', raiseError=KeyError)
+
+    @classmethod
+    def _get_args_names(cls) -> list[str]:
+        """
+        Get a list of names of all args used in this class.
+        """
+        items = []
+        a = cls
+        while a != ArgsManager:
+            items.append(a.__dict__.items())
+            a = a.__bases__[0]
+
+        return list(set([i for item in items for i, v in item
+                         if ((isinstance(v, property)) and
+                             (not i.startswith('_')))]))
 
     def _visit_args(self):
         """
@@ -183,7 +232,8 @@ class ArgsManager(BaseObject):
                 break
 
             except KeyError:
-                if self._is_temporary:
+                if ((self._is_temporary) or
+                        (name in extra_args_names)):
                     index += 2
                 else:
                     self.log(f'The abbreviation `-{name}` was not found,' +
