@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 17:06:04
+@LastEditTime: 2023-10-18 09:12:34
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -185,7 +185,7 @@ class Visualization(BaseManager):
         try:
             ref = agent.traj[np.newaxis, -1:, :]
             nei = agent.traj_neighbor[:agent.neighbor_number] + ref
-            nei = self.real2pixel(nei[:, -1, :], integer)
+            nei = self.real2pixel(nei[:, :, :], integer)
         except:
             nei = None
 
@@ -252,62 +252,55 @@ class Visualization(BaseManager):
         :param traj_wise_outputs: Extra trajectory-wise model outputs.
         :param agent_wise_outputs: Extra agent-wise model outputs.
         """
-        f = None
-        state = None
 
-        # draw on video frames
-        if self.video_capture:
+        video_writer = None
+        status: int = None
+        f_empty = None
+
+        # Try obtaining the RGB image
+        if self.video_capture is not None:
             f = self.get_image(frames[0])
-
-        if f is not None:
-            state = DRAW_ON_VIDEO
-            vis_func = self.vis
-            text_func = self.text
-            integer = True
-
-            if not save_as_images:
-                video_shape = (f.shape[1], f.shape[0])
-                VideoWriter = cv2.VideoWriter(save_name + '.mp4',
-                                              cv2.VideoWriter_fourcc(*'mp4v'),
-                                              self.info.paras[1],
-                                              video_shape)
-
-        elif (f is None) and (self.scene_image is not None):
-            state = DRAW_ON_IMAGE
-            vis_func = self.vis
-            text_func = self.text
-            integer = True
+            status = DRAW_ON_VIDEO
+        elif self.scene_image is not None:
             f = np.array(self.scene_image).copy()
-
+            status = DRAW_ON_IMAGE
         else:
-            state = DRAW_ON_EMPTY
-            integer = False
-            vis_func = self._visualization_plt
-            text_func = self._put_text_plt
-            plt.figure()
+            f = None
+            status = DRAW_ON_EMPTY
 
+        # Decide to draw on RGB images or plt canvas
         if f is not None:
+            vis_func = self.vis
+            text_func = self.text
+            integer = True
             f_empty = np.zeros((f.shape[0], f.shape[1], 4))
         else:
-            f_empty = None
+            vis_func = self._visualization_plt
+            text_func = self._put_text_plt
+            integer = False
+            plt.figure()
 
-        # interpolate frames
-        if interp:
-            frames = np.arange(frames[0], frames[-1]+1)
-
-        agent_frames = agent.frames
+        # Prepare trajectories
+        sampled_frames: list[int] = list(agent.frames)
         obs_len = agent.obs_length
         obs, pred, gt, nei = self.get_trajectories(agent, integer)
 
+        # Interpolate frames
+        if interp:
+            frames = np.arange(frames[0], frames[-1]+1)
+
+        # Vis on a single frame of image
         if save_as_images:
-            frame = frames[0]
+            start_frame = frames[0]
 
             # Draw trajectories
-            f = vis_func(f, obs, gt, pred, nei)
+            f = vis_func(f, obs, gt, pred,
+                         neighbor=nei[:, -1] if nei is not None else None)
 
             # Put text (top-left)
-            f = text_func(f, self.get_text(frame, agent))
+            f = text_func(f, self.get_text(start_frame, agent))
 
+            # Put trajectory-wise outputs
             if self.vis_args.draw_extra_outputs:
                 # Put text (trajectory-wise)
                 for index in range(len(pred)):
@@ -321,50 +314,60 @@ class Visualization(BaseManager):
 
                 # TODO: draw agent-wise outputs on images
 
-            if f is not None:
-                cv2.imwrite(save_name + f'_{frame}.jpg', f)
+            if status in [DRAW_ON_IMAGE, DRAW_ON_VIDEO]:
+                cv2.imwrite(save_name + f'_{start_frame}.jpg', f)
             else:
-                plt.savefig(save_name + f'_{frame}.jpg')
+                plt.savefig(save_name + f'_{start_frame}.jpg')
                 plt.close()
+
             return
 
+        video_shape = (f.shape[1], f.shape[0])
+        video_writer = cv2.VideoWriter(save_name + '.mp4',
+                                       cv2.VideoWriter_fourcc(*'mp4v'),
+                                       self.info.paras[1],
+                                       video_shape)
+
+        # Continue vis as a short video clip
         f_pred = vis_func(f_empty, pred=pred)
         f_others = np.zeros_like(f_pred)
 
         for frame in SecondaryBar(frames,
-                                  manager=self.manager,
+                                  manager=self,
                                   desc='Processing frames...'):
-            # get a new scene image
-            if state == DRAW_ON_VIDEO:
+            # Get a new scene image
+            if status == DRAW_ON_VIDEO:
                 f = self.get_image(frame)
-            elif state == DRAW_ON_IMAGE:
+            elif status == DRAW_ON_IMAGE:
                 f = self.scene_image.copy()
-            elif state == DRAW_ON_EMPTY:
+            elif status == DRAW_ON_EMPTY:
                 f = None
             else:
-                raise ValueError(state)
+                raise ValueError(status)
 
-            if frame in agent_frames:
-                step = agent_frames.index(frame)
+            if frame in sampled_frames:
+                step = sampled_frames.index(frame)
                 if step < obs_len:
                     start, end = [max(0, step-1), step+1]
-                    f_others = vis_func(f_others, obs=obs[start:end])
+                    f_others = vis_func(
+                        f_others, obs=obs[start:end],
+                        neighbor=nei[:, start:end] if nei is not None else None)
                 else:
                     step -= obs_len
                     start, end = [max(0, step-1), step+1]
                     f_others = vis_func(f_others, gt=gt[start:end])
 
-            # draw predictions
-            if frame > agent_frames[obs_len-1]:
+            # Draw predictions
+            if frame > sampled_frames[obs_len-1]:
                 f = vis_func(f, background=f_pred)
 
-            # draw observations and groundtruths
+            # Draw observations and groundtruths
             f = vis_func(f, background=f_others)
 
             if IF_PUT_TEXT_IN_VIDEOS:
                 f = text_func(f, self.get_text(frame, agent))
 
-            VideoWriter.write(f)
+            video_writer.write(f)
 
     def vis(self, source: np.ndarray,
             obs=None, gt=None, pred=None,
