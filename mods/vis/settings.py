@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 11:20:36
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 21:16:21
+@LastEditTime: 2023-10-23 16:17:31
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -29,6 +29,6 @@ DISTRIBUTION_COLORBAR = np.column_stack([
 ])
 
 # Whether draw lines and text in images and videos
-IF_DRAW_LINES = False
+IF_DRAW_LINES = True
 IF_PUT_TEXT_IN_VIDEOS = True
 IF_PUT_TEXT_IN_IMAGES = True

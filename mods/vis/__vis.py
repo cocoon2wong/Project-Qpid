@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-18 09:12:34
+@LastEditTime: 2023-10-23 16:28:11
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -396,7 +396,7 @@ class Visualization(BaseManager):
                 for pred_k in pred:
                     f = self.helper.draw_traj(
                         f, pred_k, self.pred_file,
-                        draw_lines=False,
+                        draw_lines=self.vis_args.draw_lines,
                         color=255 * np.random.rand(3))
 
         if neighbor is not None:

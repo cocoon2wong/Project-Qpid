@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 15:57:20
+@LastEditTime: 2023-10-23 16:54:50
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -54,3 +54,10 @@ class VisArgs(EmptyArgs):
         on the visualized images.
         """
         return self._arg('draw_extra_outputs', 0, argtype=TEMPORARY)
+
+    @property
+    def draw_lines(self) -> int:
+        """
+        Choose whether to draw lines between each two 2D trajectory points.
+        """
+        return self._arg('draw_lines', 0, argtype=TEMPORARY)
