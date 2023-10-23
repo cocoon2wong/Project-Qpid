@@ -2,13 +2,15 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 21:03:53
+@LastEditTime: 2023-10-23 19:44:09
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 import re
+
+from . import args
 from .args import Args
 from .silverballers import AgentArgs, HandlerArgs, SilverballersArgs
 
@@ -99,7 +101,14 @@ def update_readme(new_lines: list[str], md_file: str):
 
 
 def print_help_info(value: str = None):
-    files = [T(is_temporary=True) for T in ARGS_DIC.keys()]
+    files = []
+    for T in ARGS_DIC.keys():
+        ignore_flag = T._ignore_value_check
+        T._ignore_value_check = True
+        _arg = T(is_temporary=True)
+        files.append(_arg)
+        T._ignore_value_check = ignore_flag
+
     titles = [v[0] for v in ARGS_DIC.values()]
     father_indices = [v[1] for v in ARGS_DIC.values()]
 
@@ -114,6 +123,16 @@ def print_help_info(value: str = None):
     return doc_lines
 
 
-def update_args_dic(new_dic: dict):
-    ARGS_DIC.update(new_dic)
-    
+def register_new_args(arg_type: type[Args],
+                      friendly_name: str,
+                      package_name: str,
+                      farther_index: int = None):
+    """
+    Register new args defined by additional mods to the training structure.
+
+    :param arg_type: Type of the new arg object.
+    :param friendly_name: Friendly name of the class of args that showed to users.
+    :param package_name: Name of the package where the new args are included.
+    """
+    args.register_new_args(arg_type._get_args_names(), package_name)
+    ARGS_DIC.update({arg_type: [friendly_name, farther_index]})

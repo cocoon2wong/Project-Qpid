@@ -6,7 +6,7 @@ A training "engine" for trajectory prediction models (based on PyTorch).
 
 from . import (applications, args, base, help, model, silverballers, training,
                utils)
-from .help import print_help_info, update_args_dic
+from .help import print_help_info, register_new_args
 
 __SYSTEM_MANAGER = base.BaseManager(name='SYSTEM')
 

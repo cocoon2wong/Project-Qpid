@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 17:44:52
+@LastEditTime: 2023-10-23 18:03:03
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -48,6 +48,8 @@ class ArgsManager(BaseObject):
 
     _mod_arg_types: dict[str, type[Self]] = {}
     _mod_args: dict[str, Self] = {}
+
+    _ignore_value_check = False
 
     def __init__(self, terminal_args: list[str] = None,
                  is_temporary=False) -> None:
@@ -111,6 +113,12 @@ class ArgsManager(BaseObject):
         # Run initialize methods
         self._init_all_args()
         self._visit_args()
+
+    def log(self, s: str, level: str = 'info', raiseError: type[BaseException] = None):
+        if self._ignore_value_check and raiseError:
+            self.log(f'`{raiseError}` ignored.')
+            raiseError = None
+        return super().log(s, level, raiseError)
 
     @property
     def verbose(self) -> int:
