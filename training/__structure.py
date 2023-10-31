@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 11:10:28
+@LastEditTime: 2023-10-31 10:14:55
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -123,9 +123,10 @@ class Structure(BaseManager):
               (self.args.obs_frames == 5) and
               (self.args.pred_frames == 10)):
             self.metrics.set([
-                [loss.ADE, [0.0, {}]],
-                [loss.FDE, [0.0, {'index': 4, 'name': f'FDE@2.0s'}]],
-                [loss.FDE, [1.0, {'index': 9, 'name': f'FDE@4.0s'}]],
+                [loss.ADE, [0.0, {'points': 5, 'name': 'ADE@2.0s'}]],
+                [loss.FDE, [0.0, {'index': 4, 'name': 'FDE@2.0s'}]],
+                [loss.ADE, [0.0, {'points': 10, 'name': 'ADE@4.0s'}]],
+                [loss.FDE, [1.0, {'index': 9, 'name': 'FDE@4.0s'}]],
             ])
 
         else:

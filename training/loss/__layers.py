@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-13 10:14:04
+@LastEditTime: 2023-10-31 10:17:36
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -63,12 +63,17 @@ class ADE(BaseLossLayer):
     HAS_UNIT = True
 
     def forward(self, outputs: list, labels: list,
-                inputs: list, mask=None,
-                training=None, *args, **kwargs):
+                inputs: list, points: int = -1,
+                mask=None, training=None, *args, **kwargs):
 
         pred = outputs[0]
         label = labels[0]
         obs = inputs[0]
+
+        if points > 0:
+            pred = pred[..., :points, :]
+            label = label[..., :points, :]
+            obs = label[..., :points, :]
 
         # Expand to (..., K, pred, dim)
         if pred.ndim == obs.ndim:
@@ -90,12 +95,14 @@ class FDE(ADE):
     HAS_UNIT = True
 
     def forward(self, outputs: list, labels: list, inputs: list,
-                mask=None, training=None, index: int = -1,
-                *args, **kwargs):
+                index: int = -1,
+                mask=None, training=None, *args, **kwargs):
 
         return super().forward([outputs[0][..., index, None, :]],
                                [labels[0][..., index, None, :]],
-                               inputs, mask, training, *args, **kwargs)
+                               inputs,
+                               mask=mask, training=training,
+                               *args, **kwargs)
 
 
 class avgCenter(BaseLossLayer):
@@ -122,4 +129,6 @@ class finalCenter(avgCenter):
 
         return super().forward([outputs[0][..., -1, None, :]],
                                [labels[0][..., -1, None, :]],
-                               inputs, mask, training, *args, **kwargs)
+                               inputs,
+                               mask=mask, training=training,
+                               *args, **kwargs)
