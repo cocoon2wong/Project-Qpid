@@ -10,7 +10,7 @@
 
 import json
 import os
-from typing import Any, Self, TypeVar
+from typing import Any, TypeVar
 
 from ..constant import ARG_TYPES
 from ..utils import dir_check
@@ -46,8 +46,8 @@ class ArgsManager(BaseObject):
     The basic class to manage all args when training or testing models.
     """
 
-    _mod_arg_types: dict[str, type[Self]] = {}
-    _mod_args: dict[str, Self] = {}
+    _mod_arg_types: dict[str, type[BaseObject]] = {}
+    _mod_args: dict[str, BaseObject] = {}
 
     _ignore_value_check = False
 
