@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-06 16:45:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:31:03
+@LastEditTime: 2023-11-02 19:35:55
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -50,8 +50,8 @@ class BaseSubnetwork(Model):
         indices = [int(i) for i in self.args.key_points.split('_')]
         self.__ki = torch.tensor(indices, dtype=torch.int32)
 
-        self.n_key_past = torch.sum((self.__ki < 0).to(torch.int32))
-        self.n_key_future = torch.sum((self.__ki >= 0).to(torch.int32))
+        self.n_key_past = int(torch.sum((self.__ki < 0).to(torch.int32)))
+        self.n_key_future = int(torch.sum((self.__ki >= 0).to(torch.int32)))
         self.n_key = self.n_key_past + self.n_key_future
 
     @property
