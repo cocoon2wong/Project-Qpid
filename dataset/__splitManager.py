@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-19 11:19:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-07-05 10:24:30
+@LastEditTime: 2023-11-02 14:37:22
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -16,58 +16,43 @@ from ..utils import DATASET_CONFIG_DIR, ROOT_TEMP_DIR, load_from_plist
 
 class Clip(BaseManager):
     """
-    VideoClip
-    ---------
+    Clip
+    ---
     Base structure for controlling each video dataset.
+    It is managed by the `SplitManager` object.
 
     Properties
     -----------------
     ```python
     >>> self.dataset        # name of the dataset
-    >>> self.name           # video clip name
+    >>> self.clip_name      # video clip name
     >>> self.annpath        # dataset annotation file
     >>> self.order          # X-Y order in the annotation file
     >>> self.paras          # [sample_step, frame_rate]
     >>> self.video_path     # video path   
     >>> self.matrix         # transfer matrix from real scales to pixels
-    ```
-
-    Public Methods
-    ---
-    ```python
-    # Load video clip information from the saved `plist` file
-    (method) get: (self: Self@VideoClip) -> VideoClip
-
-    # Update dataset information (including dataset splits)
-    (method) update_datasetInfo: (self: Self@VideoClip, dataset: str | Dataset,
-                                  split: str = None) -> None
+    >>> self.other_files    # paths of all other dataset files
     ```
     """
 
     # Saving paths
-    CONFIG_FILE = os.path.join(DATASET_CONFIG_DIR, '{}', 
+    CONFIG_FILE = os.path.join(DATASET_CONFIG_DIR, '{}',
                                'subsets', '{}.plist')
 
-    def __init__(self, manager: BaseManager, 
-                 clip_name: str):
-        """
-        Init the `Clip` object.
-        
-        :param dataset: Name of the dataset that the clip belongs to.
-        :param name: The name of the video clip.
-        """
+    def __init__(self, manager: BaseManager, clip_name: str):
 
         super().__init__(manager=manager,
                          name=f'Video Clip Manager ({clip_name})')
 
         # init paths and folders
-        dataset = self.manager.dataset_name
+        dataset = self.get_manager(SplitManager).dataset_name
         self.CONFIG_FILE = self.CONFIG_FILE.format(dataset, clip_name)
 
         try:
-            dic = load_from_plist(p := self.CONFIG_FILE)
+            dic = load_from_plist(self.CONFIG_FILE)
         except:
-            raise FileNotFoundError(f'Clip config file `{p}` NOT FOUND.')
+            self.log(f'Clip `{self.CONFIG_FILE}` NOT FOUND.', level='error')
+            raise FileNotFoundError
 
         self.__clip_name = clip_name
         self.__annpath = dic['annpath']
@@ -84,7 +69,8 @@ class Clip(BaseManager):
 
         # init temp path
         self.root_dir = os.path.dirname(self.annpath)
-        self.temp_dir = os.path.join(ROOT_TEMP_DIR, self.dataset, self.clip_name)
+        self.temp_dir = os.path.join(
+            ROOT_TEMP_DIR, self.dataset, self.clip_name)
 
     @property
     def dataset(self) -> str:
@@ -106,7 +92,7 @@ class Clip(BaseManager):
         Path of the annotation file. 
         """
         return self.__annpath
-    
+
     @property
     def other_files(self) -> dict[str, str]:
         """
@@ -149,43 +135,50 @@ class Clip(BaseManager):
 class SplitManager(BaseManager):
     """
     SplitManager
-    -------
-    Manage a full trajectory prediction dataset.
-    A dataset may contain several video clips.
-    One `Dataset` object only controls one dataset split.
+    ---
+    Manage a split of a full trajectory prediction dataset.
+    A dataset split may contain several video clips.
+    The `SplitManager` is managed by the `AgentManager` object.
 
     Properties
     ---
     ```python
+    # Training clips
+    (property) train_clips: (self: Self@SplitManager) -> list[Clip]
+
+    # Test clips
+    (property) test_clips: (self: Self@SplitManager) -> list[Clip]
+
+    # Val clips
+    (property) val_clips: (self: Self@SplitManager) -> list[Clip]
+
     # Name of the video dataset
-    (property) name: (self: Self@Dataset) -> str
+    (property) dataset_name: (self: Self@SplitManager) -> str
 
     # Annotation type of the dataset
-    (property) type: (self: Self@Dataset) -> str
+    (property) type: (self: Self@SplitManager) -> str
 
     # Global data scaling scale
-    (property) scale: (self: Self@Dataset) -> float
+    (property) scale: (self: Self@SplitManager) -> float
 
     # Video scaling when saving visualized results
-    (property) scale_vis: (self: Self@Dataset) -> float
+    (property) scale_vis: (self: Self@SplitManager) -> float
 
     # Maximum dimension of trajectories recorded in this dataset
-    (property) dimension: (self: Self@Dataset) -> int
+    (property) dimension: (self: Self@SplitManager) -> int
 
     # Type of annotations
-    (property) anntype: (self: Self@Dataset) -> str
+    (property) anntype: (self: Self@SplitManager) -> str
     ```
     """
 
     # Saving paths
     CONFIG_FILE = os.path.join(DATASET_CONFIG_DIR, '{}', '{}.plist')
 
-    def __init__(self, manager: BaseManager, 
+    def __init__(self, manager: BaseManager,
                  dataset: str, split: str,
                  name='Split Manager'):
         """
-        Init the `Dataset` object.
-
         :param manager: Manager object of this `SplitManager` object.
         :param dataset: The name of the image dataset.
         :param split: The split name of the dataset.
@@ -197,9 +190,10 @@ class SplitManager(BaseManager):
         self.CONFIG_FILE = self.CONFIG_FILE.format(dataset, split)
 
         try:
-            dic = load_from_plist(p := self.CONFIG_FILE)
+            dic = load_from_plist(self.CONFIG_FILE)
         except:
-            raise FileNotFoundError(f'Dataset config file `{p}` NOT FOUND.')
+            self.log(f'Dataset `{self.CONFIG_FILE}` NOT FOUND.', level='error')
+            raise FileNotFoundError
 
         self.__ds_name = dic['dataset']
         self.__type = dic['type']
@@ -222,15 +216,15 @@ class SplitManager(BaseManager):
     @property
     def train_clips(self) -> list[Clip]:
         return [self.clips_dict[s] for s in self.train_sets]
-    
+
     @property
     def test_clips(self) -> list[Clip]:
         return [self.clips_dict[s] for s in self.test_sets]
-    
+
     @property
     def val_clips(self) -> list[Clip]:
         return [self.clips_dict[s] for s in self.val_sets]
-        
+
     @property
     def dataset_name(self) -> str:
         """
@@ -283,4 +277,3 @@ class SplitManager(BaseManager):
                   'Split name': self.split}
 
         return super().print_info(**t_info, **kwargs)
-    

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 11:27:06
+@LastEditTime: 2023-11-02 18:42:21
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -38,7 +38,7 @@ class BaseVisHelper():
                   png: np.ndarray,
                   color=(255, 255, 255),
                   width=3,
-                  draw_lines=True):
+                  draw_lines: bool | int = True):
         """
         Draw one trajectory on the source image.
 
@@ -152,7 +152,7 @@ class BoundingboxHelper(BaseVisHelper):
                     png: np.ndarray,
                     color=(255, 255, 255),
                     width=3,
-                    draw_center=True):
+                    draw_center: bool | int = True):
 
         (y1, x1, y2, x2) = inputs[:4]
         color = tuple([int(c) for c in color])
@@ -201,7 +201,7 @@ def get_helper(anntype: str) -> BaseVisHelper:
 
 def ADD(source: np.ndarray,
         png: np.ndarray,
-        position: np.ndarray = None,
+        position: np.ndarray | list | tuple | None = None,
         alpha=1.0,
         type=None):
     """
@@ -212,8 +212,11 @@ def ADD(source: np.ndarray,
     :param position: The pixel-level position in the source image, shape = `(2)`.
     :param alpha: Transparency.
     """
-    if type == 'auto':
-        position = [source.shape[1]//2, source.shape[0]//2]
+    if position is None:
+        if type == 'auto':
+            position = [source.shape[1]//2, source.shape[0]//2]
+        else:
+            raise ValueError
 
     yc, xc = position
     xp, yp, _ = png.shape

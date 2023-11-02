@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 15:28:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 17:27:19
+@LastEditTime: 2023-11-02 18:53:19
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -31,10 +31,10 @@ class ProcessModel(torch.nn.Module):
         super().__init__(*args, **kwargs)
 
         self.args = Args
-        self.valid_layer_count: int = None
-        self.layer_indices: list[int] = None
+        self.valid_layer_count: int = -1
+        self.layer_indices: list[int] = []
+        self.preprocess_input_types: list[str] = []
 
-        self.preprocess_input_types: list[str] = None
         self.postprocess_input_types = [OUTPUT_TYPES.PREDICTED_TRAJ]
         self.process_paras = {PROCESS_TYPES.MOVE: Args.pmove}
 
@@ -51,7 +51,7 @@ class ProcessModel(torch.nn.Module):
     def get_layer_names(self) -> list[str]:
         res = []
         for i in range(self.valid_layer_count):
-            p: BaseProcessLayer = self.get_submodule(f'process_layer_{i}')
+            p = self.get_submodule(f'process_layer_{i}')
             res.append(p.name)
         return res
 
@@ -93,7 +93,7 @@ class ProcessModel(torch.nn.Module):
                   PROCESS_TYPES.ROTATE,
                   PROCESS_TYPES.SCALE]:
 
-            p_args = [self.args.anntype]
+            p_args: list = [self.args.anntype]
             p_kwargs = {}
 
             if p in args:
@@ -124,7 +124,7 @@ class ProcessModel(torch.nn.Module):
     def set_postprocess_input_types(self, types: list[str]):
         self.postprocess_input_types = types
 
-    def forward(self, inputs: list[torch.Tensor],
+    def forward(self, inputs: list[torch.Tensor] | torch.Tensor,
                 preprocess: bool,
                 update_paras=True,
                 training=None,
@@ -143,13 +143,13 @@ class ProcessModel(torch.nn.Module):
         if self.args.only_process_trajectory:
             input_types = input_types[:1]
 
-        if type(inputs) not in [list, tuple]:
+        if isinstance(inputs, torch.Tensor):
             inputs = [inputs]
-        if type(inputs) is tuple:
+        elif isinstance(inputs, tuple):
             inputs = list(inputs)
 
         for i in layer_indices:
-            p: BaseProcessLayer = self.get_submodule(f'process_layer_{i}')
+            p = self.get_submodule(f'process_layer_{i}')
             # Prepare tensors to be processed
             p_dict = {}
             for _type in getattr(p, type_var_name):

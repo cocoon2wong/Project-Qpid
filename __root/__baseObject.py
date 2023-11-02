@@ -2,14 +2,14 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 10:05:11
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:15:59
+@LastEditTime: 2023-11-02 18:59:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import logging
-from typing import TypeVar, Union
+from typing import Any, TypeVar
 
 import torch
 from tqdm import tqdm
@@ -47,7 +47,7 @@ class BaseObject():
     ```
     """
 
-    def __init__(self, name: str = None):
+    def __init__(self, name: str | None = None):
         super().__init__()
 
         try:
@@ -85,9 +85,10 @@ class BaseObject():
             logger.addHandler(thandler)
 
         self.logger = logger
-        self.bar: tqdm = None
+        self.bar: tqdm | None = None
 
-    def log(self, s: str, level: str = 'info', raiseError: type[BaseException] = None):
+    def log(self, s: str, level: str = 'info',
+            raiseError: type[BaseException] | None = None):
         """
         Log information to files and console.
 
@@ -123,22 +124,26 @@ class BaseObject():
         self.bar = tqdm(inputs, desc=text, bar_format=bf)
         return self.bar
 
-    def update_timebar(self, item: Union[str, dict], pos='end'):
+    def update_timebar(self, item: str | torch.Tensor | dict[str, Any],
+                       pos='end'):
         """
         Update the tqdm time bar.
 
         :param item: The string or dictionary to show on the time bar.
         :param pos: Position to show, can be `'end'` or `'start'`.
         """
-        if issubclass(type(item), dict):
+        if not self.bar:
+            raise ValueError
+
+        if isinstance(item, dict):
             for key, value in item.items():
-                if issubclass(type(value), torch.Tensor):
+                if isinstance(value, torch.Tensor):
                     if value.requires_grad:
                         value = value.detach()
 
                     item[key] = value.cpu().numpy()
 
-        elif issubclass(type(item), torch.Tensor):
+        elif isinstance(item, torch.Tensor):
             item = item.cpu().numpy()
 
         if pos == 'end':
@@ -149,7 +154,7 @@ class BaseObject():
             else:
                 raise ValueError(item)
 
-        elif pos == 'start':
+        elif ((pos == 'start') and (isinstance(item, str))):
             self.bar.set_description(item)
         else:
             raise NotImplementedError(pos)

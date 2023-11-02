@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 18:12:11
+@LastEditTime: 2023-11-02 17:21:15
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -12,9 +12,12 @@ import logging
 import os
 import plistlib
 import time
+from typing import TypeVar, overload
 
 import numpy as np
 import torch
+
+T = TypeVar('T')
 
 """
 Configs
@@ -25,6 +28,9 @@ TIME = time.strftime('%Y%m%d-%H%M%S', time.localtime(time.time()))
 # Paths settings
 ROOT_TEMP_DIR = './temp_files'
 DATASET_CONFIG_DIR = './dataset_configs'
+
+# Args
+ARGS_FILE_NAME = 'args.json'
 
 # Dataset configs
 INIT_POSITION = 100000000
@@ -58,11 +64,20 @@ def get_relative_path(reference_file_path: str, relative_path: str):
     return os.path.join(os.path.dirname(reference_file_path), relative_path)
 
 
-def move_to_device(item, d: torch.device):
-    T = type(item)
-    if T in [list, tuple]:
+@overload
+def move_to_device(item: torch.Tensor, d: torch.device) -> \
+    torch.Tensor: ...
+
+
+@overload
+def move_to_device(item: list[torch.Tensor],
+                   d: torch.device) -> list[torch.Tensor]: ...
+
+
+def move_to_device(item, d):
+    if isinstance(item, list):
         return [move_to_device(i, d) for i in item]
-    elif issubclass(T, torch.Tensor):
+    elif isinstance(item, torch.Tensor):
         return item.to(d)
     else:
         return item
@@ -85,6 +100,17 @@ def get_mask(input: torch.Tensor, dtype=torch.float32):
     return (input < 0.05 * INIT_POSITION).to(dtype=dtype)
 
 
+@overload
+def get_loss_mask(obs: torch.Tensor | np.ndarray,
+                  label: torch.Tensor | np.ndarray,) -> torch.Tensor: ...
+
+
+@overload
+def get_loss_mask(obs: torch.Tensor | np.ndarray,
+                  label: torch.Tensor | np.ndarray,
+                  return_numpy: bool) -> np.ndarray: ...
+
+
 def get_loss_mask(obs: torch.Tensor | np.ndarray,
                   label: torch.Tensor | np.ndarray,
                   return_numpy=False):
@@ -95,8 +121,10 @@ def get_loss_mask(obs: torch.Tensor | np.ndarray,
     :param obs: Observed trajectories, shape = `(..., steps, dim)`
     :param label: Label trajectories, shape = `(..., steps, dim)`
     """
-    if issubclass(type(obs), np.ndarray):
+    if isinstance(obs, np.ndarray):
         obs = torch.from_numpy(obs)
+
+    if isinstance(label, np.ndarray):
         label = torch.from_numpy(label)
 
     pred_mask = get_mask(torch.sum(obs, dim=[-1, -2]))

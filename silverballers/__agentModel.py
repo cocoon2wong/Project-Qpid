@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:49:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:51:48
+@LastEditTime: 2023-11-02 18:17:16
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -12,7 +12,7 @@ from typing import Union
 
 from ..args import DYNAMIC, STATIC, TEMPORARY
 from ..constant import INPUT_TYPES
-from ..training import Structure, loss
+from ..training import loss
 from .__baseArgs import BaseSilverballersArgs
 from .__baseSubnetwork import BaseSubnetwork, BaseSubnetworkStructure
 from .__loss import avgKey, keyl2
@@ -20,17 +20,10 @@ from .__loss import avgKey, keyl2
 
 class AgentArgs(BaseSilverballersArgs):
 
-    def __init__(self, terminal_args: list[str] = None,
+    def __init__(self, terminal_args: list[str] | None = None,
                  is_temporary=False) -> None:
 
         super().__init__(terminal_args, is_temporary)
-
-    @property
-    def depth(self) -> int:
-        """
-        Depth of the random noise vector.
-        """
-        return self._arg('depth', 16, argtype=STATIC)
 
     @property
     def deterministic(self) -> int:
@@ -52,7 +45,7 @@ class BaseAgentModel(BaseSubnetwork):
 
     def __init__(self, Args: AgentArgs,
                  as_single_model: bool = True,
-                 structure: Structure = None,
+                 structure=None,
                  *args, **kwargs):
 
         super().__init__(Args, as_single_model, structure, *args, **kwargs)
@@ -67,11 +60,11 @@ class BaseAgentModel(BaseSubnetwork):
 
 class BaseAgentStructure(BaseSubnetworkStructure):
 
-    ARG_TYPE = AgentArgs
-    MODEL_TYPE: type[BaseAgentModel] = None
+    ARG_TYPE: type[AgentArgs] = AgentArgs
+    MODEL_TYPE: type[BaseAgentModel] | None = None
 
     def __init__(self, terminal_args: Union[list[str], AgentArgs],
-                 manager: Structure = None):
+                 manager=None):
 
         super().__init__(terminal_args, manager)
 

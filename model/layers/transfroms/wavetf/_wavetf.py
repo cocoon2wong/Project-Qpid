@@ -30,6 +30,7 @@ class WaveTFFactory(object):
         :rtype: torch.nn.Module
 
         """
+        l = None
         if (dim != 1 and dim != 2):
             raise ValueError(
                 'Only 1- and 2-dimensional wavelet supported yet.')
@@ -39,27 +40,32 @@ class WaveTFFactory(object):
         elif (inverse == False):
             if (kernel_type == 'haar'):
                 if (dim == 1):
-                    return HaarWaveLayer1D()
+                    l = HaarWaveLayer1D()
                 else:
-                    raise NotImplementedError
-                    # return HaarWaveLayer2D()
+                    pass
+                    # l = HaarWaveLayer2D()
             elif (kernel_type == 'db2'):
                 if (dim == 1):
-                    return DaubWaveLayer1D()
+                    l = DaubWaveLayer1D()
                 else:
-                    raise NotImplementedError
-                    # return DaubWaveLayer2D()
+                    pass
+                    # l = DaubWaveLayer2D()
         # inverse wavelet
         else:
             if (kernel_type == 'haar'):
                 if (dim == 1):
-                    return InvHaarWaveLayer1D()
+                    l = InvHaarWaveLayer1D()
                 else:
-                    raise NotImplementedError
-                    # return InvHaarWaveLayer2D()
+                    pass
+                    # l = InvHaarWaveLayer2D()
             elif (kernel_type == 'db2'):
                 if (dim == 1):
-                    return InvDaubWaveLayer1D()
+                    l = InvDaubWaveLayer1D()
                 else:
-                    raise NotImplementedError
-                    # return InvDaubWaveLayer2D()
+                    pass
+                    # l = InvDaubWaveLayer2D()
+
+        if l is None:
+            raise NotImplementedError
+
+        return l

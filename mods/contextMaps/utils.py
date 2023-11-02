@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-10 09:38:32
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 18:03:42
+@LastEditTime: 2023-11-02 18:48:23
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -26,7 +26,7 @@ POOLING_LAYER = torch.nn.MaxPool2d([5, 5])
 
 def add(target_map: np.ndarray,
         grid_trajs: np.ndarray,
-        amplitude: np.ndarray,
+        amplitude: np.ndarray | list,
         radius: int,
         add_mask: np.ndarray = MASK,
         max_limit=False):

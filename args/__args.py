@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 17:46:27
+@LastEditTime: 2023-11-01 17:05:12
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -33,7 +33,7 @@ def add_arg_alias(alias: str, command: list[str]):
     ARG_ALIAS[alias] = command
 
 
-def parse_arg_alias(terminal_args: list[str]):
+def parse_arg_alias(terminal_args: list[str] | None):
     """
     Parse arg alias from the terminal inputs.
     """
@@ -56,7 +56,7 @@ class Args(ArgsManager):
     A set of args used for training or evaluating prediction models.
     """
 
-    def __init__(self, terminal_args: list[str] = None,
+    def __init__(self, terminal_args: list[str] | None = None,
                  is_temporary=False) -> None:
 
         super().__init__(parse_arg_alias(terminal_args), is_temporary)

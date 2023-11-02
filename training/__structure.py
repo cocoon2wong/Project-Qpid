@@ -2,26 +2,26 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-31 10:14:55
+@LastEditTime: 2023-11-02 17:18:38
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import os
-from typing import overload
+from typing import Any, overload
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 
 from ..args import Args
 from ..base import BaseManager
 from ..constant import ANN_TYPES, INPUT_TYPES, STRUCTURE_STATUS
 from ..dataset import AgentManager, Annotation, AnnotationManager, SplitManager
 from ..model import Model
-from ..utils import WEIGHTS_FORMAT, dir_check, get_loss_mask, move_to_device
+from ..utils import WEIGHTS_FORMAT, get_loss_mask, move_to_device
 from . import loss
 from .loss import LossManager
 
@@ -51,28 +51,29 @@ class Structure(BaseManager):
     """
 
     is_trainable = True
+    ARG_TYPE = Args
 
-    def __init__(self, args: list[str] | Args = None,
-                 manager: BaseManager = None,
+    def __init__(self, args: list[str] | Args | None = None,
+                 manager: BaseManager | None = None,
                  name='Train Manager'):
 
-        if issubclass(type(args), Args):
+        if isinstance(args, Args):
             init_args = args
         else:
             init_args = Args(args)
 
         super().__init__(init_args, manager, name)
 
-        # check args (such as wrong spellings)
+        # Check args (such as wrong spellings)
         if not self.manager:
-            self.args._check_terminal_args()
+            self.args.check_args_spells()
 
-        # init device
+        # Init device
         self.set_gpu()
-        self._device: torch.device = None
-        self._device_local: torch.device = None
+        self._device: torch.device | None = None
+        self._device_local: torch.device | None = None
 
-        # init managers
+        # Init managers
         self.agent_manager = AgentManager(self)
         self.split_manager = self.agent_manager.split_manager
         self.ann_manager = AnnotationManager(self, self.split_manager.anntype)
@@ -80,9 +81,9 @@ class Structure(BaseManager):
         self.metrics = LossManager(self, name='Metrics',
                                    trajectory_scale=self.split_manager.scale)
 
-        # init model options
-        self.model: Model = None
-        self.optimizer: torch.optim.Optimizer = None
+        # Init models and the optimizer (placeholders)
+        self.model: Model
+        self.optimizer: torch.optim.Optimizer
 
         # Set labels, loss functions, and metrics
         self.label_types: list[str] = []
@@ -105,16 +106,16 @@ class Structure(BaseManager):
 
             if self.args.pred_frames == 10:
                 self.metrics.set([
-                    [loss.FDE, [0.0, {'index': 1, 'name': f'FDE@{2*i}ms'}]],
-                    [loss.FDE, [0.0, {'index': 3, 'name': f'FDE@{4*i}ms'}]],
-                    [loss.FDE, [0.0, {'index': 7, 'name': f'FDE@{8*i}ms'}]],
-                    [loss.FDE, [1.0, {'index': 9, 'name': f'FDE@{10*i}ms'}]],
+                    (loss.FDE, (0.0, dict(index=1, name=f'FDE@{2*i}ms'))),
+                    (loss.FDE, (0.0, dict(index=3, name=f'FDE@{4*i}ms'))),
+                    (loss.FDE, (0.0, dict(index=7, name=f'FDE@{8*i}ms'))),
+                    (loss.FDE, (1.0, dict(index=9, name=f'FDE@{10*i}ms'))),
                 ])
 
             elif self.args.pred_frames == 25:
                 self.metrics.set([
-                    [loss.FDE, [0.0, {'index': 13, 'name': f'FDE@{14*i}ms'}]],
-                    [loss.FDE, [1.0, {'index': 24, 'name': f'FDE@{25*i}ms'}]],
+                    (loss.FDE, (0.0, dict(index=13, name=f'FDE@{14*i}ms'))),
+                    (loss.FDE, (1.0, dict(index=24, name=f'FDE@{25*i}ms'))),
                 ])
 
         # Configs for `NBA` dataset
@@ -123,10 +124,10 @@ class Structure(BaseManager):
               (self.args.obs_frames == 5) and
               (self.args.pred_frames == 10)):
             self.metrics.set([
-                [loss.ADE, [0.0, {'points': 5, 'name': 'ADE@2.0s'}]],
-                [loss.FDE, [0.0, {'index': 4, 'name': 'FDE@2.0s'}]],
-                [loss.ADE, [0.0, {'points': 10, 'name': 'ADE@4.0s'}]],
-                [loss.FDE, [1.0, {'index': 9, 'name': 'FDE@4.0s'}]],
+                (loss.ADE, (0.0, dict(points=5, name='ADE@2.0s'))),
+                (loss.FDE, (0.0, dict(index=4, name='FDE@2.0s'))),
+                (loss.ADE, (0.0, dict(points=10, name='ADE@4.0s'))),
+                (loss.FDE, (1.0, dict(index=9, name='FDE@4.0s'))),
             ])
 
         else:
@@ -209,13 +210,10 @@ class Structure(BaseManager):
         """
         self.label_types = [item for item in args]
 
-    def set_optimizer(self) -> torch.optim.Optimizer:
-        if not self.is_prepared_for_training:
-            return None
-
-        self.optimizer = torch.optim.Adam(self.model.parameters(),
-                                          lr=self.args.lr)
-        return self.optimizer
+    def set_optimizer(self):
+        if self.is_prepared_for_training:
+            self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                              lr=self.args.lr)
 
     def set_gpu(self):
         # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -225,12 +223,11 @@ class Structure(BaseManager):
             gpu_id = int(self.args.gpu.split('_')[0])
             torch.cuda.set_device(gpu_id)
 
-    def create_model(self) -> Model:
+    def create_model(self):
         """
         Create models.
         Please *rewrite* this when training new models.
-
-        :return model: created model
+        NOTE: The created model should be assign to `self.model`.
         """
         raise NotImplementedError('MODEL is not defined!')
 
@@ -253,7 +250,7 @@ class Structure(BaseManager):
         """
         # Compute predictions
         outputs = self.model.implement(inputs, training=True)
-        loss, loss_dict = self.loss.forward(outputs, labels,
+        loss, loss_dict = self.loss.compute(outputs, labels,
                                             inputs, training=True)
         loss_move_average = 0.7 * loss + 0.3 * loss_move_average.item()
 
@@ -261,44 +258,16 @@ class Structure(BaseManager):
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
-
         return loss, loss_dict, loss_move_average
-
-    def model_validate(self, inputs: list[torch.Tensor],
-                       labels: list[torch.Tensor],
-                       training=None) -> tuple[list[torch.Tensor],
-                                               torch.Tensor,
-                                               dict[str, torch.Tensor]]:
-        """
-        Run one step forward and calculate metrics.
-
-        :param inputs: Model inputs. It should be a list of tensors.
-        :param labels: Ground truth. It should be a list of tensors.
-        :param training: Controls if run model in the training mode.
-
-        :return model_output: Model output.
-        :return metrics: The weighted sum of all loss.
-        :return loss_dict: A dict contains all loss.
-        """
-        outputs = self.model.implement(inputs, training)
-        metrics, metrics_dict = self.metrics.forward(
-            outputs, labels, inputs=inputs, training=None)
-
-        if self.args.compute_loss:
-            _, loss_dict = self.loss.forward(
-                outputs, labels, inputs=inputs, training=None)
-
-            metrics_dict.update(loss_dict)
-
-        return outputs, metrics, metrics_dict
 
     def train_or_test(self):
         """
         Load models and datasets, then start training or testing.
         """
         # Init model and dataset manager
-        self.model = self.create_model().to(self.device)
-        self.optimizer = self.set_optimizer()
+        self.create_model()
+        self.model.to(self.device)
+        self.set_optimizer()
         self.agent_manager.set_types(inputs_type=self.model.input_types,
                                      labels_type=self.label_types)
 
@@ -374,7 +343,7 @@ class Structure(BaseManager):
         self.print_info()
 
         # Make the log directory and save current args
-        self.args._save_as_json(self.args.log_dir)
+        self.args.save_args_as_json(self.args.log_dir)
 
         # Open tensorboard
         tb = SummaryWriter(self.args.log_dir)
@@ -418,10 +387,10 @@ class Structure(BaseManager):
             if ((epoch >= self.args.start_test_percent * self.args.epochs)
                     and ((epoch - 1) % self.args.test_step == 0)):
 
-                metric, metrics_dict = self.__test_on_dataset(
+                _, metric, metrics_dict = self.__test_on_dataset(
                     ds=ds_val,
                     show_timebar=False,
-                    test_during_training=True
+                    is_during_training=True
                 )
 
                 # Save model
@@ -464,8 +433,7 @@ class Structure(BaseManager):
         self.print_train_results(best_epoch=best_epoch,
                                  best_metric=best_metric)
 
-    def __test(self, ds_test: DataLoader) -> \
-            tuple[float, dict[str, float], list[torch.Tensor]]:
+    def __test(self, ds_test: DataLoader):
         """
         Test model on the given dataset.
 
@@ -484,9 +452,9 @@ class Structure(BaseManager):
         # Make the log directory and save current args
         if self.args.update_saved_args:
             if self.args.load != 'null':
-                self.args._save_as_json(self.args.load)
+                self.args.save_args_as_json(self.args.load)
             else:
-                self.args._save_as_json(self.args.log_dir)
+                self.args.save_args_as_json(self.args.log_dir)
 
         # Run test
         outputs, metric, metrics_dict = self.__test_on_dataset(
@@ -494,66 +462,51 @@ class Structure(BaseManager):
             return_results=True,
             show_timebar=True,
         )
-
         return metric, metrics_dict, outputs
-
-    @overload
-    def __test_on_dataset(self, ds: DataLoader,
-                          show_timebar=False,
-                          test_during_training=False) \
-        -> tuple[float, dict[str, float]]: ...
-
-    @overload
-    def __test_on_dataset(self, ds: DataLoader,
-                          return_results=False,
-                          show_timebar=False,
-                          test_during_training=False) \
-        -> tuple[list[torch.Tensor], float, dict[str, float]]: ...
 
     @torch.no_grad()
     def __test_on_dataset(self, ds: DataLoader,
                           return_results=False,
                           show_timebar=False,
-                          test_during_training=False):
+                          is_during_training=False):
         """
         Run a test on the given dataset.
 
         :param ds: The test `DataLoader` object.
         :param return_results: Controls items to return (the defaule value is `False`).
         :param show_timebar: Controls whether to show the process.
-        :param test_during_training: Indicates whether to test during training.
+        :param is_during_training: Indicates whether it is test during training.
 
-        Returns if `return_results == False`:
-        :return metric: The weighted sum of all metrics.
-        :return metric_dict: A dict of all metrics.
-
-        Returns if `return_results == True`:
-        :return outputs: A list of model outputs.
+        :return outputs: A list of model outputs (or `None` when `return_results == False`).
         :return metric: The weighted sum of all metrics.
         :return metric_dict: A dict of all metrics.
         """
         # Init variables for test
         outputs_all = []
-        batch_all_metrics = []
-        batch_weightedsum_metrics = []
-        metrics_names: list[str] = None
+        batch_all_metrics: list[list[torch.Tensor]] = []
+        batch_weightedsum_metrics: list[torch.Tensor] = []
+        metrics_names: list[str] = []
 
         # Hide the time bar when training
         timebar = self.timebar(ds, 'Test...') if show_timebar else ds
 
-        count = []
+        count: list[int] = []
         for x, gt in timebar:
             # Move data to GPU
             x = move_to_device(x, self.device)
             gt = move_to_device(gt, self.device)
 
-            mask = get_loss_mask(x[0], gt[0])
-            valid_count = torch.sum(mask)
+            # Run model, compute metrics and loss
+            outputs = self.model.implement(x)
+            metrics, metrics_dict = self.metrics.compute(outputs, gt, x)
 
-            outputs, metrics, metrics_dict = self.model_validate(
-                inputs=x, labels=gt, training=False)
+            if self.args.compute_loss:
+                _, loss_dict = self.loss.compute(outputs, gt, x)
+                metrics_dict.update(loss_dict)
 
             # Check if there are valid trajectories in this batch
+            mask = get_loss_mask(x[0], gt[0])
+            valid_count = torch.sum(mask)
             if valid_count == 0:
                 outputs[0] = torch.zeros_like(outputs[0]) / 0.0
 
@@ -578,13 +531,14 @@ class Structure(BaseManager):
                                                count, return_numpy=True)
 
         # Make the metric dict
-        mdict_avg = dict(zip(metrics_names, all_metrics))
+        mdict_avg: dict[str, str | np.ndarray] = \
+            dict(zip(metrics_names, all_metrics))
 
-        if not test_during_training:
+        if not is_during_training:
             # Show metrics with units
             unit = self.get_member(AgentManager).get_member(SplitManager).type
-            for mlayer, mkey in zip(self.metrics.loss_list, mdict_avg.keys()):
-                if mlayer.HAS_UNIT:
+            for mlayer, mkey in zip(self.metrics.layers, mdict_avg.keys()):
+                if mlayer.has_unit:
                     mdict_avg[mkey] = f'{mdict_avg[mkey]} ({unit})'
 
             # Compute the inference time
@@ -595,10 +549,9 @@ class Structure(BaseManager):
             mdict_avg['Average Inference Time'] = f'{self.model.average_inference_time} ms'
             mdict_avg['Fastest Inference Time'] = f'{self.model.fastest_inference_time} ms'
 
-        if return_results:
-            return outputs_all, weightedsum_metrics, mdict_avg
-        else:
-            return weightedsum_metrics, mdict_avg
+        if not return_results:
+            outputs_all = None
+        return outputs_all, weightedsum_metrics, mdict_avg
 
     def print_info(self, **kwargs):
         info = {'Batch size': self.args.batch_size,
@@ -609,7 +562,8 @@ class Structure(BaseManager):
         kwargs.update(**info)
         return super().print_info(**kwargs)
 
-    def print_train_results(self, best_epoch: int, best_metric: float):
+    def print_train_results(self, best_epoch: int,
+                            best_metric: float | np.ndarray):
         """
         Print train results on the screen.
         """
@@ -624,7 +578,7 @@ class Structure(BaseManager):
                  'To re-test this model, please use ' +
                  f'`python main.py --load {self.args.log_dir}`.')
 
-    def print_test_results(self, loss_dict: dict[str, float], **kwargs):
+    def print_test_results(self, loss_dict: dict[str, Any], **kwargs):
         """
         Print test results on the screen.
         """
@@ -636,10 +590,13 @@ class Structure(BaseManager):
                  f'load: {self.args.load}, ' +
                  f'metrics: {loss_dict}.')
 
-    def write_test_results(self, outputs: list[torch.Tensor], clips: list[str]):
+    def write_test_results(self, outputs: list[Any] | None, clips: list[str]):
         """
         Save visualized prediction results.
         """
+        if outputs is None:
+            return
+
         # Move data to cpu
         outputs = move_to_device(outputs, self.device_cpu)
 
@@ -661,21 +618,28 @@ class Structure(BaseManager):
             tv.run_commands(outputs)
 
 
-def _get_item(item, indices: list):
+def _get_item(item: list[torch.Tensor | list[torch.Tensor]],
+              indices: list[int]) -> torch.Tensor:
     res = item
     for i in indices:
         res = res[i]
+
+    if not isinstance(res, torch.Tensor):
+        raise ValueError(indices)
     return res
 
 
-def stack_batch_outputs(outputs: list[list[torch.Tensor]]):
+def stack_batch_outputs(outputs: list[list[(
+    torch.Tensor |
+    list[torch.Tensor]
+)]]) -> list[torch.Tensor | list[torch.Tensor]]:
     """
     Stack several batches' model outputs.
     Input of this function should be a list of model outputs,
     where each list member is a batch's output.
     """
     # Check output shapes
-    indices = []
+    indices: list[list[int]] = []
     for index, item in enumerate(outputs[0]):
         if type(item) in [list, tuple]:
             indices += [[index, i] for i in range(len(item))]
@@ -700,19 +664,37 @@ def stack_batch_outputs(outputs: list[list[torch.Tensor]]):
     return final_outputs
 
 
-def weighted_average(inputs: list, weights: list, return_numpy=False) -> list:
+@overload
+def weighted_average(inputs: list[torch.Tensor],
+                     weights: list[int]) -> torch.Tensor: ...
+
+
+@overload
+def weighted_average(inputs: list[list[torch.Tensor]],
+                     weights: list[int], return_numpy: bool) -> \
+    list[np.ndarray]: ...
+
+
+@overload
+def weighted_average(inputs: list[torch.Tensor],
+                     weights: list[int], return_numpy: bool) -> \
+    np.ndarray: ...
+
+
+def weighted_average(inputs: list[torch.Tensor] | list[list[torch.Tensor]],
+                     weights: list[int], return_numpy=False):
     """
     Weighted sum all the inputs.
-    NOTE: The length of `inputs` and `weights` should be the same value.
+    NOTE: `inputs` and `weights` should have the same length.
     """
-    inputs = torch.tensor(inputs, dtype=torch.float32)
-    weights = torch.tensor(weights, dtype=torch.float32)
-    count = torch.sum(weights)
+    x = torch.tensor(inputs, dtype=torch.float32)
+    w = torch.tensor(weights, dtype=torch.float32)
+    count = torch.sum(w)
 
-    while weights.ndim < inputs.ndim:
-        weights = weights[..., None]
+    while w.ndim < x.ndim:
+        w = w[..., None]
 
-    res = torch.sum(inputs * weights / count, dim=0)
+    res = torch.sum(x * w / count, dim=0)
 
     if return_numpy:
         res = res.numpy()

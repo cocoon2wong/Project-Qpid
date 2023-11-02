@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 18:44:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-16 10:31:18
+@LastEditTime: 2023-11-02 15:48:41
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -30,14 +30,15 @@ class BaseFilesManager(BaseInputManager):
         the corresponding `BaseInputObject` objects.
     """
 
-    FILE_PREFIX = None
-    DATA_MGR: type[BaseInputObjectManager] = None
-    DATA_TYPE: type[BaseInputObject] = None
+    FILE_PREFIX: str = ''
+    DATA_MGR: type[BaseInputObjectManager] = BaseInputObjectManager
+    DATA_TYPE: type[BaseInputObject] = BaseInputObject
 
     def __init__(self, manager: BaseManager,
                  name='Agent Files Manager'):
 
         super().__init__(manager, name)
+        self.data_manager = self.DATA_MGR(self)
 
     def get_temp_file_path(self, clip: Clip) -> str:
         base_dir = clip.temp_dir
@@ -54,22 +55,26 @@ class BaseFilesManager(BaseInputManager):
         return os.path.join(base_dir, f_name)
 
     # For type hinting
-    def run(self, clip: Clip, agents: list[DATA_TYPE] = None,
-            *args, **kwargs) -> list[DATA_TYPE]:
+    def run(self, clip: Clip, agents: list[BaseInputObject] | None = None,
+            *args, **kwargs) -> list[BaseInputObject]:
 
         return super().run(clip=clip, agents=agents, *args, **kwargs)
 
     def save(self, *args, **kwargs) -> None:
-        agents = self.manager.get_member(
-            self.DATA_MGR).run(self.working_clip)
-
         save_dict = {}
+        agents = self.data_manager.run(self.working_clip)
         for index, agent in enumerate(agents):
             save_dict[str(index)] = agent.zip_data()
 
+        if self.temp_file is None:
+            raise ValueError
+
         np.savez(self.temp_file, **save_dict)
 
-    def load(self, *args, **kwargs) -> list:
+    def load(self, *args, **kwargs) -> list[BaseInputObject]:
+        if self.temp_file is None:
+            raise ValueError
+
         saved: dict = np.load(self.temp_file, allow_pickle=True)
 
         if not len(saved):

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 09:06:50
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 11:56:47
+@LastEditTime: 2023-11-01 21:01:43
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -14,7 +14,7 @@ import torch
 def ADE_2D(pred: torch.Tensor,
            GT: torch.Tensor,
            coe: float = 1.0,
-           mask: torch.Tensor = None) -> torch.Tensor:
+           mask: torch.Tensor | None = None) -> torch.Tensor:
     """
     Calculate `ADE` or `minADE`.
 

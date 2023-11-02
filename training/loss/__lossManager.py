@@ -2,13 +2,11 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:46:57
+@LastEditTime: 2023-11-02 17:19:22
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
-
-from typing import Union
 
 import torch
 
@@ -35,7 +33,7 @@ class LossManager(BaseManager):
         super().__init__(manager=manager, name=name)
 
         self.scale = trajectory_scale
-        self.loss_list: list[BaseLossLayer] = []
+        self.layers: list[BaseLossLayer] = []
         self.loss_weights: list[float] = []
         self.loss_paras: list[dict] = []
 
@@ -44,9 +42,10 @@ class LossManager(BaseManager):
         picker = self.manager.get_member(AnnotationManager)
         return picker.target
 
-    def set(self, loss_dict: Union[
-            dict[type[BaseLossLayer], float],
-            list[tuple[type[BaseLossLayer], tuple[float, dict]]]]):
+    def set(self, loss_dict: (
+        dict[type[BaseLossLayer], float] |
+        list[tuple[type[BaseLossLayer], tuple[float, dict]]]
+    )):
         """
         Set loss functions and their weights.
 
@@ -66,13 +65,13 @@ class LossManager(BaseManager):
             NOTE: The callable loss function must have the `**kwargs` in
             their definitions.
         """
-        self.loss_list = []
+        self.layers = []
         self.loss_weights = []
         self.loss_paras = []
 
         if type(loss_dict) is dict:
             items = loss_dict.items()
-        elif type(loss_dict) in [list, tuple]:
+        elif isinstance(loss_dict, list | tuple):
             items = loss_dict
         else:
             raise TypeError(loss_dict)
@@ -80,18 +79,18 @@ class LossManager(BaseManager):
         for k, vs in items:
             k: type[BaseLossLayer]
 
-            if type(vs) in [list, tuple]:
+            if isinstance(vs, list | tuple):
                 weights = vs[0]
                 parameters = vs[1]
             else:
                 weights = vs
                 parameters = {}
 
-            self.loss_list.append(k(coe=self.scale, manager=self))
+            self.layers.append(k(coe=self.scale, manager=self))
             self.loss_weights.append(weights)
             self.loss_paras.append(parameters)
 
-    def forward(self, outputs: list[torch.Tensor],
+    def compute(self, outputs: list[torch.Tensor],
                 labels: list[torch.Tensor],
                 inputs: list[torch.Tensor],
                 training=None):
@@ -109,9 +108,9 @@ class LossManager(BaseManager):
         :return loss_dict: A dict of values of all loss functions.
         """
 
-        loss_dict = {}
+        loss_dict: dict[str, torch.Tensor] = {}
         mask = get_loss_mask(inputs[0], labels[0])
-        for layer, paras in zip(self.loss_list, self.loss_paras):
+        for layer, paras in zip(self.layers, self.loss_paras):
             name = layer.__class__.__name__
             if len(paras):
                 if 'name' in paras.keys():
@@ -141,7 +140,7 @@ class LossManager(BaseManager):
         return summary, loss_dict
 
     def print_info(self, **kwargs):
-        funcs = [f.name for f in self.loss_list]
+        funcs = [f.name for f in self.layers]
         return super().print_info(LossLayers=funcs,
                                   Weights=self.loss_weights,
                                   LossParameters=self.loss_paras,

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-01 10:40:50
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 16:38:41
+@LastEditTime: 2023-11-01 20:09:37
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -42,6 +42,8 @@ class Scale(BaseProcessLayer):
         Scales of all observed trajectories.
         Shape is `(batch, 1, 1)`
         """
+        if self._scales is None:
+            raise ValueError('Parameters are not updated!')
         return self._scales
 
     def update_paras(self, inputs: dict[str, torch.Tensor]) -> None:
@@ -68,7 +70,8 @@ class Scale(BaseProcessLayer):
         outputs = {}
         for _type, _input in inputs.items():
             if _type == INPUT_TYPES.OBSERVED_TRAJ:
-                outputs[_type] = self.scale(_input, autoref_index=-1)
+                outputs[_type] = self.scale(_input, inverse=False,
+                                            autoref_index=-1)
             elif _type == INPUT_TYPES.NEIGHBOR_TRAJ:
                 outputs[_type] = self.scale_neighbors(_input)
             else:
@@ -89,7 +92,7 @@ class Scale(BaseProcessLayer):
                 raise ValueError(_type)
         return outputs
 
-    def scale(self, trajs: torch.Tensor, inverse=False, autoref_index: int = None):
+    def scale(self, trajs: torch.Tensor, inverse: bool, autoref_index: int):
         scales = self.scales
         if inverse:
             scales = 1.0 / scales

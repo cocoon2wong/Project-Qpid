@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-10-17 14:57:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-09-06 18:01:21
+@LastEditTime: 2023-11-02 19:22:25
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from typing import TypeVar
+from typing import Any, TypeVar, overload
 
 from ..__root import BaseObject
 from ..args import Args
@@ -60,12 +60,12 @@ class BaseManager(BaseObject):
     ```
     """
 
-    def __init__(self, args: Args = None,
-                 manager: BaseObject = None,
-                 name: str = None):
+    def __init__(self, args: Args | None = None,
+                 manager: Any = None,
+                 name: str | None = None):
 
         super().__init__(name)
-        self._args: Args = args
+        self._args: Args | None = args
         self.manager: BaseManager = manager
         self.members: list[BaseManager] = []
         self.members_dict: dict[type[BaseManager], list[BaseManager]] = {}
@@ -81,22 +81,23 @@ class BaseManager(BaseObject):
     @property
     def args(self) -> Args:
         if self._args:
-            return self._args
+            args = self._args
         elif self.manager:
-            return self.manager.args
+            args = self.manager.args
         else:
-            return None
+            raise ValueError('Args not found!')
+        return args
 
     @args.setter
-    def args(self, value: T) -> T:
+    def args(self, value):
         self._args = value
 
     def log(self, s: str, level: str = 'info',
-            raiseError: type[BaseException] = None,
-            verbose_mode=None):
+            raiseError: type[BaseException] | None = None,
+            only_log_under_verbose_mode=None):
 
-        if verbose_mode:
-            if self.args is not None and not self.args.verbose:
+        if only_log_under_verbose_mode:
+            if ((self.args is not None) and (not self.args.verbose)):
                 return s
 
         return super().log(s, level, raiseError)
@@ -106,6 +107,7 @@ class BaseManager(BaseObject):
             self.manager.members.remove(self)
             self.manager.members_dict[type(self)].remove(self)
 
+        self.log('This object will be destroyed soon...')
         del self
 
     def get_member(self, mtype: type[T], mindex: int = 0) -> T:

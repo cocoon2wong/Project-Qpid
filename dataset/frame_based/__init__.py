@@ -10,4 +10,4 @@
 
 from .__filesManager import FrameFilesManager
 from .__inputObject import Frame
-from .__inputObjectManager import FrameManager
+from .__inputObjectManager import FrameObjectManager

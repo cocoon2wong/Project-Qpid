@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-09 20:30:01
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 19:46:42
+@LastEditTime: 2023-11-01 19:49:08
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -107,6 +107,6 @@ class IFFT2Dlayer(_BaseTransformLayer):
         imag = inputs[..., self.channels:]
 
         seq = torch.complex(real, imag)
-        fft = torch.fft.ifft2d(seq)
+        fft = torch.fft.ifft2(seq)
 
         return fft.real

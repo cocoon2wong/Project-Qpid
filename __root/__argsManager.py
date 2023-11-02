@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-23 18:03:03
+@LastEditTime: 2023-11-02 19:03:19
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -13,7 +13,7 @@ import os
 from typing import Any, TypeVar
 
 from ..constant import ARG_TYPES
-from ..utils import dir_check
+from ..utils import ARGS_FILE_NAME, dir_check
 from .__baseObject import BaseObject
 
 DYNAMIC = ARG_TYPES.DYNAMIC
@@ -46,12 +46,9 @@ class ArgsManager(BaseObject):
     The basic class to manage all args when training or testing models.
     """
 
-    _mod_arg_types: dict[str, type[BaseObject]] = {}
-    _mod_args: dict[str, BaseObject] = {}
-
     _ignore_value_check = False
 
-    def __init__(self, terminal_args: list[str] = None,
+    def __init__(self, terminal_args: list[str] | None = None,
                  is_temporary=False) -> None:
         """
         :param terminal_args: A set of args that received from the user input.
@@ -61,10 +58,15 @@ class ArgsManager(BaseObject):
         """
         super().__init__(name='Args Manager')
 
+        # Init variables
         self._terminal_args = terminal_args
         self._is_temporary = is_temporary
         self._init_done = False
         self._args_need_initialize: list[str] = []
+
+        # Init subargs
+        self._subargs_types: dict[str, Any] = {}
+        self._subargs_dict: dict[str, Any] = {}
 
         # Args that load from the saved JSON file
         self._args_load: dict[str, Any] = {}
@@ -100,21 +102,22 @@ class ArgsManager(BaseObject):
 
         # Load terminal args
         if terminal_args:
-            self._load_from_terminal(terminal_args)
+            self.load_args_from_terminal(terminal_args)
 
         # Load json args
         if (l := self.load) != 'null':
-            self._load_from_json(l)
+            self.load_args_from_json(l)
 
         # Restore reference args before training and testing
         if self.restore_args != 'null':
-            self._load_from_json(self.restore_args, 'default')
+            self.load_args_from_json(self.restore_args, 'default')
 
         # Run initialize methods
         self._init_all_args()
         self._visit_args()
 
-    def log(self, s: str, level: str = 'info', raiseError: type[BaseException] = None):
+    def log(self, s: str, level: str = 'info',
+            raiseError: type[BaseException] | None = None):
         if self._ignore_value_check and raiseError:
             self.log(f'`{raiseError}` ignored.')
             raiseError = None
@@ -155,34 +158,39 @@ class ArgsManager(BaseObject):
         if self._verbose_mode:
             self.log('Basic funtions initialized.')
 
-    def _check_terminal_args(self):
+    def check_args_spells(self):
         for key in self._args_runnning.keys():
-            if not key in self._get_args_names() + extra_args_names:
+            if not key in self.get_args_names() + extra_args_names:
                 self.log(f'Arg key `{key}` is not in the arg dictionary.' +
                          ' Check your spelling.',
                          level='error', raiseError=KeyError)
 
-    def _register_mod_args(self, arg_type: type[T], mod_name: str) -> T:
+    def register_subargs(self, arg_type: type[T], name: str) -> T:
         """
         Register new args that used in extra mods to the current args.
         """
-        if ((not mod_name in self._mod_arg_types.keys()) or
-                (not mod_name in self._mod_args.keys())):
-            self._mod_arg_types[mod_name] = arg_type
-            self._mod_args[mod_name] = arg_type(terminal_args=self._terminal_args,
-                                                is_temporary=True)
-        return self._mod_args[mod_name]
+        if ((not name in self._subargs_types.keys()) or
+                (not name in self._subargs_dict.keys())):
+            if not issubclass(arg_type, ArgsManager):
+                raise TypeError(arg_type)
+
+            subargs = arg_type(terminal_args=self._terminal_args,
+                               is_temporary=True)
+            self._subargs_types[name] = arg_type
+            self._subargs_dict[name] = subargs
+
+        return self._subargs_dict[name]
 
     @classmethod
-    def _get_args_names(cls) -> list[str]:
+    def get_args_names(cls) -> list[str]:
         """
         Get a list of names of all args used in this class.
         """
-        items = [cls.__dict__.items()]
         a = cls
-        while a != ArgsManager:
-            a = a.__bases__[0]
+        items = []
+        while a != BaseObject:
             items.append(a.__dict__.items())
+            a = a.__bases__[0]
 
         return list(set([i for item in items for i, v in item
                          if ((isinstance(v, property)) and
@@ -192,10 +200,10 @@ class ArgsManager(BaseObject):
         """
         Vist all args.
         """
-        for arg_name in self._get_args_names():
+        for arg_name in self.get_args_names():
             getattr(self, arg_name)
 
-    def _load_from_json(self, dir_path: str, target='load'):
+    def load_args_from_json(self, dir_path: str, target='load'):
         """
         Load args from the saved JSON file.
 
@@ -203,10 +211,7 @@ class ArgsManager(BaseObject):
         :param target: Target dictionary to load, can be `'load'` or `'default'`.
         """
         try:
-            arg_paths = [(p := os.path.join(dir_path, item)) for item in os.listdir(dir_path) if (
-                item.endswith('args.json'))]
-
-            with open(p, 'r') as f:
+            with open(os.path.join(dir_path, ARGS_FILE_NAME), 'r') as f:
                 json_dict = json.load(f)
 
             if target == 'load':
@@ -222,13 +227,14 @@ class ArgsManager(BaseObject):
 
         return self
 
-    def _load_from_terminal(self, argv: list[str]):
+    def load_args_from_terminal(self, argv: list[str]):
         """
         Load args from the user inputs.
         """
         dic = {}
 
         index = 1
+        name = None
         while True:
             try:
                 if argv[index].startswith('--'):
@@ -266,14 +272,14 @@ class ArgsManager(BaseObject):
         self._args_runnning = dic
         return self
 
-    def _save_as_json(self, target_dir: str):
+    def save_args_as_json(self, target_dir: str):
         """
         Save current args into a JSON file.
         """
         dir_check(target_dir)
-        json_path = os.path.join(target_dir, 'args.json')
+        json_path = os.path.join(target_dir, ARGS_FILE_NAME)
 
-        all_args = [self] + list(self._mod_args.values())
+        all_args = [self] + list(self._subargs_dict.values())
 
         names = []
         values = []
@@ -327,10 +333,10 @@ class ArgsManager(BaseObject):
             self._args_default_manually[name] = value
 
     def _arg(self, name: str,
-             default: Any,
+             default: T,
              argtype: str,
-             short_name: str = None,
-             need_initialize: bool = None):
+             short_name: str | None = None,
+             need_initialize: bool | None = None) -> T:
         """
         Get arg from all arg dictionaries according to the priority.
 
@@ -346,18 +352,18 @@ class ArgsManager(BaseObject):
             self._register(name, default, argtype, short_name)
             if need_initialize:
                 self._args_need_initialize.append(name)
-            return 'Not All Registered'
+            return default
 
         # Initialize args (if needed)
         if need_initialize and name in self._args_need_initialize:
-            return 'Not Initialized'
+            return default
 
         return self._get(name)
 
     def _register(self, name: str,
-                  default: any,
+                  default: Any,
                   argtype: str,
-                  short_name: str = None):
+                  short_name: str | None = None):
         """
         Register a new arg.
         """

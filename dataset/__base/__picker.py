@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-08-30 09:52:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-12 15:11:22
+@LastEditTime: 2023-11-02 18:57:05
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from typing import TypeVar, Union
+from typing import TypeVar, overload
 
 import numpy as np
 import torch
@@ -22,11 +22,11 @@ ANNOTATION_CONFIGS_FILE = get_relative_path(__file__, 'annSettings.plist')
 
 class Annotation():
 
-    annotation_configs: dict = None
+    annotation_configs: dict = {}
 
     def __init__(self, name: str) -> None:
 
-        if self.annotation_configs is None:
+        if not len(self.annotation_configs):
             Annotation.load_dict()
 
         if not name in self.annotation_configs.keys():
@@ -76,7 +76,13 @@ class Annotation():
         """
         return self.__name
 
-    def get_center(self, inputs: T) -> T:
+    @overload
+    def get_center(self, inputs: np.ndarray) -> np.ndarray: ...
+
+    @overload
+    def get_center(self, inputs: torch.Tensor) -> torch.Tensor: ...
+
+    def get_center(self, inputs):
         """
         Get the center points of the input trajectories.
 
@@ -94,7 +100,15 @@ class Annotation():
 
         return center
 
-    def get_coordinate_series(self, inputs: T) -> list[T]:
+    @overload
+    def get_coordinate_series(
+        self, inputs: np.ndarray) -> list[np.ndarray]: ...
+
+    @overload
+    def get_coordinate_series(
+        self, inputs: torch.Tensor) -> list[torch.Tensor]: ...
+
+    def get_coordinate_series(self, inputs):
         """
         Reshape the **predicted trajectories** into a series of single
         coordinates. For example, when inputs have the annotation type
@@ -157,10 +171,22 @@ class AnnotationManager(BaseManager):
             self.add_annotation(name)
         return self.annotations[name]
 
-    def get(self, inputs: Union[torch.Tensor, np.ndarray]):
+    @overload
+    def get(self, inputs: np.ndarray) -> np.ndarray: ...
+
+    @overload
+    def get(self, inputs: torch.Tensor) -> torch.Tensor: ...
+
+    @overload
+    def get(self, inputs: None) -> None: ...
+
+    def get(self, inputs: torch.Tensor | np.ndarray | None):
         """
         Get data with target annotation forms from original dataset files.
         """
+        if inputs is None:
+            return None
+
         if self.Tsource == self.Ttarget:
             return inputs
 

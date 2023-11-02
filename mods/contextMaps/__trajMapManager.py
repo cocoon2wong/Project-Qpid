@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 18:03:21
+@LastEditTime: 2023-11-02 18:49:28
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -16,14 +16,14 @@ import numpy as np
 from ...base import BaseManager, SecondaryBar
 from ...constant import INPUT_TYPES
 from ...dataset import Clip
-from ...dataset.__base import BaseInputManager
+from ...dataset.__base import BaseExtInputManager
 from ...dataset.agent_based import Agent
 from .__mapParasManager import MapParasManager
 from .settings import MAP_HALF_SIZE
 from .utils import add, cut, pooling2D
 
 
-class TrajMapManager(BaseInputManager):
+class TrajMapManager(BaseExtInputManager):
     """
     Trajectory Map Manager
     ---
@@ -34,8 +34,8 @@ class TrajMapManager(BaseInputManager):
     the area may not walkable.
     """
 
-    TEMP_FILES = {'FILE': 'trajMap.npy',
-                  'GLOBAL_FILE': 'trajMap.png'}
+    TEMP_FILES: dict[str, str] = {'FILE': 'trajMap.npy',
+                                  'GLOBAL_FILE': 'trajMap.png'}
 
     MAP_NAME = 'Trajectory Map'
     INPUT_TYPE = INPUT_TYPES.MAP
@@ -52,7 +52,7 @@ class TrajMapManager(BaseInputManager):
         self.HALF_SIZE = MAP_HALF_SIZE
 
         # Map variables
-        self.global_map: np.ndarray = None
+        self.global_map: np.ndarray | None = None
 
         if pool_maps:
             self.TEMP_FILES['FILE_WITH_POOLING'] = 'trajMap_pooling.npy'
@@ -64,7 +64,7 @@ class TrajMapManager(BaseInputManager):
     def run(self, clip: Clip,
             trajs: np.ndarray,
             agents: list[Agent],
-            *args, **kwargs) -> list:
+            *args, **kwargs):
 
         if self.map_mgr.use_seg_map:
             return 0
@@ -80,7 +80,10 @@ class TrajMapManager(BaseInputManager):
         self.global_map = self.build_and_save_global_map(trajs)
         self.build_and_save_local_maps(agents)
 
-    def load(self, *args, **kwargs) -> list:
+    def load(self, *args, **kwargs):
+        if not (temp_files := self.temp_files):
+            raise ValueError(temp_files)
+
         # Load maps from the saved file
         if not self.POOL:
             f = self.temp_files['FILE']
@@ -89,7 +92,7 @@ class TrajMapManager(BaseInputManager):
         return 0.5 * np.load(f, allow_pickle=True)
 
     def build_and_save_global_map(self, trajs: np.ndarray,
-                                  source: np.ndarray = None):
+                                  source: np.ndarray | None = None):
         """
         Build and save the global trajectory map.
 

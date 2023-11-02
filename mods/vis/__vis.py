@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-23 16:28:11
+@LastEditTime: 2023-11-02 19:08:28
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -16,7 +16,8 @@ import torch
 from matplotlib import pyplot as plt
 
 from ...base import BaseManager, SecondaryBar
-from ...dataset import AnnotationManager, Clip
+from ...dataset import AnnotationManager, Clip, SplitManager
+from ...dataset.__base import BaseInputObject
 from ...dataset.agent_based import Agent
 from ...model import Model
 from ...training import Structure
@@ -54,7 +55,7 @@ class Visualization(BaseManager):
         self.manager: Structure
 
         # Init vis-related args
-        self.vis_args = self.args._register_mod_args(VisArgs, __package__)
+        self.vis_args = self.args.register_subargs(VisArgs, __package__)
 
         # Get information of the video clip
         self.info: Clip = self.manager.split_manager.clips_dict[clip]
@@ -82,7 +83,7 @@ class Visualization(BaseManager):
         self.dis_file = cv2.imread(DISTRIBUTION_IMAGE, -1)
 
     @property
-    def video_capture(self) -> cv2.VideoCapture:
+    def video_capture(self) -> cv2.VideoCapture | None:
         return self._vc
 
     @property
@@ -165,28 +166,31 @@ class Visualization(BaseManager):
 
         :param frame: The frame number of the image.
         """
+        if not self.video_capture:
+            raise ValueError
+
         time = 1000 * frame / self.info.paras[1]
         self.video_capture.set(cv2.CAP_PROP_POS_MSEC, time - 1)
         _, f = self.video_capture.read()
         f = self.rescale(f)
         return f
 
-    def get_text(self, frame: int, agent: Agent) -> list[str]:
+    def get_text(self, frame: int, agent: BaseInputObject) -> list[str]:
         return [self.info.clip_name,
                 f'frame: {str(frame).zfill(6)}',
                 f'agent: {agent.id}',
                 f'type: {agent.type}']
 
-    def get_trajectories(self, agent: Agent, integer=True):
-        obs = self.real2pixel(agent.masked_traj, integer)
-        pred = self.real2pixel(agent.masked_pred, integer)
-        gt = self.real2pixel(agent.masked_groundtruth, integer)
+    def get_trajectories(self, agent: BaseInputObject, integer=True):
+        obs = self.real2pixel(agent.traj_masked, integer)
+        pred = self.real2pixel(agent.pred_masked, integer)
+        gt = self.real2pixel(agent.groundtruth_masked, integer)
 
-        try:
+        if isinstance(agent, Agent):
             ref = agent.traj[np.newaxis, -1:, :]
             nei = agent.traj_neighbor[:agent.neighbor_number] + ref
             nei = self.real2pixel(nei[:, :, :], integer)
-        except:
+        else:
             nei = None
 
         if pred.ndim == 2:
@@ -201,7 +205,8 @@ class Visualization(BaseManager):
         :param real_pos: Coordinates, shape = (n, 2) or (k, n, 2).
         :return pixel_pos: Coordinates in pixels.
         """
-        scale = self.info.manager.scale / self.info.manager.scale_vis
+        scale = self.info.get_manager(SplitManager).scale / \
+            self.info.get_manager(SplitManager).scale_vis
         weights = self.info.matrix
 
         if type(real_pos) == list:
@@ -227,13 +232,13 @@ class Visualization(BaseManager):
         return pixel
 
     def rescale(self, f: np.ndarray):
-        if (s := self.info.manager.scale_vis) > 1:
+        if (s := self.info.get_manager(SplitManager).scale_vis) > 1:
             x, y = f.shape[:2]
             f = cv2.resize(f, (int(y/s), int(x/s)))
         return f
 
-    def draw(self, agent: Agent,
-             frames: list[int],
+    def draw(self, agent: BaseInputObject,
+             frames: list[int] | np.ndarray,
              save_name: str,
              interp=True,
              save_as_images=False,
@@ -254,7 +259,7 @@ class Visualization(BaseManager):
         """
 
         video_writer = None
-        status: int = None
+        status: int = -1
         f_empty = None
 
         # Try obtaining the RGB image
@@ -372,7 +377,7 @@ class Visualization(BaseManager):
     def vis(self, source: np.ndarray,
             obs=None, gt=None, pred=None,
             neighbor=None,
-            background: np.ndarray = None):
+            background: np.ndarray | None = None):
         """
         Draw one agent's observations, predictions, and groundtruths.
 

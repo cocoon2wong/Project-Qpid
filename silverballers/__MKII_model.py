@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-16 21:27:59
+@LastEditTime: 2023-11-02 18:28:33
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -19,7 +19,7 @@ from ..training import Structure
 from .__agentModel import AgentArgs, BaseAgentModel, BaseAgentStructure
 from .__baseArgs import SilverballersArgs
 from .__handlerModel import BaseHandlerModel, BaseHandlerStructure
-from .__MKII_utils import SILVERBALLERS_DICT
+from .__MKII_utils import SILVERBALLERS_DICT as SDICT
 
 
 class SilverballersModel(Model):
@@ -42,14 +42,16 @@ class SilverballersModel(Model):
 
     def __init__(self, Args: SilverballersArgs,
                  agentModel: BaseAgentModel,
-                 handlerModel: BaseHandlerModel = None,
-                 structure=None,
+                 handlerModel: BaseHandlerModel,
+                 structure,
                  *args, **kwargs):
 
         super().__init__(Args, structure, *args, **kwargs)
 
+        # Type hints
         self.args: SilverballersArgs
-        self.manager: Structure
+        self.manager: SilverballersMKII
+        self.structure: SilverballersMKII
 
         # Processes are applied in AgentModels and HandlerModels
         self.set_preprocess()
@@ -170,28 +172,27 @@ class SilverballersMKII(Structure):
         b_model_path = min_args.loadb
 
         # Assign the model type of the first-stage subnetwork
-        min_args_a = Args(is_temporary=True)._load_from_json(a_model_path)
-        agent_model_type = SILVERBALLERS_DICT.get_model(min_args_a.model)
-        agent_struct_type = SILVERBALLERS_DICT.get_structure(min_args_a.model)
+        _args_a = Args(is_temporary=True).load_args_from_json(a_model_path)
+        a_m_type = SDICT.get_model(_args_a.model, BaseAgentModel)
+        a_s_type = SDICT.get_structure(_args_a.model, BaseAgentStructure)
 
         # Assign the model type of the second-stage subnetwork
         interp_model = INTERPOLATION_TYPES.get_type(b_model_path)
         if interp_model is None:
-            min_args_b = Args(is_temporary=True)._load_from_json(b_model_path)
-            interp_model = min_args_b.model
+            _args_b = Args(is_temporary=True).load_args_from_json(b_model_path)
+            interp_model = _args_b.model
 
-        handler_model_type = SILVERBALLERS_DICT.get_model(interp_model)
-        handler_structure_type = SILVERBALLERS_DICT.get_structure(
-            interp_model)
+        h_m_type = SDICT.get_model(interp_model, BaseHandlerModel)
+        h_s_type = SDICT.get_structure(interp_model, BaseHandlerStructure)
 
         # Assign types of all subnetworks
-        self.agent_model_type = agent_model_type
-        self.handler_model_type = handler_model_type
-        if agent_struct_type:
-            self.AGENT_STRUCTURE_TYPE = agent_struct_type
+        self.agent_model_type = a_m_type
+        self.handler_model_type = h_m_type
+        if a_s_type:
+            self.AGENT_STRUCTURE_TYPE = a_s_type
 
-        if handler_structure_type:
-            self.HANDLER_STRUCTURE_TYPE = handler_structure_type
+        if h_s_type:
+            self.HANDLER_STRUCTURE_TYPE = h_s_type
 
         # Init log-related functions
         BaseObject.__init__(self)
@@ -211,28 +212,14 @@ class SilverballersMKII(Structure):
                                is_temporary=True)
 
         # Assign args from the saved Agent-Model's args
-        extra_args = []
+        extra_args: list[str] = []
         if min_args.batch_size > min_args_a.batch_size:
             extra_args += ['--batch_size', str(min_args_a.batch_size)]
-
-        # Check if predict trajectories recurrently
-        if 'pred_frames' not in min_args._args_runnning.keys():
-            extra_args += ['--pred_frames', str(min_args_a.pred_frames)]
-        else:
-            if not min_args_a.deterministic:
-                self.log('Predict trajectories currently is currently not ' +
-                         'supported with generative models.',
-                         level='error', raiseError=NotImplementedError)
-
-            if min_args.pred_interval == -1:
-                self.log('Please set the prediction interval when you want ' +
-                         'to make recurrent predictions. Current prediction' +
-                         f' interval is `{min_args.pred_interval}`.',
-                         level='error', raiseError=ValueError)
 
         extra_args += ['--split', str(min_args_a.split),
                        '--anntype', str(min_args_a.anntype),
                        '--obs_frames', str(min_args_a.obs_frames),
+                       '--pred_frames', str(min_args_a.pred_frames),
                        '--interval', str(min_args_a.interval),
                        '--model_type', str(min_args_a.model_type)]
 
@@ -260,7 +247,7 @@ class SilverballersMKII(Structure):
             is_temporary=True)
         self.agent = self.AGENT_STRUCTURE_TYPE(agent_args, manager=self)
         self.agent.set_model_type(self.agent_model_type)
-        self.agent.model = self.agent.create_model()
+        self.agent.create_model()
         self.agent.model.load_weights_from_logDir(self.args.loada)
 
         # Second-stage subnetwork
@@ -269,7 +256,7 @@ class SilverballersMKII(Structure):
         handler_args._set('key_points', self.agent.args.key_points)
         self.handler = self.HANDLER_STRUCTURE_TYPE(handler_args, self)
         self.handler.set_model_type(self.handler_model_type)
-        self.handler.model = self.handler.create_model(as_single_model=False)
+        self.handler.create_model(as_single_model=False)
         if not self.handler_model_type.is_interp_handler:
             self.handler.model.load_weights_from_logDir(self.args.loadb)
 
@@ -277,7 +264,7 @@ class SilverballersMKII(Structure):
         self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
     def create_model(self, *args, **kwargs):
-        return SilverballersModel(
+        self.model = SilverballersModel(
             self.args,
             agentModel=self.agent.model,
             handlerModel=self.handler.model,
@@ -290,4 +277,4 @@ class SilverballersMKII(Structure):
                  f'and 2nd seb-network `{self.args.loadb}` done.')
 
 
-SILVERBALLERS_DICT.register(MKII=[SilverballersMKII, None])
+SDICT.register(MKII=[SilverballersMKII, None])

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-21 10:15:13
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:32:50
+@LastEditTime: 2023-11-01 19:55:41
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -18,7 +18,7 @@ class _BasePooling2D(torch.nn.Module, BaseObject):
     The base pooling layer that supports both CPU and GPU.
     """
 
-    pool_function: type[torch.nn.MaxPool2d] = None
+    pool_function: type[torch.nn.MaxPool2d] | None = None
 
     def __init__(self, pool_size=(2, 2), strides=None, padding=0,
                  data_format: str = 'channels_first',
@@ -35,6 +35,9 @@ class _BasePooling2D(torch.nn.Module, BaseObject):
         if self.data_format == 'channels_last':
             self.transpose = True
 
+        if self.pool_function is None:
+            raise ValueError
+
         self.pool_layer = self.pool_function(pool_size, strides,
                                              padding, **kwargs)
 
@@ -45,6 +48,8 @@ class _BasePooling2D(torch.nn.Module, BaseObject):
         :param inputs: The input tensor, shape = `(..., channels, a, b)`
         """
         reshape = False
+        s = None
+
         if inputs.ndim >= 5:
             reshape = True
             s = list(inputs.shape)
@@ -59,7 +64,7 @@ class _BasePooling2D(torch.nn.Module, BaseObject):
         else:
             res = self.pool_layer(inputs)
 
-        if reshape:
+        if reshape and s is not None:
             s1 = list(res.shape)
             res = torch.reshape(res, s[:-3] + s1[1:])
 

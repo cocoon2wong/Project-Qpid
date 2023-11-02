@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 10:33:29
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-19 16:03:45
+@LastEditTime: 2023-11-02 15:46:32
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -16,7 +16,15 @@ from ..__base import BaseInputObjectManager
 from .__inputObject import Frame
 
 
-class FrameManager(BaseInputObjectManager):
+class FrameObjectManager(BaseInputObjectManager):
+    """
+    FrameObjectManager
+    ---
+    The basic class for managing `Frame` objects.
+    It is used to load data from the meta dataset files, and make them into the
+    zipped `npz` files in the `./temp_files` for training or test usages.
+    It is managed by the `FrameFilesManager` object.
+    """
 
     def __init__(self, manager: BaseManager,
                  name='Frame Manager'):
@@ -25,7 +33,11 @@ class FrameManager(BaseInputObjectManager):
 
     def load(self, **kwargs) -> list[Frame]:
         # load from saved files
+        if self.temp_file is None:
+            raise ValueError
+
         dat = np.load(self.temp_file, allow_pickle=True)
+
         matrix = dat['matrix']
         neighbor_indices = dat['neighbor_indexes']
         frame_ids = dat['frame_ids']

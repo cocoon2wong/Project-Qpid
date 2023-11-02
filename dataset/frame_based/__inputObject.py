@@ -2,13 +2,14 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 10:16:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-07-08 10:12:44
+@LastEditTime: 2023-11-02 15:44:13
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 import numpy as np
+import torch
 
 from ...model.layers import LinearLayerND
 from ...utils import get_loss_mask
@@ -21,11 +22,48 @@ class Frame(BaseInputObject):
     """
     Frame
     ---
-    Manage all agents from a frame in the video.
+    Structure to manage data of one `frame-based` training sample.
+    It could be managed by `FrameFilesManager` or `FrameObjectmanager`.
 
-    Properties
+    Universal Properties
     ---
+    ```python
+    (property) agent_ids: (self: Self@Frame) -> (ndarray | None)
+    (property) agent_types: (self: Self@Frame) -> (ndarray | None)
+    (property) frames: (self: Self@BaseInputObject) -> ndarray
+    (property) frames_future: (self: Self@BaseInputObject) -> ndarray
+    ```
 
+    Trajectory-Related Properties
+    ---
+    ```python
+    # Mask
+    (property) mask: (self: Self@BaseInputObject) -> ndarray
+
+    # Observed trajectory
+    (property) traj: (self: Self@Frame) -> ndarray
+
+    # Observed trajectory (without paddings)
+    (property) traj_masked: (self: Self@BaseInputObject) -> ndarray
+
+    # Predicted trajectory
+    (property) pred: (self: Self@BaseInputObject) -> (ndarray | None)
+
+    # Predicted trajectory (without paddings)
+    (property) pred_masked: (self: Self@BaseInputObject) -> (ndarray | None)
+
+    # Linearly predicted trajectory
+    (property) pred_linear: (self: Self@Frame) -> (ndarray | None)
+
+    # Ground truth future trajectory
+    (property) groundtruth: (self: Self@Frame) -> (ndarray | None)
+
+    # Ground truth futhre trajectory (without paddings)
+    (property) groundtruth_masked: (self: Self@BaseInputObject) -> (ndarray | None)
+
+    # Ground truth destination (the last point of ground truth trajectory)
+    (property) destination: (self: Self@BaseInputObject) -> (ndarray | None)
+    ```
     """
 
     __version__ = 0.1
@@ -42,12 +80,10 @@ class Frame(BaseInputObject):
 
         super().__init__()
 
-        self._init_position: float = None
-
         self._type = 'Frame'
-
-        self._agent_ids: np.ndarray = None
-        self._agent_types: np.ndarray = None
+        self._agent_ids: np.ndarray | None = None
+        self._agent_types: np.ndarray | None = None
+        self._init_position: float | None = None
 
     @property
     def traj(self) -> np.ndarray:
@@ -58,37 +94,36 @@ class Frame(BaseInputObject):
         represented as a big float number (`init_position` in this
         object).
         """
+        if self._traj is None:
+            raise ValueError
         return self.padding(self.pickers.get(self._traj))
 
     @property
-    def agent_ids(self) -> np.ndarray:
+    def agent_ids(self) -> np.ndarray | None:
         return self._agent_ids
 
     @property
-    def agent_types(self) -> np.ndarray:
+    def agent_types(self) -> np.ndarray | None:
         return self._agent_types
 
     @property
-    def groundtruth(self) -> np.ndarray:
+    def groundtruth(self) -> np.ndarray | None:
         """
         ground truth future trajectory.
         shape = (n_agent, pred, dim)
         """
+        if self._traj_future is None:
+            return None
         return self.padding(self.pickers.get(self._traj_future))
 
     @property
-    def pred(self) -> np.ndarray:
-        """
-        predicted trajectory, shape = (n_agent, pred, dim)
-        """
-        return self._traj_pred
-
-    @property
-    def pred_linear(self) -> np.ndarray:
+    def pred_linear(self) -> np.ndarray | None:
         """
         linear prediction.
         shape = (n_agent, pred, dim)
         """
+        if self._traj_linear is None:
+            return None
         return self.padding(self.pickers.get(self._traj_linear))
 
     def write_pred(self, pred: np.ndarray):
@@ -146,6 +181,7 @@ class Frame(BaseInputObject):
                 LINEAR_LAYER = LinearLayerND(obs_frames=self.obs_length,
                                              pred_frames=pred_frames)
 
-            self._traj_linear = LINEAR_LAYER(self._traj).numpy()
+            self._traj_linear = LINEAR_LAYER(
+                torch.from_numpy(self._traj)).numpy()
 
         return self

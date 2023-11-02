@@ -21,7 +21,7 @@ class BaseLossLayer(torch.nn.Module):
     # For example, l2 loss is with units (like 0.99 meters),
     # while IoU has no units (or its unit is `1`).
     # The unit is the same as datasets' annotations.
-    HAS_UNIT = False
+    has_unit = False
 
     def __init__(self, coe: float,
                  manager: BaseManager,
@@ -46,7 +46,7 @@ class l2(BaseLossLayer):
     l2 loss on the keypoints.
     Support M-dimensional trajectories.
     """
-    HAS_UNIT = True
+    has_unit = True
 
     def forward(self, outputs: list, labels: list,
                 inputs: list, mask=None,
@@ -60,7 +60,7 @@ class ADE(BaseLossLayer):
     l2 (single-point-wise) loss.
     Support M-dimensional trajectories.
     """
-    HAS_UNIT = True
+    has_unit = True
 
     def forward(self, outputs: list, labels: list,
                 inputs: list, points: int = -1,
@@ -92,7 +92,7 @@ class FDE(ADE):
     l2 (single-point-wise) loss on the last prediction point.
     Support M-dimensional trajectories.
     """
-    HAS_UNIT = True
+    has_unit = True
 
     def forward(self, outputs: list, labels: list, inputs: list,
                 index: int = -1,
@@ -109,7 +109,7 @@ class avgCenter(BaseLossLayer):
     """
     Average displacement error on the center of each prediction.
     """
-    HAS_UNIT = True
+    has_unit = True
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
@@ -122,7 +122,7 @@ class finalCenter(avgCenter):
     """
     Final displacement error on the center of each prediction.
     """
-    HAS_UNIT = True
+    has_unit = True
 
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):

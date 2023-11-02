@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:25:47
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 17:57:29
+@LastEditTime: 2023-11-01 19:54:07
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -21,8 +21,8 @@ class TrajEncoding(torch.nn.Module):
 
     def __init__(self, input_units: int,
                  output_units: int = 64,
-                 activation: type[torch.nn.Module] = None,
-                 transform_layer: _BaseTransformLayer = None,
+                 activation: type[torch.nn.Module] | None = None,
+                 transform_layer: _BaseTransformLayer | None = None,
                  channels_first=True,
                  *args, **kwargs):
         """

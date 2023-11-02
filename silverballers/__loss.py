@@ -2,13 +2,14 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:51:14
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:44:27
+@LastEditTime: 2023-11-02 19:10:00
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 from ..training import loss
+from .__baseSubnetwork import BaseSubnetworkStructure as _BS
 
 
 class keyl2(loss.l2):
@@ -20,7 +21,7 @@ class keyl2(loss.l2):
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
-        indices = self.manager.manager.model.key_indices_future
+        indices = self.manager.get_manager(_BS).model.key_indices_future
         return super().forward(outputs, [labels[0][..., indices, :]],
                                inputs, mask, training, *args, **kwargs)
 
@@ -34,7 +35,7 @@ class keyl2_past(loss.l2):
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
-        if (indices := self.manager.manager.model.key_indices_past) is None:
+        if (indices := self.manager.get_manager(_BS).model.key_indices_past) is None:
             return 0
 
         labels_pickled = inputs[0][..., indices, :]
@@ -56,11 +57,11 @@ class avgKey(loss.ADE):
         if pred.ndim == label.ndim:
             pred = pred[..., None, :, :]
 
-        indices = self.manager.manager.model.key_indices_future
+        indices = self.manager.get_manager(_BS).model.key_indices_future
         if pred.shape[-2] != len(indices):
             pred = pred[..., indices, :]
 
         labels_key = label[..., indices, :]
 
         return super().forward([pred], [labels_key], inputs,
-                               mask, training, *args, **kwargs)
+                               mask=mask, training=training, *args, **kwargs)

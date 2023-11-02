@@ -2,23 +2,26 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-23 19:44:09
+@LastEditTime: 2023-11-02 17:22:44
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 import re
+from typing import TypeVar
 
 from . import args
-from .args import Args
+from .args import Args, EmptyArgs
 from .silverballers import AgentArgs, HandlerArgs, SilverballersArgs
+
+TArgs = TypeVar('TArgs', bound=EmptyArgs)
 
 FLAG = '<!-- DO NOT CHANGE THIS LINE -->'
 TARGET_FILE = './README.md'
 MAX_SPACE = 20
 
-ARGS_DIC = {
+ARGS_DIC: dict = {
     Args: ['Basic Args', None],
     AgentArgs: ['First-stage Silverballers Args', 0],
     HandlerArgs: ['Second-stage Silverballers Args', 0],
@@ -100,7 +103,7 @@ def update_readme(new_lines: list[str], md_file: str):
         f.writelines(all_lines)
 
 
-def print_help_info(value: str = None):
+def print_help_info(value: str | None = None):
     files = []
     for T in ARGS_DIC.keys():
         ignore_flag = T._ignore_value_check
@@ -123,10 +126,10 @@ def print_help_info(value: str = None):
     return doc_lines
 
 
-def register_new_args(arg_type: type[Args],
+def register_new_args(arg_type: type[TArgs],
                       friendly_name: str,
                       package_name: str,
-                      farther_index: int = None):
+                      farther_index: int | None = None):
     """
     Register new args defined by additional mods to the training structure.
 
@@ -134,5 +137,5 @@ def register_new_args(arg_type: type[Args],
     :param friendly_name: Friendly name of the class of args that showed to users.
     :param package_name: Name of the package where the new args are included.
     """
-    args.register_new_args(arg_type._get_args_names(), package_name)
+    args.register_new_args(arg_type.get_args_names(), package_name)
     ARGS_DIC.update({arg_type: [friendly_name, farther_index]})

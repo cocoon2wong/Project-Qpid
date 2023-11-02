@@ -2,17 +2,15 @@
 @Author: Conghao Wong
 @Date: 2022-07-15 20:13:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-16 21:41:31
+@LastEditTime: 2023-11-02 16:04:22
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from typing import Union
 import torch
 
 from qpid.args import Args
-from qpid.base import BaseManager
 
 from ..args import DYNAMIC, Args
 from ..model import Model, layers
@@ -20,8 +18,6 @@ from ..training import Structure
 
 
 class LinearArgs(Args):
-    def __init__(self, terminal_args: list[str] = None, is_temporary=False) -> None:
-        super().__init__(terminal_args, is_temporary)
 
     @property
     def weights(self) -> float:
@@ -51,8 +47,8 @@ class Linear(Structure):
 
     def __init__(self, terminal_args: list[str]):
 
-        self.args = LinearArgs(terminal_args)
+        self.args: LinearArgs = LinearArgs(terminal_args)
         super().__init__(self.args)
 
-    def create_model(self, *args, **kwargs) -> Model:
-        return LinearModel(self.args, structure=self)
+    def create_model(self, *args, **kwargs):
+        self.model = LinearModel(self.args, structure=self)

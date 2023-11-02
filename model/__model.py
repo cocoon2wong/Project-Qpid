@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 17:25:59
+@LastEditTime: 2023-11-01 20:11:41
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,6 @@
 
 import os
 import time
-from typing import TypeVar
 
 import numpy as np
 import torch
@@ -20,8 +19,6 @@ from ..base import BaseManager
 from ..constant import INPUT_TYPES
 from ..utils import CHECKPOINT_FILENAME, WEIGHTS_FORMAT
 from . import process
-
-T = TypeVar('T')
 
 MAX_INFERENCE_TIME_STORGED = 100
 
@@ -79,11 +76,11 @@ class Model(torch.nn.Module, BaseManager):
         return self.manager
 
     @structure.setter
-    def structure(self, value: T) -> T:
+    def structure(self, value):
         self.manager = value
 
     @property
-    def average_inference_time(self) -> int:
+    def average_inference_time(self) -> int | str:
         """
         Average inference time (ms).
         """
@@ -96,7 +93,7 @@ class Model(torch.nn.Module, BaseManager):
             return '(Not Available)'
 
     @property
-    def fastest_inference_time(self) -> int:
+    def fastest_inference_time(self) -> int | str:
         """
         The fastest inference time (ms).
         """
@@ -198,7 +195,8 @@ class Model(torch.nn.Module, BaseManager):
         p = os.path.join(weights_dir, weights_name)
         dic = torch.load(p, map_location=self.structure.device_cpu)
         self.load_state_dict(dic)
-        self.log(f'Successfully load weights from `{p}`.', verbose_mode=True)
+        self.log(f'Successfully load weights from `{p}`.',
+                 only_log_under_verbose_mode=True)
 
     def print_info(self, **kwargs):
         try:

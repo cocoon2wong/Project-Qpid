@@ -2,14 +2,19 @@
 @Author: Conghao Wong
 @Date: 2022-07-27 20:47:50
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 13:34:53
+@LastEditTime: 2023-11-02 18:18:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+from typing import TypeVar, overload
+
 from . import interpHandlers
 from .__baseSubnetwork import BaseSubnetwork, BaseSubnetworkStructure
+
+TStructure = TypeVar('TStructure', bound=BaseSubnetworkStructure)
+TModel = TypeVar('TModel', bound=BaseSubnetwork)
 
 
 class SILVERBALLERS_DICT():
@@ -65,14 +70,35 @@ class SILVERBALLERS_DICT():
             cls.__S_DICT[k] = v
 
     @classmethod
-    def get_structure(cls, name: str) -> type[BaseSubnetworkStructure]:
+    @overload
+    def get_structure(cls, name: str) -> type[BaseSubnetworkStructure]: ...
+
+    @classmethod
+    @overload
+    def get_structure(
+        cls, name: str, stype: type[TStructure] | None = None) -> type[TStructure]: ...
+
+    @classmethod
+    def get_structure(cls, name: str, stype=None):
         """
         Get structure type of the given model.
+
+        :param name: Name of the structure.
+        :param stype: Type of the structure. It is only used for type-hinting.
         """
         return cls.__get(name)[0]
 
     @classmethod
-    def get_model(cls, name: str) -> type[BaseSubnetwork]:
+    @overload
+    def get_model(cls, name: str) -> type[BaseSubnetwork]: ...
+
+    @classmethod
+    @overload
+    def get_model(cls, name: str,
+                  mtype: type[TModel] | None = None) -> type[TModel]: ...
+
+    @classmethod
+    def get_model(cls, name: str, mtype=None):
         """
         Get model type of the given model.
         """

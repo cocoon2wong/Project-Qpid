@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 10:50:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 19:28:58
+@LastEditTime: 2023-11-01 21:03:15
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -21,7 +21,7 @@ class AIOU(BaseLossLayer):
     """
 
     def forward(self, outputs: list, labels: list, inputs: list,
-                mask=None, training=None, *args, **kwargs):
+                mask: torch.Tensor, training=None, *args, **kwargs):
 
         pred = outputs[0]
         GT = labels[0]

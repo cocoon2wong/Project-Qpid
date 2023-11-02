@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-29 09:26:00
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 12:32:02
+@LastEditTime: 2023-11-02 18:32:48
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,6 @@
 import torch
 
 from ...constant import INPUT_TYPES
-from ...training import Structure
 from ..__handlerModel import BaseHandlerModel, HandlerArgs
 
 
@@ -23,11 +22,11 @@ class _BaseInterpHandlerModel(BaseHandlerModel):
     """
 
     is_interp_handler = True
-    INTERP_LAYER_TYPE: type[torch.nn.Module] = None
+    INTERP_LAYER_TYPE: type[torch.nn.Module] | None = None
 
     def __init__(self, Args: HandlerArgs,
                  as_single_model: bool = True,
-                 structure: Structure = None,
+                 structure=None,
                  *args, **kwargs):
 
         super().__init__(Args, as_single_model, structure, *args, **kwargs)
@@ -38,8 +37,11 @@ class _BaseInterpHandlerModel(BaseHandlerModel):
         self.set_preprocess()
 
         self.accept_batchK_inputs = True
-        self.interp_layer = None if not self.INTERP_LAYER_TYPE \
-            else self.INTERP_LAYER_TYPE()
+
+        if self.INTERP_LAYER_TYPE is None:
+            raise ValueError
+
+        self.interp_layer = self.INTERP_LAYER_TYPE()
 
         self.ext_traj_wise_outputs = {}
         self.ext_agent_wise_outputs = {}

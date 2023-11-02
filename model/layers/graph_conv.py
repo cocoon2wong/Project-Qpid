@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2021-12-21 15:20:57
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 20:44:21
+@LastEditTime: 2023-11-01 19:54:17
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -20,7 +20,7 @@ class GraphConv(torch.nn.Module):
 
     def __init__(self, input_units: int,
                  output_units: int,
-                 activation: type[torch.nn.Module] = None,
+                 activation: type[torch.nn.Module] | None = None,
                  *args, **kwargs):
         """
         Init a graph convolution layer

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-01 10:38:40
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-10 10:51:42
+@LastEditTime: 2023-11-01 19:58:00
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -20,8 +20,8 @@ class Move(BaseProcessLayer):
     The default reference time step is the last observation step.
     """
 
-    def __init__(self, anntype: str = None,
-                 ref_index: int = None,
+    def __init__(self, anntype: str = '',
+                 ref_index: int | None = None,
                  *args, **kwargs):
 
         super().__init__(anntype,
@@ -37,6 +37,8 @@ class Move(BaseProcessLayer):
         The reference points when moving trajectories.
         Shape is `(batch, 1, dim)`.
         """
+        if self._ref_points is None:
+            raise ValueError('Parameters are not updated!')
         return self._ref_points
 
     def update_paras(self, inputs: dict[str, torch.Tensor]) -> None:

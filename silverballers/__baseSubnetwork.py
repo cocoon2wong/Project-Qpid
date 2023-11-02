@@ -2,15 +2,15 @@
 @Author: Conghao Wong
 @Date: 2023-06-06 16:45:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 09:38:40
+@LastEditTime: 2023-11-02 18:31:03
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
-from typing import Union
-
 import torch
+
+from qpid.args import Args
 
 from ..args import Args
 from ..dataset import AgentManager
@@ -24,7 +24,7 @@ class BaseSubnetwork(Model):
 
     def __init__(self, Args: BaseSilverballersArgs,
                  as_single_model: bool = True,
-                 structure: Structure = None,
+                 structure=None,
                  *args, **kwargs):
 
         super().__init__(Args, structure, *args, **kwargs)
@@ -50,8 +50,8 @@ class BaseSubnetwork(Model):
         indices = [int(i) for i in self.args.key_points.split('_')]
         self.__ki = torch.tensor(indices, dtype=torch.int32)
 
-        self.n_key_past: int = torch.sum((self.__ki < 0).to(torch.int32))
-        self.n_key_future: int = torch.sum((self.__ki >= 0).to(torch.int32))
+        self.n_key_past = torch.sum((self.__ki < 0).to(torch.int32))
+        self.n_key_future = torch.sum((self.__ki >= 0).to(torch.int32))
         self.n_key = self.n_key_past + self.n_key_future
 
     @property
@@ -116,13 +116,13 @@ class BaseSubnetwork(Model):
 class BaseSubnetworkStructure(Structure):
 
     ARG_TYPE: type[BaseSilverballersArgs] = BaseSilverballersArgs
-    MODEL_TYPE: type[BaseSubnetwork] = None
+    MODEL_TYPE: type[BaseSubnetwork] | None = None
 
-    def __init__(self, terminal_args: Union[list[str], Args],
-                 manager: Structure = None):
+    def __init__(self, terminal_args: list[str] | Args,
+                 manager=None):
 
         name = 'Train Manager'
-        if issubclass(type(terminal_args), Args):
+        if isinstance(terminal_args, Args):
             init_args = terminal_args
             name += ' (subnetwork)'
         else:
@@ -136,9 +136,12 @@ class BaseSubnetworkStructure(Structure):
         self.args: BaseSilverballersArgs
         self.model: BaseSubnetwork
 
-    def create_model(self, as_single_model=True) -> BaseSubnetwork:
-        return self.MODEL_TYPE(self.args, as_single_model,
-                               structure=self)
+    def create_model(self, as_single_model=True):
+        if self.MODEL_TYPE is None:
+            raise ValueError
+
+        self.model = self.MODEL_TYPE(self.args, as_single_model,
+                                     structure=self)
 
     def set_model_type(self, new_type: type[BaseSubnetwork]):
         self.MODEL_TYPE = new_type

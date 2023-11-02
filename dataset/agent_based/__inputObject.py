@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 09:26:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-07-08 10:20:36
+@LastEditTime: 2023-11-02 15:39:10
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,45 +10,65 @@
 
 import numpy as np
 
-from ...utils import INIT_POSITION, get_loss_mask
+from ...utils import INIT_POSITION
 from ..__base import BaseInputObject
 
 
 class Agent(BaseInputObject):
     """
     Agent
-    -----
-    Structure to manage data of one training sample.
+    ---
+    Structure to manage data of one `agent-based` training sample.
+    It could be managed by `AgentFilesManager` or `AgentObjectmanager`.
 
-    Properties
-    ----------
+    Universal Properties
+    ---
     ```python
-    self.traj -> np.ndarray     # historical trajectory
-    self.pred -> np.ndarray     # predicted (future) trajectory
-    self.frames -> list[int]    # a list of frame index when this agent appeared
-    self.frames_future -> list[int]     # agent's future frame index
-    self.pred_linear -> np.ndarray  # agent's linear prediction
-    self.groundtruth -> np.ndarray  # agent's future trajectory (when available)
-
-    self.Map  -> np.ndarray   # agent's context map
+    (property) id: (self: Self@BaseInputObject) -> str
+    (property) type: (self: Self@BaseInputObject) -> str
+    (property) frames: (self: Self@BaseInputObject) -> ndarray
+    (property) frames_future: (self: Self@BaseInputObject) -> ndarray
     ```
 
-    Public Methods
-    --------------
+    Trajectory-Related Properties
+    ---
     ```python
-    # copy this manager to a new address
-    >>> self.copy() -> BasePredictionAgent
+    # Mask
+    (property) mask: (self: Self@BaseInputObject) -> ndarray
 
-    # get neighbors' trajs -> list[np.ndarray]
-    >>> self.get_neighbor_traj()
+    # Observed trajectory
+    (property) traj: (self: Self@Agent) -> ndarray
 
-    # get neighbors' linear predictions
-    >>> self.get_pred_traj_neighbor_linear() -> list[np.ndarray]
+    # Observed trajectory (without paddings)
+    (property) traj_masked: (self: Self@BaseInputObject) -> ndarray
+
+    # All neighbors' observed trajectories
+    (property) traj_neighbor: (self: Self@Agent) -> ndarray
+
+    # Predicted trajectory
+    (property) pred: (self: Self@BaseInputObject) -> (ndarray | None)
+
+    # Predicted trajectory (without paddings)
+    (property) pred_masked: (self: Self@BaseInputObject) -> (ndarray | None)
+
+    # Linearly predicted trajectory
+    (property) pred_linear: (self: Self@Agent) -> (ndarray | None)
+
+    # All neighbors' linearly predicted trajectories
+    (property) pred_linear_neighbor: (self: Self@Agent) -> (ndarray | None)
+
+    # Ground truth future trajectory
+    (property) groundtruth: (self: Self@Agent) -> (ndarray | None)
+
+    # Ground truth futhre trajectory (without paddings)
+    (property) groundtruth_masked: (self: Self@BaseInputObject) -> (ndarray | None)
+
+    # Ground truth destination (the last point of ground truth trajectory)
+    (property) destination: (self: Self@BaseInputObject) -> (ndarray | None)
     ```
     """
 
     __version__ = 7.0
-
     _save_items = ['__version__',
                    '_traj', '_traj_future',
                    '_traj_pred', '_traj_linear',
@@ -64,14 +84,16 @@ class Agent(BaseInputObject):
 
         super().__init__()
         self.neighbor_number = 0
-        self._traj_neighbor: np.ndarray = None
-        self._traj_linear_neighbor: np.ndarray = None
+        self._traj_neighbor: np.ndarray | None = None
+        self._traj_linear_neighbor: np.ndarray | None = None
 
     @property
     def traj(self) -> np.ndarray:
         """
         historical trajectory, shape = (obs, dim)
         """
+        if self._traj is None:
+            raise ValueError
         return self.pickers.get(self._traj)
 
     @property
@@ -82,18 +104,13 @@ class Agent(BaseInputObject):
         NOTE: Returned trajectories are all reletive, corresponding to
         current agents' last observed point.
         """
+        if self._traj_neighbor is None:
+            raise ValueError
         ref = self.traj[..., -1:, :]
         return self.padding(self.pickers.get(self._traj_neighbor)) - ref
 
     @property
-    def pred(self) -> np.ndarray:
-        """
-        predicted trajectory, shape = (pred, dim)
-        """
-        return self._traj_pred
-
-    @property
-    def pred_linear(self) -> np.ndarray:
+    def pred_linear(self) -> np.ndarray | None:
         """
         linear prediction.
         shape = (pred, dim)
@@ -101,7 +118,7 @@ class Agent(BaseInputObject):
         return self.pickers.get(self._traj_linear)
 
     @property
-    def pred_linear_neighbor(self) -> np.ndarray:
+    def pred_linear_neighbor(self) -> np.ndarray | None:
         """
         linear prediction of neighbors' trajectories.
         shape = (n, pred, dim)
@@ -109,10 +126,10 @@ class Agent(BaseInputObject):
         return self.pickers.get(self._traj_linear_neighbor)
 
     @property
-    def groundtruth(self) -> np.ndarray:
+    def groundtruth(self) -> np.ndarray | None:
         """
         ground truth future trajectory.
-        shape = (pred, dim)
+        shape = (pred, dim).
         """
         return self.pickers.get(self._traj_future)
 
@@ -219,7 +236,7 @@ class Trajectory():
                  agent_type: str,
                  trajectory: np.ndarray,
                  neighbors: list[list[int]],
-                 frames: list[int],
+                 frames: np.ndarray,
                  init_position: float):
         """
         init

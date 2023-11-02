@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-01 11:15:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:36:39
+@LastEditTime: 2023-11-01 20:06:51
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -41,6 +41,8 @@ class Rotate(BaseProcessLayer):
         Angles of all oberved trajectories (move vectors).
         Shape is `(batch)`.
         """
+        if self._angles is None:
+            raise ValueError('Parameters are not updated!')
         return self._angles
 
     def update_paras(self, inputs: dict[str, torch.Tensor]) -> None:

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-19 09:51:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-12 20:07:01
+@LastEditTime: 2023-11-02 09:46:08
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -10,6 +10,8 @@
 
 import os
 from typing import Any
+
+import numpy as np
 
 from ...base import BaseManager
 from ..__splitManager import Clip
@@ -25,16 +27,16 @@ class BaseInputManager(BaseManager):
     It should be managed by the `AgentManager` object.
     """
 
-    TEMP_FILE: str = None
-    TEMP_FILES: dict[str, str] = None
+    TEMP_FILE: str | None = None
+    TEMP_FILES: dict[str, str] | None = None
 
-    ROOT_DIR: str = None
-    INPUT_TYPE: str = None
+    ROOT_DIR: str | None = None
+    INPUT_TYPE: str | None = None
 
-    def __init__(self, manager: BaseManager, name: str = None):
+    def __init__(self, manager: BaseManager, name: str | None = None):
         super().__init__(manager=manager, name=name)
 
-        self.__clip: Clip = None
+        self.__clip: Clip | None = None
 
     @property
     def picker(self) -> Annotation:
@@ -46,14 +48,14 @@ class BaseInputManager(BaseManager):
         else:
             return os.path.join(clip.temp_dir, r)
 
-    def get_temp_file_path(self, clip: Clip) -> str:
+    def get_temp_file_path(self, clip: Clip) -> str | None:
         if not self.TEMP_FILE:
             return None
 
         temp_dir = self.get_temp_dir(clip)
         return os.path.join(temp_dir, self.TEMP_FILE)
 
-    def get_temp_files_paths(self, clip: Clip) -> dict[str, str]:
+    def get_temp_files_paths(self, clip: Clip) -> dict[str, str] | None:
         if not self.TEMP_FILES:
             return None
 
@@ -64,8 +66,8 @@ class BaseInputManager(BaseManager):
         return dic
 
     def run(self, clip: Clip,
-            root_dir: str = None,
-            *args, **kwargs) -> list:
+            root_dir: str | None = None,
+            *args, **kwargs) -> Any:
         """
         Run all dataset-related operations within this manager,
         including load, preprocess, read or write files, and
@@ -98,11 +100,11 @@ class BaseInputManager(BaseManager):
         return self.get_temp_dir(self.working_clip)
 
     @property
-    def temp_file(self) -> str:
+    def temp_file(self) -> str | None:
         return self.get_temp_file_path(self.working_clip)
 
     @property
-    def temp_files(self) -> dict[str, str]:
+    def temp_files(self) -> dict[str, str] | None:
         return self.get_temp_files_paths(self.working_clip)
 
     @property
@@ -137,8 +139,23 @@ class BaseInputManager(BaseManager):
         """
         raise NotImplementedError
 
-    def load(self, *args, **kwargs) -> list:
+    def load(self, *args, **kwargs) -> Any:
         """
         Load the processed data to a list of values to train or test.
         """
         raise NotImplementedError
+
+
+class BaseExtInputManager(BaseInputManager):
+    """
+    This class is only used for type hinting.
+    """
+
+    def run(self, clip: Clip,
+            root_dir: str | None = None,
+            *args, **kwargs) -> np.ndarray:
+
+        return super().run(clip, root_dir, *args, **kwargs)
+
+    def load(self, *args, **kwargs) -> np.ndarray:
+        return super().load(*args, **kwargs)

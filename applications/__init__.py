@@ -8,4 +8,4 @@
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from .__linear import Linear
+from .linear_prediction import Linear

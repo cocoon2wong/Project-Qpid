@@ -13,7 +13,7 @@ Pipelines:
 """
 
 from .__filesManager import BaseFilesManager
-from .__inputManager import BaseInputManager
-from .__inputObject import BaseInputObject
+from .__inputManager import BaseExtInputManager, BaseInputManager
+from .__inputObject import BaseInputObject, get_attributes
 from .__inputObjectManager import BaseInputObjectManager
 from .__picker import Annotation, AnnotationManager

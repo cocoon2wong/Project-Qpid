@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-10 15:25:33
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 19:43:53
+@LastEditTime: 2023-11-01 19:53:56
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -14,7 +14,7 @@ import torch
 class Dense(torch.nn.Module):
     def __init__(self, input_units: int,
                  output_units: int,
-                 activation: type[torch.nn.Module] = None,
+                 activation: type[torch.nn.Module] | None = None,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.linear = torch.nn.Linear(input_units, output_units)

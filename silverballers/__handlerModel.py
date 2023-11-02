@@ -2,13 +2,16 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:52:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-12 11:30:30
+@LastEditTime: 2023-11-02 18:29:50
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 import torch
+
+from qpid.args import Args
+from qpid.training import Structure
 
 from ..args import DYNAMIC, STATIC, TEMPORARY
 from ..base import SecondaryBar
@@ -22,7 +25,7 @@ from .__loss import avgKey
 
 class HandlerArgs(BaseSilverballersArgs):
 
-    def __init__(self, terminal_args: list[str] = None,
+    def __init__(self, terminal_args: list[str] | None = None,
                  is_temporary=False) -> None:
 
         super().__init__(terminal_args, is_temporary)
@@ -43,7 +46,7 @@ class BaseHandlerModel(BaseSubnetwork):
 
     def __init__(self, Args: HandlerArgs,
                  as_single_model: bool = True,
-                 structure: Structure = None,
+                 structure=None,
                  *args, **kwargs):
 
         super().__init__(Args, as_single_model, structure, *args, **kwargs)
@@ -192,11 +195,11 @@ class BaseHandlerModel(BaseSubnetwork):
 
 class BaseHandlerStructure(BaseSubnetworkStructure):
 
-    ARG_TYPE = HandlerArgs
-    MODEL_TYPE: type[BaseHandlerModel] = None
+    ARG_TYPE: type[HandlerArgs] = HandlerArgs
+    MODEL_TYPE: type[BaseHandlerModel] | None = None
 
-    def __init__(self, terminal_args: list[str],
-                 manager: Structure = None):
+    def __init__(self, terminal_args: list[str] | Args,
+                 manager: Structure | None = None):
 
         super().__init__(terminal_args, manager)
 

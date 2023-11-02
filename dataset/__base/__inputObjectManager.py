@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 19:15:43
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-06-12 19:52:01
+@LastEditTime: 2023-11-02 15:05:03
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -20,17 +20,26 @@ from .__inputObject import BaseInputObject
 
 
 class BaseInputObjectManager(BaseInputManager):
+    """
+    BaseInputObjectManager
+    ---
+    The basic class for managing `InputObject`s (like `AgentObjectManager` and 
+    `FrameObjectManager`).
+    It is used to load data from the meta dataset files, and make them into the
+    zipped `npz` files in the `./temp_files` for training or test usages.
+    It is managed by the `BaseFilesManager` objects.
+    """
 
     TEMP_FILE = 'data.npz'
 
-    def __init__(self, manager: BaseManager, name: str = None):
+    def __init__(self, manager: BaseManager, name: str | None = None):
         super().__init__(manager, name)
 
     # For type hinting
-    def run(self, clip: Clip, root_dir: str = None, 
+    def run(self, clip: Clip, root_dir: str | None = None,
             *args, **kwargs) -> list[BaseInputObject]:
         return super().run(clip, root_dir, *args, **kwargs)
-    
+
     def save(self, **kwargs) -> None:
         """
         Load trajectory data from the annotation text file.
@@ -47,7 +56,7 @@ class BaseInputObjectManager(BaseInputManager):
         - `item[M-1]`: type of the agent
         """
 
-        dataset: SplitManager = self.working_clip.manager
+        dataset = self.working_clip.get_manager(SplitManager)
         anndim = dataset.dimension
 
         data = np.genfromtxt(self.working_clip.annpath, str, delimiter=',')
@@ -91,8 +100,9 @@ class BaseInputObjectManager(BaseInputManager):
         dim = agent_dict[agent_names[0]].shape[-1] - 1
         matrix = INIT_POSITION * np.ones([f, p, dim])
 
+        # The timebar is open by the `AgentManager` object
         for name, index in SecondaryBar(name_dict.items(),
-                                        manager=self.manager,
+                                        manager=self.manager.manager,
                                         desc='Processing dataset...'):
 
             frame_id = agent_dict[name].T[0].astype(np.int32)
@@ -103,12 +113,15 @@ class BaseInputObjectManager(BaseInputManager):
             np.where(np.not_equal(data, INIT_POSITION))[0]
             for data in matrix[:, :, 0]], dtype=object)
 
+        if self.temp_file is None:
+            raise ValueError
+
         dir_check(os.path.dirname(self.temp_file))
         np.savez(self.temp_file,
                  neighbor_indexes=neighbor_indexes,
                  matrix=matrix,
                  frame_ids=frame_ids,
                  person_ids=names_and_types)
-    
+
     def load(self, **kwargs) -> list[BaseInputObject]:
         raise NotImplementedError

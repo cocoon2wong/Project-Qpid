@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2021-04-30 14:58:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-11 10:41:30
+@LastEditTime: 2023-11-02 18:50:52
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -223,7 +223,7 @@ class Decoder(torch.nn.Module):
             maximum_position_encoding, d_model)
 
         for index in range(num_layers):
-            self.add_module(f'dec_layer_{index}', 
+            self.add_module(f'dec_layer_{index}',
                             DecoderLayer(d_model, num_heads, dff, rate))
 
         self.dropout = Dropout(rate)
@@ -352,8 +352,8 @@ class TransformerEncoder(torch.nn.Module):
                  dim_model: int,
                  dim_forward: int,
                  steps: int,
-                 dim_input: int = None,
-                 dim_output: int = None,
+                 dim_input: int,
+                 dim_output: int,
                  dropout=0.1,
                  include_top=True,
                  *args, **kwargs):

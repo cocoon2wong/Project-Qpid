@@ -2,29 +2,29 @@
 @Author: Conghao Wong
 @Date: 2023-05-25 14:51:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 18:02:10
+@LastEditTime: 2023-11-02 18:49:38
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 import os
-from typing import Any
+from typing import Any, overload
 
 import numpy as np
 import torch
 
 from ...base import BaseManager
 from ...constant import INPUT_TYPES
-from ...dataset import Clip
-from ...dataset.__base import BaseInputManager
+from ...dataset import Clip, SplitManager
+from ...dataset.__base import BaseExtInputManager
 from .__args import ContextMapsArgs
 from .settings import (MAP_HALF_SIZE, POOLING_BEFORE_SAVING, SEG_IMG,
                        WINDOW_EXPAND_METER, WINDOW_EXPAND_PIXEL,
                        WINDOW_SIZE_METER, WINDOW_SIZE_PIXEL)
 
 
-class MapParasManager(BaseInputManager):
+class MapParasManager(BaseExtInputManager):
     """
     Map Parameters Manager
     ---
@@ -39,8 +39,8 @@ class MapParasManager(BaseInputManager):
 
         super().__init__(manager, name)
 
-        self.context_args = self.args._register_mod_args(ContextMapsArgs,
-                                                         __package__)
+        self.context_args = self.args.register_subargs(ContextMapsArgs,
+                                                       __package__)
 
         # Parameters
         self.map_type: str = None
@@ -104,7 +104,7 @@ class MapParasManager(BaseInputManager):
                          W=self.W,
                          b=self.b),)
 
-    def load(self, agents: list, *args, **kwargs) -> list:
+    def load(self, agents: list, *args, **kwargs):
         # load global map's configs
         config_path = self.temp_file
         config_dict = np.load(config_path, allow_pickle=True).tolist()
@@ -117,7 +117,7 @@ class MapParasManager(BaseInputManager):
                          repeats=len(agents), axis=0)
 
     def init_clip(self, clip: Clip):
-        self.map_type = clip.manager.type
+        self.map_type = clip.get_manager(SplitManager).type
 
         if self.map_type == 'pixel':
             self.a = WINDOW_SIZE_PIXEL
@@ -137,7 +137,13 @@ class MapParasManager(BaseInputManager):
         grid = ((traj - self.b) * self.W).astype(np.int32)
         return grid
 
-    def C(self, trajs: np.ndarray) -> np.ndarray:
+    @overload
+    def C(self, trajs: np.ndarray) -> np.ndarray: ...
+
+    @overload
+    def C(self, trajs: torch.Tensor) -> torch.Tensor: ...
+
+    def C(self, trajs):
         """
         Get the 2D center point of the input M-dimensional trajectory.
         """

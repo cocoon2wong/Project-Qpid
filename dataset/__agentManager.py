@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 18:06:50
+@LastEditTime: 2023-11-02 19:14:36
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -13,16 +13,15 @@ import random
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
 
 from ..base import BaseManager
 from ..constant import INPUT_TYPES
-from ..model.layers.transfroms import _BaseTransformLayer, get_transform_layers
 from ..utils import dir_check
-from .__base import Annotation, AnnotationManager, BaseInputManager
+from .__base import (Annotation, AnnotationManager, BaseExtInputManager,
+                     BaseInputObject, get_attributes)
 from .__splitManager import SplitManager
-from .agent_based import Agent, AgentFilesManager, TrajectoryManager
-from .frame_based import FrameFilesManager, FrameManager
+from .agent_based import AgentFilesManager
+from .frame_based import FrameFilesManager
 
 
 class TrajectoryDataset(Dataset):
@@ -46,53 +45,17 @@ class AgentManager(BaseManager):
     """
     AgentManager
     ---
-    Structure to manage several training and test `Agent` objects.
+    Structure to manage several training and test `Agent` or `Frame` objects.
     The `AgentManager` object is managed by the `Structure` object.
 
-    Member Managers
+    Members
     ---
-    - Dataset split's manager: type is `SplitManager`;
-    - Trajectory map manager (optional, dynamic): type is `TrajMapManager`;
-    - Social map manager (optional, dynamic): type is `SocialMapManager`.
-
-    Public Methods
-    ---
-    ```python
-    # concat agents to this `AgentManager`
-    (method) append: (self: Self@AgentManager, target: Any) -> None
-
-    # set inputs and outputs
-    (method) set: (self: Self@AgentManager, dimension: int, 
-                   inputs_type: list[str],
-                   labels_type: list[str]) -> None
-
-    # get inputs
-    (method) get_inputs: (self: Self@AgentManager) -> list[Tensor]
-
-    # get labels
-    (method) get_labels: (self: Self@AgentManager) -> list[Tensor]
-
-    # make inputs and labels into a dataset object
-    (method) make_dataset: (self: Self@AgentManager, 
-                            shuffle: bool = False) -> DatasetV2
-
-    # save all agents' data
-    (method) save: (self: Self@AgentManager, save_dir: str) -> None
-
-    # load from saved agents' data
-    (method) load: (cls: Type[Self@AgentManager], path: str) -> AgentManager
-    ```
-
-    Context Map Methods
-    ---
-    ```python
-    # init map managers that manage to make context maps
-    (method) init_map_managers: (self: Self@AgentManager, 
-                                 map_type: str, 
-                                 base_path: str) -> None
-
-    #  load context maps to `Agent` objects
-    (method) load_maps: (self: Self@AgentManager) -> None
+    - `SplitManager`: Manage the dataset split;
+    - `AgentFilesManager` (only for `agent-based` models): Manage the save or load
+        process of trajectory data (with multiple `Agent` and `AgentManager` objects);
+    - `FrameFilesManager` (only for `frame-based` models): Manage the save or load
+        process of trajectory data (with multiple `Frame` and `FrameObjectManager` objects);
+    - A list of `ExtInputManager` objects to manage all other needed model inputs.
     ```
     """
 
@@ -105,40 +68,35 @@ class AgentManager(BaseManager):
                                           split=self.args.split)
 
         if (t := self.args.model_type) == 'agent-based':
-            self.traj_manager = TrajectoryManager(self)
             self.file_manager = AgentFilesManager(self)
         elif t == 'frame-based':
-            self.frame_manager = FrameManager(self)
             self.file_manager = FrameFilesManager(self)
         else:
             self.log(f'Wrong model type `{t}`!',
                      level='error', raiseError=ValueError)
 
         # file root paths
-        self.base_path: str = None
-        self.npz_path: str = None
-        self.maps_dir: str = None
+        self.base_path: str = 'Not Assigned'
+        self.npz_path: str = 'Not Assigned'
+        self.maps_dir: str = 'Not Assigned'
 
         # Settings and variations
-        self._agents: list[Agent] = []
-        self.model_inputs: list[str] = None
-        self.model_labels: list[str] = None
+        self._agents: list[BaseInputObject] = []
+        self.model_inputs: list[str] = []
+        self.model_labels: list[str] = []
         self.processed_clips: dict[str, list[str]] = {'train': [], 'test': []}
 
         # Managers for extra model inputs
-        self.ext_mgrs: list[BaseInputManager] = []
+        self.ext_mgrs: list[BaseExtInputManager] = []
         self.ext_types: list[str] = []
-        self.ext_inputs: dict[str, dict[str, list]] = {}
-
-        # Transform layer
-        self.t_layers: dict[str, _BaseTransformLayer] = {}
+        self.ext_inputs: dict[str, dict[str, np.ndarray]] = {}
 
     @property
-    def agents(self) -> list[Agent]:
+    def agents(self):
         return self._agents
 
     @agents.setter
-    def agents(self, value: list[Agent]) -> list[Agent]:
+    def agents(self, value: list[BaseInputObject]):
         self._agents = self.update_agents(value)
 
     @property
@@ -154,12 +112,12 @@ class AgentManager(BaseManager):
         self.base_path = npz_path.split('.np')[0]
         self.maps_dir = self.base_path + '_maps'
 
-    def update_agents(self, agents: list[Agent]):
+    def update_agents(self, agents: list[BaseInputObject]):
         for a in agents:
             a.manager = self
         return agents
 
-    def append(self, target: list[Agent]):
+    def append(self, target: list[BaseInputObject]):
         self._agents += self.update_agents(target)
 
     def set_types(self, inputs_type: list[str], labels_type: list[str]):
@@ -182,32 +140,6 @@ class AgentManager(BaseManager):
         self.model_inputs = inputs_type
         self.model_labels = labels_type
 
-    def gather_inputs(self) -> list[torch.Tensor]:
-        """
-        Get all model inputs from agents.
-        """
-        return [self._gather(T) for T in self.model_inputs]
-
-    def gather_labels(self) -> list[torch.Tensor]:
-        """
-        Get all model labels from agents.
-        """
-        return [self._gather(T) for T in self.model_labels]
-
-    def make_dataset(self, training=False) -> DataLoader:
-        """
-        Get inputs from all agents and make the `torch.utils.data.DataLoader`
-        object. Note that the dataset contains both model inputs
-        and labels.
-        """
-        x = self.gather_inputs()
-        y = self.gather_labels()
-        dataset = DataLoader(dataset=TrajectoryDataset(x, y),
-                             batch_size=self.args.batch_size,
-                             drop_last=True if training else False,
-                             shuffle=True if training else False)
-        return dataset
-
     def clean(self):
         """
         Clean all loaded data and agent objects in this manager.
@@ -216,7 +148,7 @@ class AgentManager(BaseManager):
         self.ext_inputs = {}
         return self
 
-    def make(self, clips: list[str], training: bool) -> DataLoader:
+    def make(self, clips: str | list[str], training: bool) -> DataLoader:
         """
         Load train samples and make the `torch.utils.data.DataLoader`
         object to train.
@@ -225,7 +157,7 @@ class AgentManager(BaseManager):
         :param training: The load mode.
         :return dataset: The loaded `torch.utils.data.DataLoader` object.
         """
-        if type(clips) is str:
+        if isinstance(clips, str):
             clips = [clips]
 
         # shuffle agents and video clips when training
@@ -248,15 +180,22 @@ class AgentManager(BaseManager):
             self.append(agents)
 
             # Load extra model inputs
+            trajs = None
             self.ext_inputs[clip_name] = {}
             for mgr in self.ext_mgrs:
                 key = mgr.INPUT_TYPE
+                if key is None:
+                    raise ValueError
+
+                if trajs is None:
+                    trajs = np.array([a.traj for a in agents])
+
                 dir_path = f'{self.file_manager.get_temp_file_path(clip)}.{key}'
                 dir_name = dir_check(dir_path).split('/')[-1]
                 value = mgr.run(clip=clip,
                                 root_dir=dir_name,
                                 agents=agents,
-                                trajs=self._gather_obs_trajs(agents))
+                                trajs=trajs)
 
                 if not key in self.ext_inputs[clip_name].keys():
                     self.ext_inputs[clip_name][key] = value
@@ -264,68 +203,46 @@ class AgentManager(BaseManager):
                     self.ext_inputs[clip_name][key] += value
 
         self.processed_clips[mode] += clips
-        return self.make_dataset(training=training)
 
-    def _gather_obs_trajs(self, agents: list[Agent] = None) -> np.ndarray:
-        if not agents:
-            agents = self.agents
-        return np.array([a.traj for a in agents])
+        # Making into the dataset object
+        p = f'Prepare {mode}' + ' {}...'
+        x = [self._gather(T, p) for T in self.model_inputs]
+        y = [self._gather(T, p) for T in self.model_labels]
+        dataset = DataLoader(dataset=TrajectoryDataset(x, y),
+                             batch_size=self.args.batch_size,
+                             drop_last=True if training else False,
+                             shuffle=True if training else False)
+        return dataset
 
-    def _gather(self, type_name: str) -> torch.Tensor:
+    def _gather(self, type_name: str,
+                tqdm_desc_pattern: str) -> torch.Tensor:
         """
-        Get model inputs or labels from a list of `Agent`-like objects.
-
-        :param type_name: Types of all inputs, accept all type names \
-            in `INPUT_TYPES`.
-        :return inputs: A tensor of stacked inputs.
+        Gather needed inputs from `self.agents` and `self.ext_inputs`
+        and stake them into a `torch.Tensor` tensor for training or test.
         """
-        t = type_name
-        if t in self.ext_types:
-            res = None
-            for _, _res in self.ext_inputs.items():
-                if res is None:
-                    res = _res[t]
+        match type_name:
+            case INPUT_TYPES.OBSERVED_TRAJ:
+                name, string = ['traj', 'trajectories']
+            case INPUT_TYPES.NEIGHBOR_TRAJ:
+                name, string = ['traj_neighbor', 'neighbors']
+            case INPUT_TYPES.DESTINATION_TRAJ:
+                name, string = ['destination', 'destinations']
+            case INPUT_TYPES.GROUNDTRUTH_TRAJ:
+                name, string = ['groundtruth', 'groundtruth']
+            case _:
+                if (t := type_name) in self.ext_types:
+                    res = None
+                    for _res in self.ext_inputs.values():
+                        if res is None:
+                            res = _res[t]
+                        else:
+                            res = np.concatenate([res, _res[t]], axis=0)
+                    return torch.from_numpy(res)
                 else:
-                    res = torch.concat([res, _res[t]], dim=0)
-            return torch.tensor(res, dtype=torch.float32)
+                    raise ValueError(t)
 
-        if t == INPUT_TYPES.OBSERVED_TRAJ:
-            return _get_obs_traj(self.agents)
-
-        elif t == INPUT_TYPES.NEIGHBOR_TRAJ:
-            return _get_neighbor_traj(self.agents)
-
-        elif t == INPUT_TYPES.DESTINATION_TRAJ:
-            return _get_dest_traj(self.agents)
-
-        elif t == INPUT_TYPES.GROUNDTRUTH_TRAJ:
-            return _get_gt_traj(self.agents)
-
-        elif t == INPUT_TYPES.GROUNDTRUTH_SPECTRUM:
-            if t not in self.t_layers.keys():
-                t_type, _ = get_transform_layers(self.args.T)
-                self.t_layers[t] = t_type((self.args.pred_frames,
-                                           self.picker.dim))
-
-            t_layer = self.t_layers[t]
-            return t_layer(_get_gt_traj(self.agents, text='groundtruth spectrums'))
-
-        elif t == INPUT_TYPES.ALL_SPECTRUM:
-            if t not in self.t_layers.keys():
-                t_type, _ = get_transform_layers(self.args.T)
-                steps = self.args.obs_frames + self.args.pred_frames
-                self.t_layers[t] = t_type((steps, self.picker.dim))
-
-            trajs = []
-            for agent in tqdm(self.agents, 'Prepare trajectory spectrums (all)...'):
-                trajs.append(np.concatenate(
-                    [agent.traj, agent.groundtruth], axis=-2))
-
-            t_layer = self.t_layers[t]
-            return t_layer(torch.tensor(trajs, dtype=torch.float32))
-
-        else:
-            raise ValueError(type_name)
+        return get_attributes(self.agents, name,
+                              tqdm_desc_pattern.format(string))
 
     def print_info(self, **kwargs):
         t_info = {}
@@ -334,46 +251,3 @@ class AgentManager(BaseManager):
                 t_info.update({'T' + f'{mode} agents come from'[1:]: t})
 
         return super().print_info(**t_info, **kwargs)
-
-
-def _get_obs_traj(input_agents: list[Agent]) -> torch.Tensor:
-    """
-    Get observed trajectories from agents.
-
-    :param input_agents: A list of input agents, type = `list[Agent]`.
-    :return inputs: A Tensor of observed trajectories.
-    """
-    inputs = []
-    for agent in tqdm(input_agents, 'Prepare trajectories...'):
-        inputs.append(agent.traj)
-    return torch.tensor(np.array(inputs), dtype=torch.float32)
-
-
-def _get_neighbor_traj(input_agents: list[Agent]) -> torch.Tensor:
-    inputs = []
-    for agent in tqdm(input_agents, 'Prepare neighbors...'):
-        inputs.append(agent.traj_neighbor)
-    return torch.tensor(np.array(inputs), dtype=torch.float32)
-
-
-def _get_gt_traj(input_agents: list[Agent],
-                 destination=False,
-                 text='groundtruth') -> torch.Tensor:
-    """
-    Get groundtruth trajectories from agents.
-
-    :param input_agents: A list of input agents, type = `list[Agent]`.
-    :return inputs: A Tensor of gt trajectories.
-    """
-    inputs = []
-    for agent in tqdm(input_agents, f'Prepare {text}...'):
-        if destination:
-            inputs.append(np.expand_dims(agent.groundtruth[-1], 0))
-        else:
-            inputs.append(agent.groundtruth)
-
-    return torch.tensor(np.array(inputs), dtype=torch.float32)
-
-
-def _get_dest_traj(input_agents: list[Agent]) -> torch.Tensor:
-    return _get_gt_traj(input_agents, destination=True, text='destinations')
