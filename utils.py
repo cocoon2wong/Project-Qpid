@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 17:21:15
+@LastEditTime: 2023-11-06 18:19:24
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -26,8 +26,10 @@ Configs
 TIME = time.strftime('%Y%m%d-%H%M%S', time.localtime(time.time()))
 
 # Paths settings
-ROOT_TEMP_DIR = './temp_files'
-DATASET_CONFIG_DIR = './dataset_configs'
+ROOT_DIR = '.'
+ROOT_TEMP_DIR = os.path.join(ROOT_DIR, 'temp_files')
+DATASET_CONFIG_DIR = os.path.join(ROOT_DIR, 'dataset_configs')
+DEFAULT_LOG_DIR = os.path.join(ROOT_DIR, 'logs')
 
 # Args
 ARGS_FILE_NAME = 'args.json'
@@ -40,7 +42,7 @@ ROTATE_BIAS = 0.01
 SCALE_THRESHOLD = 0.05
 
 # Log paths and configs
-LOG_FILE = './test.log'
+LOG_FILE = os.path.join(ROOT_DIR, 'test.log')
 LOG_MAX_LIST_LEN = 10
 LOG_STREAM_HANDLER = logging.StreamHandler()
 

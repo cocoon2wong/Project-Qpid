@@ -2,18 +2,17 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-01 17:05:12
+@LastEditTime: 2023-11-06 18:20:01
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import os
-import re
 
 from ..__root import ArgsManager
 from ..constant import ARG_TYPES
-from ..utils import DATASET_CONFIG_DIR, TIME, dir_check
+from ..utils import DATASET_CONFIG_DIR, DEFAULT_LOG_DIR, TIME, dir_check
 
 DYNAMIC = ARG_TYPES.DYNAMIC
 STATIC = ARG_TYPES.STATIC
@@ -91,23 +90,20 @@ class Args(ArgsManager):
 
             dirs = os.listdir(DATASET_CONFIG_DIR)
 
-            plist_files = []
+            split_list: list[tuple[str, str]] = []
             for d in dirs:
                 try:
                     _path = os.path.join(DATASET_CONFIG_DIR, d)
                     for p in os.listdir(_path):
                         if p.endswith('.plist'):
-                            plist_files.append(os.path.join(_path, p))
+                            split_list.append((d, p.split('.plist')[0]))
                 except:
                     pass
 
             dataset = None
-            for f in plist_files:
-                res = re.findall(
-                    f'{DATASET_CONFIG_DIR}/(.*)/({self.split}.plist)', f)
-
-                if len(res):
-                    dataset = res[0][0]
+            for _dataset, _split in split_list:
+                if self.split == _split:
+                    dataset = _dataset
                     break
 
             if not dataset:
@@ -255,7 +251,7 @@ class Args(ArgsManager):
         """
         Base folder to save all running logs.
         """
-        return self._arg('save_base_dir', './logs', argtype=STATIC)
+        return self._arg('save_base_dir', DEFAULT_LOG_DIR, argtype=STATIC)
 
     @property
     def start_test_percent(self) -> float:
