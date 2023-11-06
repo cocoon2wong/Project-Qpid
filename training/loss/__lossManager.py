@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 17:19:22
+@LastEditTime: 2023-11-06 14:31:46
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -140,7 +140,7 @@ class LossManager(BaseManager):
         return summary, loss_dict
 
     def print_info(self, **kwargs):
-        funcs = [f.name for f in self.layers]
+        funcs = [type(f).__name__ for f in self.layers]
         return super().print_info(LossLayers=funcs,
                                   Weights=self.loss_weights,
                                   LossParameters=self.loss_paras,
