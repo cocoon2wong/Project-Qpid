@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-11-07 16:34:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 11:00:40
+@LastEditTime: 2023-11-08 11:15:52
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -11,27 +11,26 @@
 import numpy as np
 
 from qpid.base import BaseManager
-
-from ...constant import INPUT_TYPES
-from ...dataset import SplitManager
-from ...dataset.__base import BaseExtInputManager
+from qpid.constant import INPUT_TYPES
+from qpid.dataset import SplitManager
+from qpid.dataset.__base import BaseExtInputManager
+from qpid.utils import dir_check
 
 
 class SegMapParasManager(BaseExtInputManager):
 
     TEMP_FILE = 'configs.npy'
     INPUT_TYPE = INPUT_TYPES.SEG_MAP_PARAS
-    
+
     is_dataset_wise_input = True
 
-    def __init__(self, manager: BaseManager, 
+    def __init__(self, manager: BaseManager,
                  name='Segmentation Map Parameters Manager'):
-        
+
         super().__init__(manager, name)
 
         self.W: np.ndarray = np.array(None)
         self.b: np.ndarray = np.array(None)
-        
 
     def save(self, *args, **kwargs):
         """
@@ -45,7 +44,7 @@ class SegMapParasManager(BaseExtInputManager):
 
         w = [weights[0], weights[2]]
         b = [weights[1], weights[3]]
-        
+
         # X-Y order loaded from opencv is different from others
         iy, ix = order[:2]
         wx = w[ix] * scale
@@ -59,13 +58,14 @@ class SegMapParasManager(BaseExtInputManager):
 
         if not self.temp_file:
             raise ValueError
-        
+
+        dir_check(self.temp_dir)
         np.save(self.temp_file, np.array([self.W, self.b]))
 
     def load(self, *args, **kwargs):
         if not self.temp_file:
             raise ValueError
-        
+
         self.W, self.b = np.load(self.temp_file, allow_pickle=True)[:2]
-        
+
         return np.concatenate([self.W, self.b])

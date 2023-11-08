@@ -2,13 +2,11 @@
 @Author: Conghao Wong
 @Date: 2023-11-08 10:04:32
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 10:59:47
+@LastEditTime: 2023-11-08 11:14:45
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
-
-import os
 
 import cv2
 import numpy as np
@@ -63,7 +61,7 @@ class SegMapManager(BaseExtInputManager):
         if not self.temp_file:
             raise ValueError
 
-        dir_check(os.path.dirname(self.temp_file))
+        dir_check(self.temp_dir)
         cv2.imwrite(self.temp_file, seg_map)
 
     def load(self, *args, **kwargs):
