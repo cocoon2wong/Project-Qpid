@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-19 09:51:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 09:46:08
+@LastEditTime: 2023-11-08 10:37:50
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -32,6 +32,8 @@ class BaseInputManager(BaseManager):
 
     ROOT_DIR: str | None = None
     INPUT_TYPE: str | None = None
+
+    is_dataset_wise_input: bool = False
 
     def __init__(self, manager: BaseManager, name: str | None = None):
         super().__init__(manager=manager, name=name)

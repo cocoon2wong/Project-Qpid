@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 15:11:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 15:39:52
+@LastEditTime: 2023-11-07 21:39:02
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -217,7 +217,7 @@ class BaseInputObject():
 
 def get_attributes(objects: BaseInputObject | list[BaseInputObject],
                    name: str,
-                   tqdm_description: str | None = None) -> torch.Tensor:
+                   tqdm_description: str | None = None):
     """
     Get a specific attribute from the list of `BaseInputObject`s,
     and make them into a single `torch.Tensor` tensor to train or test.
@@ -230,4 +230,4 @@ def get_attributes(objects: BaseInputObject | list[BaseInputObject],
     for _object in repeats:
         items.append(getattr(_object, name))
 
-    return torch.from_numpy(np.array(items, dtype=np.float32))
+    return np.array(items, dtype=np.float32)

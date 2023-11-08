@@ -2,12 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 19:14:36
+@LastEditTime: 2023-11-08 10:14:14
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+import os
 import random
 
 import numpy as np
@@ -16,7 +17,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from ..base import BaseManager
 from ..constant import INPUT_TYPES
-from ..utils import dir_check
 from .__base import (Annotation, AnnotationManager, BaseExtInputManager,
                      BaseInputObject, get_attributes)
 from .__splitManager import SplitManager
@@ -26,19 +26,63 @@ from .frame_based import FrameFilesManager
 
 class TrajectoryDataset(Dataset):
 
-    def __init__(self, inputs: list[torch.Tensor],
-                 labels: list[torch.Tensor]) -> None:
-        super().__init__()
+    def __init__(self, input_types: list[str], label_types: list[str]):
 
-        self.inputs = inputs
-        self.labels = labels
+        self.input_types = input_types
+        self.label_types = label_types
 
-    def __getitem__(self, index):
-        return (tuple([i[index] for i in self.inputs]),
-                tuple([l[index] for l in self.labels]))
+        self.data: dict[str, torch.Tensor] = {}
+        self.dataset_wise_data: dict[str, list[torch.Tensor]] = {}
+
+        self.dataset_wise_types: list[str] = []
+
+    def add_data(self, data_type: str,
+                 data: np.ndarray,
+                 is_dataset_wise: bool = False,
+                 data_length: int = -1):
+
+        if not is_dataset_wise:
+            self._concat_data(data_type, data)
+
+        elif data_length > 0:
+            self.dataset_wise_types.append(data_type)
+            self._concat_dataset_wise_data(data_type, data)
+
+            key = len(self.dataset_wise_data[data_type]) - 1
+            self._concat_data(data_type, key * np.ones(data_length, np.int32))
+
+        else:
+            raise ValueError(data_length)
+
+    def __get(self, data_type: str, index: int) -> torch.Tensor:
+        if data_type in self.dataset_wise_types:
+            d_index = self.data[data_type][index]
+            return self.dataset_wise_data[data_type][d_index]
+        else:
+            return self.data[data_type][index]
+
+    def __getitem__(self, index: int):
+        return (tuple([self.__get(T, index) for T in self.input_types]),
+                tuple([self.__get(T, index) for T in self.label_types]))
 
     def __len__(self):
-        return len(self.inputs[0])
+        return len(self.data[self.input_types[0]])
+
+    def _concat_data(self, key: str, data: np.ndarray):
+
+        _data = torch.from_numpy(data)
+        if not key in self.data.keys():
+            self.data[key] = _data
+        else:
+            self.data[key] = np.concatenate(
+                [self.data[key], _data], axis=0)
+
+    def _concat_dataset_wise_data(self, key: str, data: np.ndarray):
+        _data = torch.from_numpy(data)
+        if not key in self.dataset_wise_data.keys():
+            self.dataset_wise_data[key] = []
+
+        self.dataset_wise_data[key].append(_data)
 
 
 class AgentManager(BaseManager):
@@ -82,14 +126,13 @@ class AgentManager(BaseManager):
 
         # Settings and variations
         self._agents: list[BaseInputObject] = []
+        self.metadata: dict[str, TrajectoryDataset] = {}
         self.model_inputs: list[str] = []
         self.model_labels: list[str] = []
         self.processed_clips: dict[str, list[str]] = {'train': [], 'test': []}
 
         # Managers for extra model inputs
         self.ext_mgrs: list[BaseExtInputManager] = []
-        self.ext_types: list[str] = []
-        self.ext_inputs: dict[str, dict[str, np.ndarray]] = {}
 
     @property
     def agents(self):
@@ -120,32 +163,35 @@ class AgentManager(BaseManager):
     def append(self, target: list[BaseInputObject]):
         self._agents += self.update_agents(target)
 
-    def set_types(self, inputs_type: list[str], labels_type: list[str]):
+    def set_types(self, input_types: list[str], label_types: list[str]):
         """
         Set the type of model inputs and outputs.
         Accept all types in `INPUT_TYPES`.
         """
-        if (t := INPUT_TYPES.MAP) in inputs_type:
+        if INPUT_TYPES.MAP in input_types:
             from qpid.mods import contextMaps as maps
             p = maps.settings.POOLING_BEFORE_SAVING
-            self.ext_types.append(t)
             self.ext_mgrs.append(maps.MapParasManager(self))
             self.ext_mgrs.append(maps.TrajMapManager(self, p))
             self.ext_mgrs.append(maps.TrajMapManager_seg(self, p))
             self.ext_mgrs.append(maps.SocialMapManager(self, p))
 
-            if (t := INPUT_TYPES.MAP_PARAS) in inputs_type:
-                self.ext_types.append(t)
+        if INPUT_TYPES.SEG_MAP in input_types:
+            from qpid.mods import segMaps
+            self.ext_mgrs.append(segMaps.SegMapManager(self))
 
-        self.model_inputs = inputs_type
-        self.model_labels = labels_type
+        if INPUT_TYPES.SEG_MAP_PARAS in input_types:
+            from qpid.mods import segMaps
+            self.ext_mgrs.append(segMaps.SegMapParasManager(self))
+
+        self.model_inputs = input_types
+        self.model_labels = label_types
 
     def clean(self):
         """
         Clean all loaded data and agent objects in this manager.
         """
         self.agents = []
-        self.ext_inputs = {}
         return self
 
     def make(self, clips: str | list[str], training: bool) -> DataLoader:
@@ -162,9 +208,14 @@ class AgentManager(BaseManager):
 
         # shuffle agents and video clips when training
         if training:
+            mode = 'train'
             random.shuffle(clips)
+        else:
+            mode = 'test'
 
-        mode = 'train' if training else 'test'
+        # Init data-holder
+        self.metadata[mode] = TrajectoryDataset(input_types=self.model_inputs,
+                                                label_types=self.model_labels)
 
         # load agent data in each video clip
         for clip_name in self.timebar(clips):
@@ -181,7 +232,6 @@ class AgentManager(BaseManager):
 
             # Load extra model inputs
             trajs = None
-            self.ext_inputs[clip_name] = {}
             for mgr in self.ext_mgrs:
                 key = mgr.INPUT_TYPE
                 if key is None:
@@ -191,31 +241,28 @@ class AgentManager(BaseManager):
                     trajs = np.array([a.traj for a in agents])
 
                 dir_path = f'{self.file_manager.get_temp_file_path(clip)}.{key}'
-                dir_name = dir_check(dir_path).split('/')[-1]
+                dir_name = os.path.basename(dir_path)
                 value = mgr.run(clip=clip,
                                 root_dir=dir_name,
                                 agents=agents,
                                 trajs=trajs)
-
-                if not key in self.ext_inputs[clip_name].keys():
-                    self.ext_inputs[clip_name][key] = value
-                else:
-                    self.ext_inputs[clip_name][key] += value
+                self.metadata[mode].add_data(key, value,
+                                             mgr.is_dataset_wise_input,
+                                             data_length=len(trajs))
 
         self.processed_clips[mode] += clips
 
         # Making into the dataset object
         p = f'Prepare {mode}' + ' {}...'
-        x = [self._gather(T, p) for T in self.model_inputs]
-        y = [self._gather(T, p) for T in self.model_labels]
-        dataset = DataLoader(dataset=TrajectoryDataset(x, y),
+        [self._gather(T, mode, p) for T in self.model_inputs]
+        [self._gather(T, mode, p) for T in self.model_labels]
+        dataset = DataLoader(dataset=self.metadata[mode],
                              batch_size=self.args.batch_size,
                              drop_last=True if training else False,
                              shuffle=True if training else False)
         return dataset
 
-    def _gather(self, type_name: str,
-                tqdm_desc_pattern: str) -> torch.Tensor:
+    def _gather(self, type_name: str, mode: str, desc_pattern: str):
         """
         Gather needed inputs from `self.agents` and `self.ext_inputs`
         and stake them into a `torch.Tensor` tensor for training or test.
@@ -230,19 +277,10 @@ class AgentManager(BaseManager):
             case INPUT_TYPES.GROUNDTRUTH_TRAJ:
                 name, string = ['groundtruth', 'groundtruth']
             case _:
-                if (t := type_name) in self.ext_types:
-                    res = None
-                    for _res in self.ext_inputs.values():
-                        if res is None:
-                            res = _res[t]
-                        else:
-                            res = np.concatenate([res, _res[t]], axis=0)
-                    return torch.from_numpy(res)
-                else:
-                    raise ValueError(t)
+                return
 
-        return get_attributes(self.agents, name,
-                              tqdm_desc_pattern.format(string))
+        value = get_attributes(self.agents, name, desc_pattern.format(string))
+        self.metadata[mode].add_data(type_name, value)
 
     def print_info(self, **kwargs):
         t_info = {}

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-23 18:01:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-01 18:51:39
+@LastEditTime: 2023-11-08 10:53:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -43,6 +43,8 @@ class INPUT_TYPES():
     MAP_PARAS = 'MAP_PARAS'
     DESTINATION_TRAJ = 'DEST'
     GROUNDTRUTH_TRAJ = 'GT'
+    SEG_MAP = 'SEG_MAP'
+    SEG_MAP_PARAS = 'SEG_MAP_PARAS'
 
 
 class OUTPUT_TYPES():
@@ -79,6 +81,14 @@ class INTERPOLATION_TYPES():
             if s.startswith(_s):
                 return _s
         return None
+
+
+class DATASET_CONFIGS():
+    """
+    Names of configs used in all dataset-config's plist files.
+    """
+    SEG_IMG = 'segmentation_image'
+    RGB_IMG = 'rgb_image'
 
 
 class STRUCTURE_STATUS():

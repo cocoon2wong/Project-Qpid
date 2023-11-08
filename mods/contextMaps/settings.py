@@ -2,15 +2,17 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 17:49:36
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 17:49:38
+@LastEditTime: 2023-11-08 10:11:47
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
+from qpid.constant import DATASET_CONFIGS
+
 # Context map configs
-SEG_IMG = 'segmentation_image'
-RGB_IMG = 'rgb_image'
+SEG_IMG = DATASET_CONFIGS.SEG_IMG
+RGB_IMG = DATASET_CONFIGS.RGB_IMG
 
 # WINDOW_EXPAND_PIXEL = 0.3
 # WINDOW_SIZE_PIXEL = 200.0

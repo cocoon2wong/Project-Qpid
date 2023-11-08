@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 17:18:38
+@LastEditTime: 2023-11-08 11:01:37
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -268,8 +268,8 @@ class Structure(BaseManager):
         self.create_model()
         self.model.to(self.device)
         self.set_optimizer()
-        self.agent_manager.set_types(inputs_type=self.model.input_types,
-                                     labels_type=self.label_types)
+        self.agent_manager.set_types(input_types=self.model.input_types,
+                                     label_types=self.label_types)
 
         # Start training or testing
         match self.status:
