@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 10:33:29
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 15:46:32
+@LastEditTime: 2023-11-08 11:08:00
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -50,11 +50,12 @@ class FrameObjectManager(BaseInputObjectManager):
         train_samples = []
         gone_agents = []
 
+        # The timebar is open by the `AgentManager` object
         for p in SecondaryBar(
                 range(frame_step * self.args.obs_frames,
                       frame_count,
                       int(np.ceil(self.args.step * frame_step))),
-                manager=self.manager,
+                manager=self.manager.manager,
                 desc='Process frames...'):
 
             if p + frame_step * (self.args.pred_frames - 1) >= frame_count:

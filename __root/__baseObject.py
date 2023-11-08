@@ -133,7 +133,7 @@ class BaseObject():
         :param pos: Position to show, can be `'end'` or `'start'`.
         """
         if not self.bar:
-            raise ValueError
+            raise ValueError(f'`{self}` object has no time bars!')
 
         if isinstance(item, dict):
             for key, value in item.items():
