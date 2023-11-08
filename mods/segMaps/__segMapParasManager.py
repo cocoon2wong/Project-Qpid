@@ -2,19 +2,22 @@
 @Author: Conghao Wong
 @Date: 2023-11-07 16:34:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 11:15:52
+@LastEditTime: 2023-11-08 20:26:31
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
+import cv2
 import numpy as np
 
 from qpid.base import BaseManager
-from qpid.constant import INPUT_TYPES
+from qpid.constant import DATASET_CONFIGS, INPUT_TYPES
 from qpid.dataset import SplitManager
 from qpid.dataset.__base import BaseExtInputManager
 from qpid.utils import dir_check
+
+from .settings import NORMALIZED_SIZE
 
 
 class SegMapParasManager(BaseExtInputManager):
@@ -42,16 +45,23 @@ class SegMapParasManager(BaseExtInputManager):
         order = self.working_clip.order
         scale = self.working_clip.get_manager(SplitManager).scale
 
+        # Load the original map to get scene size
+        _m = cv2.imread(self.working_clip.other_files[DATASET_CONFIGS.SEG_IMG])
+        lenx, leny = _m.shape[:2]
+
+        # Coefficient after resizing
+        coex, coey = [lenx/NORMALIZED_SIZE, leny/NORMALIZED_SIZE]
+
         w = [weights[0], weights[2]]
         b = [weights[1], weights[3]]
 
         # X-Y order loaded from opencv is different from others
         iy, ix = order[:2]
-        wx = w[ix] * scale
-        bx = b[ix]
+        wx = w[ix] * scale / coex
+        bx = b[ix] / coex
 
-        wy = w[iy] * scale
-        by = b[iy]
+        wy = w[iy] * scale / coey
+        by = b[iy] / coey
 
         self.W = np.array([wx, wy])
         self.b = np.array([bx, by])
