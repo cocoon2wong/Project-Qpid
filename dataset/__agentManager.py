@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 10:14:14
+@LastEditTime: 2023-11-08 15:32:10
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -49,7 +49,7 @@ class TrajectoryDataset(Dataset):
             self._concat_dataset_wise_data(data_type, data)
 
             key = len(self.dataset_wise_data[data_type]) - 1
-            self._concat_data(data_type, key * np.ones(data_length, np.int32))
+            self._concat_data(data_type, key*np.ones(data_length), torch.int32)
 
         else:
             raise ValueError(data_length)
@@ -68,17 +68,20 @@ class TrajectoryDataset(Dataset):
     def __len__(self):
         return len(self.data[self.input_types[0]])
 
-    def _concat_data(self, key: str, data: np.ndarray):
+    def _concat_data(self, key: str, data: np.ndarray,
+                     dtype=torch.float32):
 
-        _data = torch.from_numpy(data)
+        _data = torch.from_numpy(data).to(dtype)
         if not key in self.data.keys():
             self.data[key] = _data
         else:
             self.data[key] = np.concatenate(
                 [self.data[key], _data], axis=0)
 
-    def _concat_dataset_wise_data(self, key: str, data: np.ndarray):
-        _data = torch.from_numpy(data)
+    def _concat_dataset_wise_data(self, key: str, data: np.ndarray,
+                                  dtype=torch.float32):
+
+        _data = torch.from_numpy(data).to(dtype)
         if not key in self.dataset_wise_data.keys():
             self.dataset_wise_data[key] = []
 
