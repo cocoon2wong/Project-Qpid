@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-11-07 16:34:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 20:26:31
+@LastEditTime: 2023-11-09 16:30:34
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -55,8 +55,7 @@ class SegMapParasManager(BaseExtInputManager):
         w = [weights[0], weights[2]]
         b = [weights[1], weights[3]]
 
-        # X-Y order loaded from opencv is different from others
-        iy, ix = order[:2]
+        ix, iy = order[:2]
         wx = w[ix] * scale / coex
         bx = b[ix] / coex
 
