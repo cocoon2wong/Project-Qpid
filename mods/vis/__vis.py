@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 19:08:28
+@LastEditTime: 2023-11-10 15:03:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -413,14 +413,16 @@ class Visualization(BaseManager):
                 obs = obs[np.newaxis]
 
             for _obs in obs:
-                f = self.helper.draw_traj(f, _obs, self.obs_file)
+                f = self.helper.draw_traj(f, _obs, self.obs_file,
+                                          draw_lines=self.vis_args.draw_lines)
 
         if gt is not None:
             if gt.ndim == 2:
                 gt = gt[np.newaxis]
 
             for _gt in gt:
-                f = self.helper.draw_traj(f, _gt, self.gt_file)
+                f = self.helper.draw_traj(f, _gt, self.gt_file,
+                                          draw_lines=self.vis_args.draw_lines)
 
         # draw the background image
         if background is not None:
