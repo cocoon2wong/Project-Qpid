@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 17:22:44
+@LastEditTime: 2023-11-10 09:17:51
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -128,7 +128,7 @@ def print_help_info(value: str | None = None):
 
 def register_new_args(arg_type: type[TArgs],
                       friendly_name: str,
-                      package_name: str,
+                      package_name: str | None = None,
                       farther_index: int | None = None):
     """
     Register new args defined by additional mods to the training structure.
@@ -137,5 +137,8 @@ def register_new_args(arg_type: type[TArgs],
     :param friendly_name: Friendly name of the class of args that showed to users.
     :param package_name: Name of the package where the new args are included.
     """
+    if not package_name:
+        package_name = arg_type.__name__
+
     args.register_new_args(arg_type.get_args_names(), package_name)
     ARGS_DIC.update({arg_type: [friendly_name, farther_index]})
