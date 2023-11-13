@@ -2,11 +2,13 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 15:28:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:53:19
+@LastEditTime: 2023-11-13 19:41:26
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
+
+from typing import TypeVar
 
 import torch
 
@@ -16,6 +18,8 @@ from .__base import BaseProcessLayer
 from .__move import Move
 from .__rotate import Rotate
 from .__scale import Scale
+
+T = TypeVar('T', bound=BaseProcessLayer)
 
 PROCESS_DICT: dict[str, type[BaseProcessLayer]] = {
     PROCESS_TYPES.MOVE: Move,
@@ -54,6 +58,17 @@ class ProcessModel(torch.nn.Module):
             p = self.get_submodule(f'process_layer_{i}')
             res.append(p.name)
         return res
+
+    def get_layer_by_type(self, ltype: type[T]) -> T | None:
+        """
+        Get the used preprocess layer by type.
+        It will return the first layer appeared that matches the given type.
+        """
+        for i in range(self.valid_layer_count):
+            p = self.get_submodule(f'process_layer_{i}')
+            if isinstance(p, ltype):
+                return p
+        return None
 
     def set_layers(self, layers: list[BaseProcessLayer] = [],
                    built_in: bool = True):
