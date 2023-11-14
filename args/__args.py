@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-06 18:20:01
+@LastEditTime: 2023-11-14 09:22:26
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -22,14 +22,18 @@ NA = 'Unavailable'
 ARG_ALIAS: dict[str, list[str]] = {}
 
 
-def add_arg_alias(alias: str, command: list[str]):
+def add_arg_alias(alias: str | list[str], command: list[str]):
     """
     Add a new alias for running args.
 
-    :param alias: The alias string.
+    :param alias: The alias string(s).
     :param command: Commands, should be a list of strings.
     """
-    ARG_ALIAS[alias] = command
+    if isinstance(alias, str):
+        alias = [alias]
+
+    for a in alias:
+        ARG_ALIAS[a] = command
 
 
 def parse_arg_alias(terminal_args: list[str] | None):
@@ -39,14 +43,12 @@ def parse_arg_alias(terminal_args: list[str] | None):
     if terminal_args is None:
         return None
 
-    for alias, command in ARG_ALIAS.items():
-        if alias not in terminal_args:
-            continue
-
-        index = terminal_args.index(alias)
-        terminal_args = (terminal_args[:index] +
-                         command +
-                         terminal_args[index+1:])
+    for index, item in enumerate(terminal_args):
+        if item in ARG_ALIAS.keys():
+            command = ARG_ALIAS[item]
+            terminal_args = (terminal_args[:index] +
+                             command +
+                             terminal_args[index+1:])
     return terminal_args
 
 
