@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-10 15:03:59
+@LastEditTime: 2023-11-27 19:19:20
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -181,22 +181,51 @@ class Visualization(BaseManager):
                 f'agent: {agent.id}',
                 f'type: {agent.type}']
 
-    def get_trajectories(self, agent: BaseInputObject, integer=True):
-        obs = self.real2pixel(agent.traj_masked, integer)
-        pred = self.real2pixel(agent.pred_masked, integer)
-        gt = self.real2pixel(agent.groundtruth_masked, integer)
-
+    def get_trajectories(self, agent: BaseInputObject, real2pixel=True):
+        obs = agent.traj_masked
+        pred = agent.pred_masked
+        gt = agent.groundtruth_masked
         if isinstance(agent, Agent):
             ref = agent.traj[np.newaxis, -1:, :]
             nei = agent.traj_neighbor[:agent.neighbor_number] + ref
-            nei = self.real2pixel(nei[:, :, :], integer)
         else:
             nei = None
 
-        if pred.ndim == 2:
+        if real2pixel:
+            integer = True
+            obs = self.real2pixel(obs, integer)
+            pred = self.real2pixel(pred, integer)
+            gt = self.real2pixel(gt, integer)
+            if isinstance(agent, Agent) and nei is not None:
+                nei = self.real2pixel(nei, integer=True)
+
+        if pred is not None and pred.ndim == 2:
             pred = pred[np.newaxis]
 
         return obs, pred, gt, nei
+
+    def pixel2real(self, pixel_pos: np.ndarray):
+        """
+        Transfer coordinates from pixel scale to the real scale.
+
+        :param pixel_pos: Coordinates in pixels, shape = (..., 2).
+        :return r: Coordinates in meters, shape = (..., 2).
+        """
+        scale = self.info.get_manager(SplitManager).scale / \
+            self.info.get_manager(SplitManager).scale_vis
+        weights = self.info.matrix
+
+        w = [weights[0], weights[2]]
+        b = [weights[1], weights[3]]
+
+        order = self.info.order
+        real = pixel_pos / scale
+
+        r = np.stack([
+            (real[..., order[0]] - b[0]) / w[0],
+            (real[..., order[1]] - b[1]) / w[1]
+        ], axis=-1)
+        return r
 
     def real2pixel(self, real_pos, integer=True):
         """
@@ -240,6 +269,8 @@ class Visualization(BaseManager):
     def draw(self, agent: BaseInputObject,
              frames: list[int] | np.ndarray,
              save_name: str,
+             save_name_with_frame=True,
+             draw_with_plt=False,
              interp=True,
              save_as_images=False,
              traj_wise_outputs: dict = {},
@@ -249,8 +280,11 @@ class Visualization(BaseManager):
 
         :param agent: The agent object (`Agent`) to visualize.
         :param frames: A list frames of current observation steps.
-        :param save_name: The name to save the output video, which does not contain
+        :param save_name: The name to save the output video, which does not contain \
             the file format.
+        :param save_name_with_frame: Choose whether to add the `frame_index` after \
+            the file name. (For example, `'zara1_0.jpg'` -> `'zara1_0_70.jpg'`)
+        :param draw_with_plt: Choose whether to draw with plt by default.
         :param interp: Choose whether to draw the full video or only
             draw on the sampled time steps.
         :param save_as_images: Choose if to save as an image or a video clip.
@@ -274,21 +308,21 @@ class Visualization(BaseManager):
             status = DRAW_ON_EMPTY
 
         # Decide to draw on RGB images or plt canvas
-        if f is not None:
+        if (f is not None) and (not draw_with_plt):
             vis_func = self.vis
             text_func = self.text
-            integer = True
+            real2pixel = True
             f_empty = np.zeros((f.shape[0], f.shape[1], 4))
         else:
             vis_func = self._visualization_plt
             text_func = self._put_text_plt
-            integer = False
+            real2pixel = False
             plt.figure()
 
         # Prepare trajectories
         sampled_frames: list[int] = list(agent.frames)
         obs_len = agent.obs_length
-        obs, pred, gt, nei = self.get_trajectories(agent, integer)
+        obs, pred, gt, nei = self.get_trajectories(agent, real2pixel)
 
         # Interpolate frames
         if interp:
@@ -299,8 +333,13 @@ class Visualization(BaseManager):
             start_frame = frames[0]
 
             # Draw trajectories
-            f = vis_func(f, obs, gt, pred,
-                         neighbor=nei[:, -1] if nei is not None else None)
+            if nei is None:
+                _n = None
+            elif self.vis_args.draw_full_neighbors:
+                _n = nei
+            else:
+                _n = nei[:, -1]
+            f = vis_func(f, obs, gt, pred, neighbor=_n)
 
             # Put text (top-left)
             f = text_func(f, self.get_text(start_frame, agent))
@@ -319,14 +358,21 @@ class Visualization(BaseManager):
 
                 # TODO: draw agent-wise outputs on images
 
-            if status in [DRAW_ON_IMAGE, DRAW_ON_VIDEO]:
-                cv2.imwrite(save_name + f'_{start_frame}.jpg', f)
+            if save_name_with_frame:
+                _name = save_name + f'_{start_frame}.jpg'
             else:
-                plt.savefig(save_name + f'_{start_frame}.jpg')
-                plt.close()
+                _name = save_name
 
+            dir_check(os.path.dirname(_name))
+            if ((status in [DRAW_ON_IMAGE, DRAW_ON_VIDEO])
+                    and (not draw_with_plt)):
+                cv2.imwrite(_name, f)
+            else:
+                plt.savefig(_name)
+                plt.close()
             return
 
+        dir_check(os.path.dirname(save_name))
         video_shape = (f.shape[1], f.shape[0])
         video_writer = cv2.VideoWriter(save_name + '.mp4',
                                        cv2.VideoWriter_fourcc(*'mp4v'),
@@ -466,32 +512,35 @@ class Visualization(BaseManager):
                            obs=None, gt=None, pred=None,
                            neighbor=None,
                            **kwargs):
+        """
+        Vis with plt (It only support 2D coordinates now).
 
+        :param f: (Useless in this method.)
+        :param obs: Observations, shape = (..., 2)
+        """
+
+        # draw neighbors' trajectories
+        if neighbor is not None:
+            plt.plot(neighbor[:, -1, 0], neighbor[:, -1, 1], 'o',
+                     color='darkorange', markersize=13)
+            _nei = np.reshape(neighbor, [-1, 2])
+            plt.plot(_nei[:, 0], _nei[:, 1], 's', color='purple')
+
+        # draw observations
         if obs is not None:
-            if obs.ndim == 2:
-                obs = obs[np.newaxis]
-
-            for p in np.transpose(obs, [1, 0, 2]):
-                plt.scatter(p.T[0], p.T[1], c='#287AFB')
-
-        # if neighbor is not None:
-        if None:
-            for p in np.transpose(neighbor, [1, 0, 2]):
-                plt.scatter(p.T[0], p.T[1], c='#CA15A9')
+            _obs = np.reshape(obs, [-1, 2])
+            plt.plot(_obs[:, 0], _obs[:, 1], 's', color='cornflowerblue')
 
         if gt is not None:
-            if gt.ndim == 2:
-                gt = gt[np.newaxis]
-
-            for p in np.transpose(gt, [1, 0, 2]):
-                plt.scatter(p.T[0], p.T[1], c='#4CEDA7')
+            _gt = np.reshape(gt, [-1, 2])
+            plt.plot(_gt[:, 0], _gt[:, 1], 's', color='lightgreen')
 
         if pred is not None:
             if pred.ndim == 2:
                 pred = pred[np.newaxis]
 
-            for p in np.transpose(pred, [1, 0, 2]):
-                plt.scatter(p.T[0], p.T[1], c='#F5E25F')
+            for p in pred:
+                plt.plot(p[:, 0], p[:, 1], 's')
 
         plt.axis('equal')
 
