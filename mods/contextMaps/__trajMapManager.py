@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:49:28
+@LastEditTime: 2023-11-20 20:07:55
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -13,11 +13,13 @@ from typing import Any
 import cv2
 import numpy as np
 
-from ...base import BaseManager, SecondaryBar
-from ...constant import INPUT_TYPES
-from ...dataset import Clip
-from ...dataset.__base import BaseExtInputManager
-from ...dataset.agent_based import Agent
+from qpid.base import BaseManager, SecondaryBar
+from qpid.constant import INPUT_TYPES
+from qpid.dataset import Clip
+from qpid.dataset.__base import BaseExtInputManager
+from qpid.dataset.agent_based import Agent
+from qpid.utils import dir_check
+
 from .__mapParasManager import MapParasManager
 from .settings import MAP_HALF_SIZE
 from .utils import add, cut, pooling2D
@@ -140,6 +142,7 @@ class TrajMapManager(BaseExtInputManager):
             maps.append(local_map)
 
         # Save maps
+        dir_check(self.temp_dir)
         np.save(self.temp_files['FILE'], maps)
 
         # Pool the maps

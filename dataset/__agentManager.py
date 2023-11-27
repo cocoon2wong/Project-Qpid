@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 15:32:10
+@LastEditTime: 2023-11-20 20:07:01
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -174,9 +174,14 @@ class AgentManager(BaseManager):
         if INPUT_TYPES.MAP in input_types:
             from qpid.mods import contextMaps as maps
             p = maps.settings.POOLING_BEFORE_SAVING
+            args = self.args.register_subargs(maps.ContextMapsArgs,
+                                              name=maps.__name__)
+
             self.ext_mgrs.append(maps.MapParasManager(self))
-            self.ext_mgrs.append(maps.TrajMapManager(self, p))
-            self.ext_mgrs.append(maps.TrajMapManager_seg(self, p))
+            if not args.use_seg_maps:
+                self.ext_mgrs.append(maps.TrajMapManager(self, p))
+            else:
+                self.ext_mgrs.append(maps.TrajMapManager_seg(self, p))
             self.ext_mgrs.append(maps.SocialMapManager(self, p))
 
         if INPUT_TYPES.SEG_MAP in input_types:

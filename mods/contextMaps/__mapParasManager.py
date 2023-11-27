@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-25 14:51:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:49:38
+@LastEditTime: 2023-11-20 19:59:17
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -14,10 +14,12 @@ from typing import Any, overload
 import numpy as np
 import torch
 
-from ...base import BaseManager
-from ...constant import INPUT_TYPES
-from ...dataset import Clip, SplitManager
-from ...dataset.__base import BaseExtInputManager
+from qpid.base import BaseManager
+from qpid.constant import INPUT_TYPES
+from qpid.dataset import Clip, SplitManager
+from qpid.dataset.__base import BaseExtInputManager
+from qpid.utils import dir_check
+
 from .__args import ContextMapsArgs
 from .settings import (MAP_HALF_SIZE, POOLING_BEFORE_SAVING, SEG_IMG,
                        WINDOW_EXPAND_METER, WINDOW_EXPAND_PIXEL,
@@ -99,6 +101,7 @@ class MapParasManager(BaseExtInputManager):
         self.W = np.array([a, a])
         self.b = np.array([x_min - e, y_min - e])
 
+        dir_check(self.temp_dir)
         np.save(self.temp_file,
                 arr=dict(void_map=self.__void_map,
                          W=self.W,
@@ -194,13 +197,13 @@ class MapParasManager(BaseExtInputManager):
 
         s = maps.shape
         map_center = torch.tensor([s[-2]//2, s[-1]//2], dtype=torch.int32)
-        trajs_grid = map_center[None] + bias_grid
+        trajs_grid = map_center[None].to(maps.device) + bias_grid
         trajs_grid = torch.minimum(
             torch.maximum(trajs_grid, torch.tensor(0)),
             torch.tensor(s[-2]-1),
         )
 
-        count = torch.arange(s[0])
+        count = torch.arange(s[0]).to(maps.device)
         while count.ndim != trajs_grid.ndim:
             count = count[:, None]
 
