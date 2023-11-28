@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 09:26:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 15:39:10
+@LastEditTime: 2023-11-28 15:35:09
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -85,6 +85,7 @@ class Agent(BaseInputObject):
         super().__init__()
         self.neighbor_number = 0
         self._traj_neighbor: np.ndarray | None = None
+        self._traj_neighbor_force = None
         self._traj_linear_neighbor: np.ndarray | None = None
 
     @property
@@ -104,10 +105,18 @@ class Agent(BaseInputObject):
         NOTE: Returned trajectories are all reletive, corresponding to
         current agents' last observed point.
         """
+        if self._traj_neighbor_force is not None:
+            return self._traj_neighbor_force
+
         if self._traj_neighbor is None:
             raise ValueError
+
         ref = self.traj[..., -1:, :]
         return self.padding(self.pickers.get(self._traj_neighbor)) - ref
+
+    @traj_neighbor.setter
+    def traj_neighbor(self, value):
+        self._traj_neighbor_force = value
 
     @property
     def pred_linear(self) -> np.ndarray | None:
