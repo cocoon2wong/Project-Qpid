@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:35:06
+@LastEditTime: 2023-12-06 16:42:17
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -443,7 +443,6 @@ class Structure(BaseManager):
         :return outputs: model outputs
         """
         # Print test information
-        self.split_manager.print_info()
         self.agent_manager.print_info()
         self.model.print_info()
         self.print_info()
