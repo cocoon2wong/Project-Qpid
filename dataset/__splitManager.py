@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-19 11:19:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 14:37:22
+@LastEditTime: 2023-12-06 16:33:34
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -270,10 +270,3 @@ class SplitManager(BaseManager):
         For example, `'coordinate'` or `'boundingbox'`.
         """
         return self.__anntype
-
-    def print_info(self, **kwargs):
-        t_info = {'Dataset name': self.dataset_name,
-                  'Dataset annotation type': self.anntype,
-                  'Split name': self.split}
-
-        return super().print_info(**t_info, **kwargs)

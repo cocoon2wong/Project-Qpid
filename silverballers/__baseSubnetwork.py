@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-06 16:45:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 19:35:55
+@LastEditTime: 2023-12-06 16:02:47
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -103,14 +103,6 @@ class BaseSubnetwork(Model):
         Trajectory picker (from the top manager object).
         """
         return self.get_top_manager().get_member(AgentManager).picker
-
-    def print_info(self, **kwargs):
-        info = {'Transform type': self.args.T,
-                'Index of keypoints': self.key_indices_future,
-                'Index of past keypoints': self.key_indices_past}
-
-        kwargs.update(**info)
-        return super().print_info(**kwargs)
 
 
 class BaseSubnetworkStructure(Structure):

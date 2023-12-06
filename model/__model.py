@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-01 20:11:41
+@LastEditTime: 2023-12-06 16:12:38
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -204,10 +204,8 @@ class Model(torch.nn.Module, BaseManager):
         except:
             p_layers = None
 
-        info = {'Model type': type(self).__name__,
-                'Model name': self.args.model_name,
-                'Model prediction type': self.args.anntype,
-                'Preprocess used': p_layers}
+        info = {'Model name': self.args.model_name,
+                'Prediction type': self.args.anntype,
+                'Pre/post-process layers': p_layers}
 
-        kwargs.update(**info)
-        return super().print_info(**kwargs)
+        return super().print_info(**info, **kwargs)

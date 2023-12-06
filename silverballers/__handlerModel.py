@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:52:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:29:50
+@LastEditTime: 2023-12-06 16:04:54
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -186,11 +186,11 @@ class BaseHandlerModel(BaseSubnetwork):
             return outputs_p
 
     def print_info(self, **kwargs):
-        info = {'Transform type': self.args.T,
-                'Number of keypoints': self.args.points}
+        info = {'Keypoints and Transforms': None,
+                '- Transform type': self.args.T,
+                '- Number of keypoints': self.args.points}
 
-        kwargs.update(**info)
-        return super().print_info(**kwargs)
+        return super().print_info(**kwargs, **info)
 
 
 class BaseHandlerStructure(BaseSubnetworkStructure):

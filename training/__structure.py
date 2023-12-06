@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 11:01:37
+@LastEditTime: 2023-12-06 16:35:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -337,7 +337,6 @@ class Structure(BaseManager):
         ds_val = self.agent_manager.clean().make(clips_val, training=False)
 
         # Print training infomation
-        self.split_manager.print_info()
         self.agent_manager.print_info()
         self.model.print_info()
         self.print_info()
@@ -554,13 +553,16 @@ class Structure(BaseManager):
         return outputs_all, weightedsum_metrics, mdict_avg
 
     def print_info(self, **kwargs):
-        info = {'Batch size': self.args.batch_size,
-                'GPU index': self.args.gpu,
-                'Train epochs': self.args.epochs,
-                'Learning rate': self.args.lr}
+        info: dict = {'Batch size': self.args.batch_size}
 
-        kwargs.update(**info)
-        return super().print_info(**kwargs)
+        if self.device != self.device_cpu:
+            info['Speed up device'] = self.device
+
+        if self.is_prepared_for_training:
+            info['Learning rate'] = self.args.lr
+            info['Training epochs'] = self.args.epochs
+
+        return super().print_info(**kwargs, **info)
 
     def print_train_results(self, best_epoch: int,
                             best_metric: float | np.ndarray):

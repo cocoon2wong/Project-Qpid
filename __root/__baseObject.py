@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 10:05:11
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:59:59
+@LastEditTime: 2023-12-06 15:54:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -171,14 +171,17 @@ class BaseObject():
 
         print(f'>>> [{self.name}]: {title}')
         for key, value in kwargs.items():
-            if type(value) == torch.Tensor:
+            if isinstance(value, torch.Tensor):
                 value = value.numpy()
 
-            if (type(value) == list and
-                    len(value) > utils.LOG_MAX_LIST_LEN):
-                value = value[:utils.LOG_MAX_LIST_LEN] + ['...']
+            elif isinstance(value, list | tuple):
+                if len(value) > utils.LOG_MAX_LIST_LEN:
+                    value = list(value[:utils.LOG_MAX_LIST_LEN]) + ['...']
 
-            print(f'    - {key}: {value}.')
+            if value is not None:
+                print(f'    - {key}: {value}.')
+            else:
+                print(f'    + {key}:')
 
         print('')
 

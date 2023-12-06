@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:28:33
+@LastEditTime: 2023-12-06 16:23:30
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -133,17 +133,12 @@ class SilverballersModel(Model):
         return [y_handler[0]] + y_all_agent + [y_handler]
 
     def print_info(self, **kwargs):
-        info = {'Indices of future keypoints': self.agent.key_indices_future,
-                'Indices of past keypoints': self.agent.key_indices_past,
-                'Stage-1 Subnetwork': f"'{self.agent.name}' from '{self.structure.args.loada}'",
+        info = {'Stage-1 Subnetwork': f"'{self.agent.name}' from '{self.structure.args.loada}'",
                 'Stage-2 Subnetwork': f"'{self.handler.name}' from '{self.structure.args.loadb}'"}
 
-        kwargs_old = kwargs.copy()
-        kwargs.update(**info)
-        super().print_info(**kwargs)
-
-        self.agent.print_info(**kwargs_old)
-        self.handler.print_info(**kwargs_old)
+        self.print_parameters(**info)
+        self.agent.print_info(**kwargs)
+        self.handler.print_info(**kwargs)
 
 
 class SilverballersMKII(Structure):

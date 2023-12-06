@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-20 20:07:01
+@LastEditTime: 2023-12-06 16:38:10
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -291,9 +291,12 @@ class AgentManager(BaseManager):
         self.metadata[mode].add_data(type_name, value)
 
     def print_info(self, **kwargs):
-        t_info = {}
+        t_info: dict = {'Dataset name': self.split_manager.dataset_name,
+                        'Dataset annotation type': self.split_manager.anntype,
+                        'Split name': self.split_manager.split}
+
         for mode in ['train', 'test']:
             if len(t := self.processed_clips[mode]):
-                t_info.update({'T' + f'{mode} agents come from'[1:]: t})
+                t_info[f'Clips to {mode}'] = t
 
         return super().print_info(**t_info, **kwargs)
