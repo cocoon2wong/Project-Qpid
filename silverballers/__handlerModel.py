@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:52:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:04:54
+@LastEditTime: 2023-12-18 16:51:58
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -61,6 +61,7 @@ class BaseHandlerModel(BaseSubnetwork):
                         INPUT_TYPES.MAP,
                         INPUT_TYPES.MAP_PARAS,
                         INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
         # Keypoints and their indices
         self.points = self.args.points
@@ -208,7 +209,6 @@ class BaseHandlerStructure(BaseSubnetworkStructure):
         self.model: BaseHandlerModel
 
         # Configs, losses, and metrics
-        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
         self.loss.set({loss.l2: 1.0})
 
         if self.args.key_points == 'null':

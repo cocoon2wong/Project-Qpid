@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:23:30
+@LastEditTime: 2023-12-18 21:11:25
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -73,6 +73,9 @@ class SilverballersModel(Model):
 
         self.agent_input_index = self.get_input_index(a_type)
         self.handler_input_index = self.get_input_index(h_type)
+
+        # set labels
+        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
         # Extra model outputs
         self.ext_traj_wise_outputs = self.handler.ext_traj_wise_outputs
@@ -254,9 +257,6 @@ class SilverballersMKII(Structure):
         self.handler.create_model(as_single_model=False)
         if not self.handler_model_type.is_interp_handler:
             self.handler.model.load_weights_from_logDir(self.args.loadb)
-
-        # set labels
-        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
     def create_model(self, *args, **kwargs):
         self.model = SilverballersModel(

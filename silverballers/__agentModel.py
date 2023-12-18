@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:49:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:24:02
+@LastEditTime: 2023-12-18 16:52:43
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -54,8 +54,9 @@ class BaseAgentModel(BaseSubnetwork):
         self.args: AgentArgs
         self.structure: BaseAgentStructure
 
-        # Model input types
+        # Model input and label types
         self.set_inputs(INPUT_TYPES.OBSERVED_TRAJ)
+        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
     def print_info(self, **kwargs):
         info = {'Keypoints and Transforms': None,
@@ -84,8 +85,6 @@ class BaseAgentStructure(BaseSubnetworkStructure):
             self.args._set('Kc', 1)
             self.args._set('K_train', 1)
             self.args._set('K', 1)
-
-        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
         # Losses and metrics
         if self.args.loss == 'keyl2':

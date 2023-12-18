@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-31 10:17:36
+@LastEditTime: 2023-12-18 21:13:27
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -32,13 +32,26 @@ class BaseLossLayer(torch.nn.Module):
         self.trainable = False
         self.manager = manager
         self.coe = coe
-        self.picker: Picker = self.manager.picker
 
-    def forward(self, outputs: list, labels: list,
-                inputs: list, mask=None,
+    @property
+    def picker(self) -> Picker:
+        """
+        The `Picker` object to transfer annotations.
+        """
+        return self.manager.picker
+
+    def forward(self, outputs: list[torch.Tensor],
+                labels: list[torch.Tensor],
+                inputs: list[torch.Tensor], mask=None,
                 training=None, *args, **kwargs):
 
         raise NotImplementedError
+
+    def get_input(self, inputs: list[torch.Tensor], dtype: str):
+        return self.manager.manager.model.get_input(inputs, dtype)
+
+    def get_label(self, labels: list[torch.Tensor], dtype: str):
+        return self.manager.manager.model.get_label(labels, dtype)
 
 
 class l2(BaseLossLayer):

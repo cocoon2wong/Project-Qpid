@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:12:38
+@LastEditTime: 2023-12-18 21:10:00
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -59,10 +59,12 @@ class Model(torch.nn.Module, BaseManager):
 
         # Pre/post-process model and settings
         self.processor = process.ProcessModel(self.args)
-
-        # Model inputs
         self.input_types: list[str] = []
+        self.label_types: list[str] = []
+
+        # Init model inputs and labels
         self.set_inputs(INPUT_TYPES.OBSERVED_TRAJ)
+        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
         # Inference times
         self.inference_times: list[float] = []
@@ -87,7 +89,7 @@ class Model(torch.nn.Module, BaseManager):
         if l := len(it := self.inference_times):
             if l > 3:
                 it = it[1:-1]
-            t = np.mean(it)
+            t = float(np.mean(it))
             return int(1000 * t)
         else:
             return '(Not Available)'
@@ -104,6 +106,20 @@ class Model(torch.nn.Module, BaseManager):
             return int(1000 * t)
         else:
             return '(Not Available)'
+
+    def get_input(self, inputs: list[torch.Tensor], dtype: str):
+        """
+        Get the input tensor with the given type from all model inputs.
+        """
+        index = self.input_types.index(dtype)
+        return inputs[index]
+
+    def get_label(self, labels: list[torch.Tensor], dtype: str):
+        """
+        Get the label tensor with the given type from all model labels.
+        """
+        index = self.label_types.index(dtype)
+        return labels[index]
 
     def forward(self, inputs,
                 training=None,
@@ -157,6 +173,24 @@ class Model(torch.nn.Module, BaseManager):
         """
         self.input_types = [item for item in args]
         self.processor.set_preprocess_input_types(self.input_types)
+
+    def set_labels(self, *args):
+        """
+        Set label types when calculating loss and metrics.
+        Accept keywords:
+        ```python
+        codes.constant.INPUT_TYPES.OBSERVED_TRAJ
+        codes.constant.INPUT_TYPES.MAP
+        codes.constant.INPUT_TYPES.DESTINATION_TRAJ
+        codes.constant.INPUT_TYPES.GROUNDTRUTH_TRAJ
+        codes.constant.INPUT_TYPES.GROUNDTRUTH_SPECTRUM
+        codes.constant.INPUT_TYPES.ALL_SPECTRUM
+        ```
+
+        :param input_names: Name of the inputs.\
+            Type = `str`, accept several keywords.
+        """
+        self.label_types = [item for item in args]
 
     def set_preprocess(self, *args, **kwargs):
         """

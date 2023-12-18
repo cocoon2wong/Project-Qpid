@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 10:55:17
+@LastEditTime: 2023-12-18 16:54:23
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -81,9 +81,7 @@ class Structure(BaseManager):
         self.model: Model
         self.optimizer: torch.optim.Optimizer
 
-        # Set labels, loss functions, and metrics
-        self.label_types: list[str] = []
-        self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        # Set loss functions, and metrics
         self.loss.set({loss.ADE: 1.0})
 
         if self.args.anntype in [ANN_TYPES.BB_2D,
@@ -188,24 +186,6 @@ class Structure(BaseManager):
             self._device_local = torch.device("cpu")
         return self._device_local
 
-    def set_labels(self, *args):
-        """
-        Set label types when calculating loss and metrics.
-        Accept keywords:
-        ```python
-        codes.constant.INPUT_TYPES.OBSERVED_TRAJ
-        codes.constant.INPUT_TYPES.MAP
-        codes.constant.INPUT_TYPES.DESTINATION_TRAJ
-        codes.constant.INPUT_TYPES.GROUNDTRUTH_TRAJ
-        codes.constant.INPUT_TYPES.GROUNDTRUTH_SPECTRUM
-        codes.constant.INPUT_TYPES.ALL_SPECTRUM
-        ```
-
-        :param input_names: Name of the inputs.\
-            Type = `str`, accept several keywords.
-        """
-        self.label_types = [item for item in args]
-
     def set_optimizer(self):
         if self.is_prepared_for_training:
             self.optimizer = torch.optim.Adam(self.model.parameters(),
@@ -265,7 +245,7 @@ class Structure(BaseManager):
         self.model.to(self.device)
         self.set_optimizer()
         self.agent_manager.set_types(input_types=self.model.input_types,
-                                     label_types=self.label_types)
+                                     label_types=self.model.label_types)
 
         # Start training or testing
         match self.status:
