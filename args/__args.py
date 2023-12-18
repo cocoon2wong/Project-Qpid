@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-14 09:22:26
+@LastEditTime: 2023-12-18 11:25:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -159,6 +159,13 @@ class Args(ArgsManager):
             self.log('Training args initialized.')
 
     @property
+    def help(self) -> str:
+        """
+        Print help information on the screen.
+        """
+        return self._arg('help', 'null', argtype=TEMPORARY, short_name='h')
+
+    @property
     def experimental(self) -> bool:
         """
         NOTE: It is only used for code test.
@@ -263,7 +270,7 @@ class Args(ArgsManager):
         Validation may start at epoch
         `args.epochs * args.start_test_percent`.
         """
-        return self._arg('start_test_percent', 0.0, argtype=STATIC)
+        return self._arg('start_test_percent', 0.0, argtype=TEMPORARY)
 
     @property
     def log_dir(self) -> str:
@@ -310,7 +317,7 @@ class Args(ArgsManager):
         """
         Epoch interval to run validation during training.
         """
-        return self._arg('test_step', 1, argtype=STATIC)
+        return self._arg('test_step', 1, argtype=TEMPORARY)
 
     """
     Trajectory Prediction Args
