@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-27 19:19:20
+@LastEditTime: 2023-12-18 19:13:29
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -302,6 +302,7 @@ class Visualization(BaseManager):
             status = DRAW_ON_VIDEO
         elif self.scene_image is not None:
             f = np.array(self.scene_image).copy()
+            f = self.rescale(f)
             status = DRAW_ON_IMAGE
         else:
             f = None
