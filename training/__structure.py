@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:42:17
+@LastEditTime: 2023-12-18 10:55:17
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -63,10 +63,6 @@ class Structure(BaseManager):
             init_args = Args(args)
 
         super().__init__(init_args, manager, name)
-
-        # Check args (such as wrong spellings)
-        if not self.manager:
-            self.args.check_args_spells()
 
         # Init device
         self.set_gpu()

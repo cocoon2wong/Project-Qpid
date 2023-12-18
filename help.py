@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-10 09:17:51
+@LastEditTime: 2023-12-18 11:03:08
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,6 @@
 import re
 from typing import TypeVar
 
-from . import args
 from .args import Args, EmptyArgs
 from .silverballers import AgentArgs, HandlerArgs, SilverballersArgs
 
@@ -140,5 +139,4 @@ def register_new_args(arg_type: type[TArgs],
     if not package_name:
         package_name = arg_type.__name__
 
-    args.register_new_args(arg_type.get_args_names(), package_name)
     ARGS_DIC.update({arg_type: [friendly_name, farther_index]})

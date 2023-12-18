@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 19:03:19
+@LastEditTime: 2023-12-18 10:56:42
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -20,23 +20,7 @@ DYNAMIC = ARG_TYPES.DYNAMIC
 STATIC = ARG_TYPES.STATIC
 TEMPORARY = ARG_TYPES.TEMPORARY
 
-extra_args_names = []
-extra_args_packages = []
-
 T = TypeVar('T')
-
-
-def register_new_args(names: list[str], package_name: str):
-    """
-    Register new args (defined in new subclasses of `ArgsManager`) to
-    stop the spell check when loading args at the first time.
-    It will not register any new args to the class `ArgsManager`.
-    """
-    global extra_args_names, extra_args_packages
-
-    if not package_name in extra_args_packages:
-        extra_args_packages.append(package_name)
-        extra_args_names += names
 
 
 class ArgsManager(BaseObject):
@@ -158,13 +142,6 @@ class ArgsManager(BaseObject):
         if self._verbose_mode:
             self.log('Basic funtions initialized.')
 
-    def check_args_spells(self):
-        for key in self._args_runnning.keys():
-            if not key in self.get_args_names() + extra_args_names:
-                self.log(f'Arg key `{key}` is not in the arg dictionary.' +
-                         ' Check your spelling.',
-                         level='error', raiseError=KeyError)
-
     def register_subargs(self, arg_type: type[T], name: str) -> T:
         """
         Register new args that used in extra mods to the current args.
@@ -261,13 +238,7 @@ class ArgsManager(BaseObject):
                 break
 
             except KeyError:
-                if ((self._is_temporary) or
-                        (name in extra_args_names)):
-                    index += 2
-                else:
-                    self.log(f'The abbreviation `-{name}` was not found,' +
-                             ' please check your spelling.',
-                             level='error', raiseError=KeyError)
+                index += 1
 
         self._args_runnning = dic
         return self

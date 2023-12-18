@@ -47,6 +47,5 @@ Argument-related classes and constants.
 """
 
 from ..__root.__argsManager import ArgsManager as EmptyArgs
-from ..__root.__argsManager import register_new_args
 from .__args import (ARG_ALIAS, DYNAMIC, STATIC, TEMPORARY, Args,
                      add_arg_alias, parse_arg_alias)
