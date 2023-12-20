@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 11:25:06
+@LastEditTime: 2023-12-20 09:29:21
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -43,12 +43,14 @@ def parse_arg_alias(terminal_args: list[str] | None):
     if terminal_args is None:
         return None
 
-    for index, item in enumerate(terminal_args):
+    index = 0
+    while index != len(terminal_args):
+        item = terminal_args[index]
         if item in ARG_ALIAS.keys():
-            command = ARG_ALIAS[item]
             terminal_args = (terminal_args[:index] +
-                             command +
+                             ARG_ALIAS[item] +
                              terminal_args[index+1:])
+        index += 1
     return terminal_args
 
 
