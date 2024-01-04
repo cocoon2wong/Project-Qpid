@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 21:11:25
+@LastEditTime: 2024-01-04 16:42:47
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -194,6 +194,13 @@ class SilverballersMKII(Structure):
 
         # Init log-related functions
         BaseObject.__init__(self)
+
+        # Check structures' types
+        if not issubclass(a_s_type, BaseAgentStructure):
+            self.log(f'Structure `{a_s_type}` dose not support two-stage ' +
+                     'MKII models. Try re-run using `python main.py --load ' +
+                     f'{a_model_path}`.',
+                     level='error', raiseError=ValueError)
 
         # Load minimal args
         min_args = SilverballersArgs(terminal_args, is_temporary=True)
