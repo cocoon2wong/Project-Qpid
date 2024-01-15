@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:49:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 16:52:43
+@LastEditTime: 2024-01-15 19:40:16
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -24,13 +24,6 @@ class AgentArgs(BaseSilverballersArgs):
                  is_temporary=False) -> None:
 
         super().__init__(terminal_args, is_temporary)
-
-    @property
-    def deterministic(self) -> int:
-        """
-        Controls if predict trajectories in the deterministic way.
-        """
-        return self._arg('deterministic', 0, argtype=STATIC)
 
     @property
     def loss(self) -> str:
@@ -79,12 +72,6 @@ class BaseAgentStructure(BaseSubnetworkStructure):
         # For type hinting
         self.args: AgentArgs
         self.model: BaseAgentModel
-
-        # Configs
-        if self.args.deterministic:
-            self.args._set('Kc', 1)
-            self.args._set('K_train', 1)
-            self.args._set('K', 1)
 
         # Losses and metrics
         if self.args.loss == 'keyl2':
