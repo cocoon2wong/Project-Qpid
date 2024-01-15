@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-20 09:29:21
+@LastEditTime: 2024-01-15 15:17:56
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -139,9 +139,10 @@ class Args(ArgsManager):
         # This argument can only be set manually by codes
         # or read from the saved JSON file
         elif 'log_dir' not in self._args_load.keys():
-
             log_dir_current = (TIME +
+                               ('' if self.model_name.startswith('_') else '_') +
                                self.model_name +
+                               ('' if self.model_name.endswith('_') else '_') +
                                self.model +
                                self.split)
 
