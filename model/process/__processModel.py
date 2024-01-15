@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 15:28:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-13 19:41:26
+@LastEditTime: 2024-01-15 19:36:10
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -153,10 +153,6 @@ class ProcessModel(torch.nn.Module):
             layer_indices = self.layer_indices[::-1]
             type_var_name = 'postprocess_input_types'
             input_types = self.postprocess_input_types
-
-        # Whether apply pre/post-process on other inputs and outputs
-        if self.args.only_process_trajectory:
-            input_types = input_types[:1]
 
         if isinstance(inputs, torch.Tensor):
             inputs = [inputs]
