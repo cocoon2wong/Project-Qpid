@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-11-07 16:34:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-09 16:30:34
+@LastEditTime: 2024-01-23 10:25:09
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -34,6 +34,7 @@ class SegMapParasManager(BaseExtInputManager):
 
         self.W: np.ndarray = np.array(None)
         self.b: np.ndarray = np.array(None)
+        self.order: np.ndarray = np.array(None)
 
     def save(self, *args, **kwargs):
         """
@@ -55,7 +56,7 @@ class SegMapParasManager(BaseExtInputManager):
         w = [weights[0], weights[2]]
         b = [weights[1], weights[3]]
 
-        ix, iy = order[:2]
+        ix, iy = [0, 1]
         wx = w[ix] * scale / coex
         bx = b[ix] / coex
 
@@ -64,17 +65,18 @@ class SegMapParasManager(BaseExtInputManager):
 
         self.W = np.array([wx, wy])
         self.b = np.array([bx, by])
+        self.order = np.array([order[0], order[1]])
 
         if not self.temp_file:
             raise ValueError
 
         dir_check(self.temp_dir)
-        np.save(self.temp_file, np.array([self.W, self.b]))
+        np.save(self.temp_file, np.array([self.W, self.b, self.order]))
 
     def load(self, *args, **kwargs):
         if not self.temp_file:
             raise ValueError
 
-        self.W, self.b = np.load(self.temp_file, allow_pickle=True)[:2]
+        self.W, self.b, self.order = np.load(self.temp_file, allow_pickle=True)[:3]
 
-        return np.concatenate([self.W, self.b])
+        return np.concatenate([self.W, self.b, self.order])
