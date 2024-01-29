@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:46:53
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:17:20
+@LastEditTime: 2024-01-29 15:13:22
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -74,6 +74,13 @@ class BaseSilverballersArgs(Args):
         Feature dimensions that are used in most layers.
         """
         return self._arg('feature_dim', 128, argtype=STATIC)
+    
+    @property
+    def deterministic(self) -> int:
+        """
+        Make the model prediction only one trajectory for each agent.
+        """
+        return self._arg('deterministic', 0, argtype=STATIC)
 
 
 class SilverballersArgs(BaseSilverballersArgs):
