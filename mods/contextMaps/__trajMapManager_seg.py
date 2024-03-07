@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 18:03:09
+@LastEditTime: 2024-03-07 11:27:05
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -91,10 +91,9 @@ class TrajMapManager_seg(TrajMapManager):
         w = [weights[0], weights[2]]
         b = [weights[1], weights[3]]
 
-        order = self.working_clip.order
         scale = self.working_clip.get_manager(SplitManager).scale
 
-        x = (pixel[..., order[1]] - b[0]) / w[0]
-        y = (pixel[..., order[0]] - b[1]) / w[1]
+        x = (pixel[..., 1] - b[0]) / w[0]
+        y = (pixel[..., 0] - b[1]) / w[1]
 
         return np.stack([x, y], axis=-1)/scale
