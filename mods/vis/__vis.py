@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-07 11:21:21
+@LastEditTime: 2024-03-11 16:23:17
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -337,7 +337,7 @@ class Visualization(BaseManager):
             elif self.vis_args.draw_full_neighbors:
                 _n = nei
             else:
-                _n = nei[:, -1]
+                _n = nei[..., -1:, :]
             f = vis_func(f, obs, gt, pred, neighbor=_n)
 
             # Put text (top-left)
