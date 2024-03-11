@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-19 11:19:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:33:34
+@LastEditTime: 2024-03-07 15:47:41
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -106,7 +106,8 @@ class Clip(BaseManager):
     @property
     def order(self) -> list[int]:
         """
-        X-Y order in the annotation file.
+        X-Y order in the original annotation file.
+        This property is deprecated now, and will be removed in the future. 
         """
         return self.__order
 

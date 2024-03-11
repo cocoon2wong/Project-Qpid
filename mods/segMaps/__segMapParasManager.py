@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-11-07 16:34:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-01-23 10:25:09
+@LastEditTime: 2024-03-07 15:23:22
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -34,7 +34,6 @@ class SegMapParasManager(BaseExtInputManager):
 
         self.W: np.ndarray = np.array(None)
         self.b: np.ndarray = np.array(None)
-        self.order: np.ndarray = np.array(None)
 
     def save(self, *args, **kwargs):
         """
@@ -43,7 +42,6 @@ class SegMapParasManager(BaseExtInputManager):
         - `y_pixel = (wy * scale * y_real + by) // POOL_SIZE`
         """
         weights = self.working_clip.matrix
-        order = self.working_clip.order
         scale = self.working_clip.get_manager(SplitManager).scale
 
         # Load the original map to get scene size
@@ -65,18 +63,17 @@ class SegMapParasManager(BaseExtInputManager):
 
         self.W = np.array([wx, wy])
         self.b = np.array([bx, by])
-        self.order = np.array([order[0], order[1]])
 
         if not self.temp_file:
             raise ValueError
 
         dir_check(self.temp_dir)
-        np.save(self.temp_file, np.array([self.W, self.b, self.order]))
+        np.save(self.temp_file, np.array([self.W, self.b]))
 
     def load(self, *args, **kwargs):
         if not self.temp_file:
             raise ValueError
 
-        self.W, self.b, self.order = np.load(self.temp_file, allow_pickle=True)[:3]
+        self.W, self.b = np.load(self.temp_file, allow_pickle=True)[:2]
 
-        return np.concatenate([self.W, self.b, self.order])
+        return np.concatenate([self.W, self.b])

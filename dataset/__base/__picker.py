@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-30 09:52:17
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:57:05
+@LastEditTime: 2024-03-11 15:04:26
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -192,11 +192,8 @@ class AnnotationManager(BaseManager):
 
         flag = True
 
-        if ((self.source.base_dim != self.target.base_dim) or
-                (self.source.base_len < self.target.base_len)):
-            flag = False
-
-        if ((self.source.base_len % self.target.base_len != 0) or
+        if ((self.source.base_len < self.target.base_len) or
+            (self.source.base_len % self.target.base_len != 0) or
                 (self.target.dim - self.target.base_len > 0)):
             flag = False
 
@@ -212,6 +209,9 @@ class AnnotationManager(BaseManager):
         if ((self.source.base_len % self.target.base_len == 0) and
                 (self.source.base_len != self.target.base_len)):
             outputs = self.source.get_center(outputs)
+
+            if self.source.base_dim > self.target.base_dim:
+                outputs = outputs[..., :self.target.base_dim]
 
         return outputs
 
