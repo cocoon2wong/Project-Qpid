@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:42:21
+@LastEditTime: 2024-03-18 15:49:54
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -118,7 +118,7 @@ class CoordinateHelper(BaseVisHelper):
         if inputs.max() >= 0.5 * INIT_POSITION:
             return source
 
-        steps = inputs.shape[-2]
+        steps, dim = inputs.shape[-2:]
 
         # draw lines
         if draw_lines and self.draw_lines and steps >= 2:
@@ -130,13 +130,17 @@ class CoordinateHelper(BaseVisHelper):
                          color=color, thickness=width)
                 source[:, :, -1] = 255 * np.sign(source[:, :, 0])
 
-        # draw points
-        if inputs.ndim > 2:
-            inputs = np.reshape(inputs, [-1, inputs.shape[-1]])
-
+        # recolor the image
         if 255 not in color:
+            if png.shape[-1] == 4:
+                color = np.concatenate([np.array(color), [255]], axis=-1)
             png = (png.astype(float) *
                    color[np.newaxis, np.newaxis] / 255).astype(np.uint8)
+
+        # draw points
+        if inputs.ndim > 2:
+            inputs = np.reshape(inputs, [-1, dim])
+
         for input in inputs:
             source = self.draw_single(source, input, png)
 
