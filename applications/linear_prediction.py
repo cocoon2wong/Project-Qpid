@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-15 20:13:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 10:59:07
+@LastEditTime: 2024-03-18 16:09:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -16,7 +16,6 @@ from qpid.training import Structure
 
 
 class LinearArgs(EmptyArgs):
-
     @property
     def weights(self) -> float:
         """
@@ -42,6 +41,13 @@ class LinearModel(Model):
 
 
 class Linear(Structure):
+    """
+    Linear trajectory prediction model.
+    It calculates future trajectories by least squares.
+    For each trajectory dimension (like x and y in the 2D coordinates),
+    it computs trajectories in the future period via `x = a_x * t + b_x`
+    and `y = a_y * t + b_y`.
+    """
     is_trainable = False
 
     def create_model(self, *args, **kwargs):
