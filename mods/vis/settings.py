@@ -2,16 +2,13 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 11:20:36
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-23 16:17:31
+@LastEditTime: 2024-03-18 15:51:13
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
 import numpy as np
-
-# Visualization configs
-IF_USE_SMALL_POINTS = True
 
 # Configs for drawing distribution
 # Color bar in BGR format

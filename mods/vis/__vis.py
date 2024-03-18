@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-11 16:23:17
+@LastEditTime: 2024-03-18 15:51:39
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -24,16 +24,18 @@ from ...training import Structure
 from ...utils import dir_check, get_relative_path
 from .__args import VisArgs
 from .__helper import ADD, get_helper
-from .settings import IF_PUT_TEXT_IN_VIDEOS, IF_USE_SMALL_POINTS
+from .settings import IF_PUT_TEXT_IN_VIDEOS
 
-OBS_IMAGE = 'obs_small.png' if IF_USE_SMALL_POINTS else 'obs.png'
-NEIGHBOR_IMAGE = 'neighbor_small.png' if IF_USE_SMALL_POINTS else 'neighbor.png'
-GT_IMAGE = 'gt_small.png' if IF_USE_SMALL_POINTS else 'gt.png'
-PRED_IMAGE = 'pred_small.png' if IF_USE_SMALL_POINTS else 'pred.png'
+OBS_IMAGE = 'obs_small.png'
+NEI_OBS_IMAGE = 'neighbor_small.png'
+CURRENT_IMAGE = 'neighbor_current.png'
+GT_IMAGE = 'gt_small.png'
+PRED_IMAGE = 'pred_small.png'
 DISTRIBUTION_IMAGE = 'dis.png'
 
 OBS_IMAGE = get_relative_path(__file__, OBS_IMAGE)
-NEIGHBOR_IMAGE = get_relative_path(__file__, NEIGHBOR_IMAGE)
+NEI_OBS_IMAGE = get_relative_path(__file__, NEI_OBS_IMAGE)
+CURRENT_IMAGE = get_relative_path(__file__, CURRENT_IMAGE)
 GT_IMAGE = get_relative_path(__file__, GT_IMAGE)
 PRED_IMAGE = get_relative_path(__file__, PRED_IMAGE)
 DISTRIBUTION_IMAGE = get_relative_path(__file__, DISTRIBUTION_IMAGE)
@@ -77,7 +79,8 @@ class Visualization(BaseManager):
 
         # Read png files
         self.obs_file = cv2.imread(OBS_IMAGE, -1)
-        self.neighbor_file = cv2.imread(NEIGHBOR_IMAGE, -1)
+        self.neighbor_file = cv2.imread(NEI_OBS_IMAGE, -1)
+        self.current_file = cv2.imread(CURRENT_IMAGE, -1)
         self.pred_file = cv2.imread(PRED_IMAGE, -1)
         self.gt_file = cv2.imread(GT_IMAGE, -1)
         self.dis_file = cv2.imread(DISTRIBUTION_IMAGE, -1)
@@ -332,13 +335,7 @@ class Visualization(BaseManager):
             start_frame = frames[0]
 
             # Draw trajectories
-            if nei is None:
-                _n = None
-            elif self.vis_args.draw_full_neighbors:
-                _n = nei
-            else:
-                _n = nei[..., -1:, :]
-            f = vis_func(f, obs, gt, pred, neighbor=_n)
+            f = vis_func(f, obs, gt, pred, neighbor=nei)
 
             # Put text (top-left)
             f = text_func(f, self.get_text(start_frame, agent))
@@ -438,6 +435,18 @@ class Visualization(BaseManager):
         """
         f = np.zeros([source.shape[0], source.shape[1], 4])
 
+        # draw neighbors' observed trajectories
+        if neighbor is not None:
+            f = self.helper.draw_traj(f, neighbor[..., -1:, :],
+                                      self.current_file,
+                                      draw_lines=False)
+
+            neighbor = neighbor if self.vis_args.draw_full_neighbors \
+                else neighbor[..., -1:, :]
+            f = self.helper.draw_traj(f, neighbor,
+                                      self.neighbor_file,
+                                      draw_lines=False)
+
         # draw predicted trajectories
         if pred is not None:
             if self.vis_args.draw_distribution:
@@ -449,10 +458,7 @@ class Visualization(BaseManager):
                         draw_lines=self.vis_args.draw_lines,
                         color=255 * np.random.rand(3))
 
-        if neighbor is not None:
-            f = self.helper.draw_traj(
-                f, neighbor, self.neighbor_file, draw_lines=False)
-
+        # draw observed and groundtruth trajectories
         if obs is not None:
             if obs.ndim == 2:
                 obs = obs[np.newaxis]
