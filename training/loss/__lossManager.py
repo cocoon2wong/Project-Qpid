@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-06 14:31:46
+@LastEditTime: 2024-03-20 17:10:32
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -111,7 +111,7 @@ class LossManager(BaseManager):
         loss_dict: dict[str, torch.Tensor] = {}
         mask = get_loss_mask(inputs[0], labels[0])
         for layer, paras in zip(self.layers, self.loss_paras):
-            name = layer.__class__.__name__
+            name = layer.name
             if len(paras):
                 if 'name' in paras.keys():
                     name = paras['name']

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 21:13:27
+@LastEditTime: 2024-03-21 09:38:38
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -12,6 +12,7 @@ import torch
 
 from ...base import BaseManager
 from ...dataset import Annotation as Picker
+from ...model import Model
 from .__ade import ADE_2D
 
 
@@ -29,9 +30,14 @@ class BaseLossLayer(torch.nn.Module):
 
         super().__init__(*args, **kwargs)
 
+        self.name = self.__class__.__name__
         self.trainable = False
         self.manager = manager
         self.coe = coe
+
+    @property
+    def model(self) -> Model:
+        return self.manager.manager.model
 
     @property
     def picker(self) -> Picker:
@@ -47,12 +53,6 @@ class BaseLossLayer(torch.nn.Module):
 
         raise NotImplementedError
 
-    def get_input(self, inputs: list[torch.Tensor], dtype: str):
-        return self.manager.manager.model.get_input(inputs, dtype)
-
-    def get_label(self, labels: list[torch.Tensor], dtype: str):
-        return self.manager.manager.model.get_label(labels, dtype)
-
 
 class l2(BaseLossLayer):
     """
@@ -65,7 +65,8 @@ class l2(BaseLossLayer):
                 inputs: list, mask=None,
                 training=None, *args, **kwargs):
 
-        return ADE_2D(outputs[0], labels[0], coe=self.coe, mask=mask)
+        label = pick_keypoints_from_gt(self, pred := outputs[0], labels[0])
+        return ADE_2D(pred, label, coe=self.coe, mask=mask)
 
 
 class ADE(BaseLossLayer):
@@ -83,10 +84,12 @@ class ADE(BaseLossLayer):
         label = labels[0]
         obs = inputs[0]
 
-        if points > 0:
+        if (pred.shape[-2] == label.shape[-2]) and (points > 0):
             pred = pred[..., :points, :]
             label = label[..., :points, :]
             obs = label[..., :points, :]
+        else:
+            label = pick_keypoints_from_gt(self, pred, label)
 
         # Expand to (..., K, pred, dim)
         if pred.ndim == obs.ndim:
@@ -111,8 +114,14 @@ class FDE(ADE):
                 index: int = -1,
                 mask=None, training=None, *args, **kwargs):
 
-        return super().forward([outputs[0][..., index, None, :]],
-                               [labels[0][..., index, None, :]],
+        pred = outputs[0]
+        label = labels[0]
+        if (pred.shape[-2] != label.shape[-2]):
+            index = -1
+            label = pick_keypoints_from_gt(self, pred, label)
+
+        return super().forward([pred[..., index, None, :]],
+                               [label[..., index, None, :]],
                                inputs,
                                mask=mask, training=training,
                                *args, **kwargs)
@@ -126,8 +135,9 @@ class avgCenter(BaseLossLayer):
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
-        return ADE_2D(self.picker.get_center(outputs[0]),
-                      self.picker.get_center(labels[0]),
+        label = pick_keypoints_from_gt(self, pred := outputs[0], labels[0])
+        return ADE_2D(self.picker.get_center(pred),
+                      self.picker.get_center(label),
                       self.coe, mask)
 
 
@@ -140,8 +150,22 @@ class finalCenter(avgCenter):
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
-        return super().forward([outputs[0][..., -1, None, :]],
-                               [labels[0][..., -1, None, :]],
+        label = pick_keypoints_from_gt(self, pred := outputs[0], labels[0])
+        return super().forward([pred[..., -1, None, :]],
+                               [label[..., -1, None, :]],
                                inputs,
                                mask=mask, training=training,
                                *args, **kwargs)
+
+
+def pick_keypoints_from_gt(layer: BaseLossLayer,
+                           pred: torch.Tensor,
+                           gt: torch.Tensor):
+    """
+    Pick keypoints from the entire ground truth trajectory.
+    """
+    if pred.shape[-2] < gt.shape[-2]:
+        if not layer.name.endswith('(keypoints)'):
+            layer.name += '(keypoints)'
+        gt = gt[..., layer.model.output_pred_steps, :]
+    return gt
