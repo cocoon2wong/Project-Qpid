@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-01-15 19:36:35
+@LastEditTime: 2024-03-20 16:50:41
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -453,3 +453,53 @@ class Args(ArgsManager):
         on Apple platforms (instead of running on CPUs).
         """
         return self._arg('macos', 0, argtype=TEMPORARY)
+
+    @property
+    def input_pred_steps(self) -> str:
+        """
+        Indices of future time steps that used as extra model inputs.
+        It accepts a string that contains several integer numbers separated
+        with `'_'`. For example, `'3_6_9'`.
+        It will take the corresponding ground truth points as the input when 
+        training the model, and take the first output of the former network
+        as this input when testing the model.
+        Set it to `'null'` to disable this extra model inputs.
+        """
+        return self._arg('input_pred_steps', 'null', argtype=STATIC)
+
+    @property
+    def output_pred_steps(self) -> str:
+        """
+        Indices of future time steps to be predicted.
+        It accepts a string that contains several integer numbers separated
+        with `'_'`. For example, `'3_6_9'`.
+        Set it to `'all'` to predict points among all future steps.
+        """
+        return self._arg('output_pred_steps', 'all', argtype=STATIC,
+                         other_names=['key_points'])
+
+    @property
+    def noise_depth(self) -> int:
+        """
+        Depth of the random noise vector.
+        """
+        return self._arg('noise_depth', 16, argtype=STATIC,
+                         other_names=['depth'])
+
+    @property
+    def feature_dim(self) -> int:
+        """
+        Feature dimensions that are used in most layers.
+        """
+        return self._arg('feature_dim', 128, argtype=STATIC)
+
+    @property
+    def preprocess(self) -> str:
+        """
+        Controls whether to run any pre-process before the model inference.
+        It accepts a 3-bit-like string value (like `'111'`):
+        - The first bit: `MOVE` trajectories to (0, 0);
+        - The second bit: re-`SCALE` trajectories;
+        - The third bit: `ROTATE` trajectories.
+        """
+        return self._arg('preprocess', '100', argtype=STATIC)

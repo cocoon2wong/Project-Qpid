@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 21:10:00
+@LastEditTime: 2024-03-21 09:12:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -16,7 +16,8 @@ import torch
 
 from ..args import Args
 from ..base import BaseManager
-from ..constant import INPUT_TYPES
+from ..constant import INPUT_TYPES, PROCESS_TYPES
+from ..dataset import AgentManager, AnnotationManager
 from ..utils import CHECKPOINT_FILENAME, WEIGHTS_FORMAT
 from . import process
 
@@ -53,21 +54,39 @@ class Model(torch.nn.Module, BaseManager):
                  structure=None,
                  *args, **kwargs):
 
-        torch.nn.Module.__init__(self, *args, **kwargs)
+        torch.nn.Module.__init__(self)
         BaseManager.__init__(self, manager=structure,
                              name=f'{type(self).__name__}({hex(id(self))})')
 
         # Pre/post-process model and settings
+        preprocess = []
+        for index, operation in enumerate([PROCESS_TYPES.MOVE,
+                                           PROCESS_TYPES.SCALE,
+                                           PROCESS_TYPES.ROTATE]):
+            if self.args.preprocess[index] == '1':
+                preprocess.append(operation)
+
         self.processor = process.ProcessModel(self.args)
+        self.set_preprocess(*preprocess)
+
+        # Init model inputs and labels
         self.input_types: list[str] = []
         self.label_types: list[str] = []
 
-        # Init model inputs and labels
+        if 'as_single_model' in kwargs.keys():
+            self.as_single_model = kwargs['as_single_model']
+        else:
+            self.as_single_model = True
+
         self.set_inputs(INPUT_TYPES.OBSERVED_TRAJ)
         self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
         # Inference times
         self.inference_times: list[float] = []
+
+        # Containers for extra times steps as input or output
+        self.__input_pred_steps: torch.Tensor | None = None
+        self.__output_pred_steps: torch.Tensor | None = None
 
         # Extra model outputs and their indexes
         self.ext_traj_wise_outputs: dict[int, str] = {}
@@ -80,6 +99,13 @@ class Model(torch.nn.Module, BaseManager):
     @structure.setter
     def structure(self, value):
         self.manager = value
+
+    @property
+    def picker(self):
+        """
+        Trajectory picker (from the top manager object).
+        """
+        return self.get_top_manager().get_member(AgentManager).picker
 
     @property
     def average_inference_time(self) -> int | str:
@@ -107,10 +133,76 @@ class Model(torch.nn.Module, BaseManager):
         else:
             return '(Not Available)'
 
+    @property
+    def input_pred_steps(self) -> torch.Tensor | None:
+        """
+        Indices of future time steps that used as model inputs.
+        It returns a tensor with type `torch.int32` or `None`.
+        """
+        if self.__input_pred_steps is None:
+            if (i := self.args.input_pred_steps) == 'null':
+                return None
+            s = torch.tensor([int(_i) for _i in i.split('_')],
+                             dtype=torch.int32)
+            self.__input_pred_steps = s
+        return self.__input_pred_steps
+
+    @property
+    def output_pred_steps(self) -> torch.Tensor:
+        """
+        Indices of future time steps to be predicted.
+        It returns a tensor with type `torch.int32`.
+        """
+        if self.__output_pred_steps is None:
+            if (i := self.args.output_pred_steps) != 'all':
+                s = torch.tensor([int(_i) for _i in i.split('_')],
+                                 dtype=torch.int32)
+                self.__output_pred_steps = s
+            else:
+                s = torch.arange(0, self.args.pred_frames,
+                                 dtype=torch.int32)
+                self.__output_pred_steps = s
+        return self.__output_pred_steps
+
+    @property
+    def d(self) -> int:
+        """
+        Feature dimension used in most layers.
+        """
+        return self.args.feature_dim
+
+    @property
+    def d_id(self) -> int:
+        """
+        Dimension of randomly sampled noise vectors.
+        """
+        return self.args.noise_depth
+
+    @property
+    def dim(self) -> int:
+        """
+        Dimension of the predicted trajectory.
+        For example, `dim = 4` for 2D bounding boxes.
+        """
+        return self.structure.get_member(AnnotationManager).dim
+
     def get_input(self, inputs: list[torch.Tensor], dtype: str):
         """
         Get the input tensor with the given type from all model inputs.
         """
+        if dtype == INPUT_TYPES.GROUNDTRUTH_KEYPOINTS:
+            if self.input_pred_steps is None:
+                raise ValueError
+
+            if self.as_single_model:
+                points = self.get_input(inputs, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+                points = points[..., self.input_pred_steps, :]
+            else:
+                points = inputs[-1]
+
+            return self.processor([points], preprocess=True,
+                                  update_paras=False)[0]
+
         index = self.input_types.index(dtype)
         return inputs[index]
 
@@ -240,6 +332,20 @@ class Model(torch.nn.Module, BaseManager):
 
         info = {'Model name': self.args.model_name,
                 'Prediction type': self.args.anntype,
+                'Prediction settings': f'{self.args.obs_frames} frames ' +
+                                       f'-> {self.args.pred_frames} frames, ' +
+                                       f'interval = {self.args.interval} seconds',
                 'Pre/post-process layers': p_layers}
+
+        if (s := self.input_pred_steps) is not None:
+            info.update({'Index of input future steps': s})
+
+        if len(s := self.output_pred_steps) < self.args.pred_frames:
+            info.update({'Index of predicted future steps': s})
+
+        # Print descriptions of important args
+        for _arg in [self.args] + list(self.args._subargs_dict.values()):
+            for name, desc in _arg._args_desc.items():
+                info[desc] = _arg._get(name)
 
         return super().print_info(**info, **kwargs)

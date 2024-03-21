@@ -1,58 +1,55 @@
 """
 @Author: Conghao Wong
-@Date: 2022-11-29 09:26:00
+@Date: 2024-03-20 17:27:04
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:32:48
+@LastEditTime: 2024-03-21 09:14:38
 @Description: file content
-@Github: https://github.com/cocoon2wong
-@Copyright 2022 Conghao Wong, All Rights Reserved.
+@Github: https://cocoon2wong.github.io
+@Copyright 2024 Conghao Wong, All Rights Reserved.
 """
 
 import torch
 
-from ...constant import INPUT_TYPES
-from ..__handlerModel import BaseHandlerModel, HandlerArgs
+from qpid.args import Args
+from qpid.constant import INPUT_TYPES
+from qpid.model import Model
 
 
-class _BaseInterpHandlerModel(BaseHandlerModel):
+class _BaseInterpHandlerModel(Model):
     """
     The basic interpolation handler model.
     Subclass this class and rewrite the `interp` method to add 
     different interpolation layers.
     """
 
-    is_interp_handler = True
     INTERP_LAYER_TYPE: type[torch.nn.Module] | None = None
 
-    def __init__(self, Args: HandlerArgs,
-                 as_single_model: bool = True,
-                 structure=None,
-                 *args, **kwargs):
-
-        super().__init__(Args, as_single_model, structure, *args, **kwargs)
-
-        self.args._set('T', 'none')
-        self.set_inputs(INPUT_TYPES.OBSERVED_TRAJ,
-                        INPUT_TYPES.GROUNDTRUTH_TRAJ)
-        self.set_preprocess()
-
-        self.accept_batchK_inputs = True
+    def __init__(self, Args: Args, structure=None, *args, **kwargs):
 
         if self.INTERP_LAYER_TYPE is None:
             raise ValueError
 
+        # Init with the force-args
+        Args._set('preprocess', '000')
+        super().__init__(Args, structure, *args, **kwargs)
+
+        # It only accept interpolation models
+        if self.input_pred_steps is None:
+            raise ValueError
+
+        # Type hinting
+        self.input_pred_steps: torch.Tensor
+
+        # Set model inputs
+        self.set_inputs(INPUT_TYPES.OBSERVED_TRAJ,
+                        INPUT_TYPES.GROUNDTRUTH_TRAJ)
+
+        # Layers
         self.interp_layer = self.INTERP_LAYER_TYPE()
 
-        self.ext_traj_wise_outputs = {}
-        self.ext_agent_wise_outputs = {}
-
-    def forward(self, inputs: list[torch.Tensor],
-                keypoints: torch.Tensor,
-                keypoints_index: torch.Tensor,
-                training=None, mask=None):
-
-        # Unpack inputs
-        trajs = inputs[0]
+    def forward(self, inputs, training=None, mask=None, *args, **kwargs):
+        trajs = self.get_input(inputs, INPUT_TYPES.OBSERVED_TRAJ)
+        keypoints = self.get_input(inputs, INPUT_TYPES.GROUNDTRUTH_KEYPOINTS)
 
         if keypoints.ndim >= 4:     # (batch, K, steps, dim)
             K = keypoints.shape[-3]
@@ -60,7 +57,7 @@ class _BaseInterpHandlerModel(BaseHandlerModel):
 
         # Concat keypoints with the last observed point
         keypoints_index = torch.concat([torch.tensor([-1], device=keypoints.device),
-                                        keypoints_index], dim=0)
+                                        self.input_pred_steps.to(keypoints.device)], dim=0)
         keypoints = torch.concat([trajs[..., -1:, :], keypoints], dim=-2)
 
         return self.interp(keypoints_index, keypoints, obs_traj=trajs)

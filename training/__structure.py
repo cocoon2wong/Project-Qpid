@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 16:54:23
+@LastEditTime: 2024-03-20 21:23:27
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -51,7 +51,7 @@ class Structure(BaseManager):
     """
 
     is_trainable = True
-    ARG_TYPE = Args
+    MODEL_TYPE: type[Model] | None = None
 
     def __init__(self, args: list[str] | Args | None = None,
                  manager: BaseManager | None = None,
@@ -82,7 +82,7 @@ class Structure(BaseManager):
         self.optimizer: torch.optim.Optimizer
 
         # Set loss functions, and metrics
-        self.loss.set({loss.ADE: 1.0})
+        self.loss.set({loss.l2: 1.0})
 
         if self.args.anntype in [ANN_TYPES.BB_2D,
                                  ANN_TYPES.BB_3D]:
@@ -199,13 +199,16 @@ class Structure(BaseManager):
             gpu_id = int(self.args.gpu.split('_')[0])
             torch.cuda.set_device(gpu_id)
 
-    def create_model(self):
+    def create_model(self, *args, **kwargs):
         """
         Create models.
         Please *rewrite* this when training new models.
         NOTE: The created model should be assign to `self.model`.
         """
-        raise NotImplementedError('MODEL is not defined!')
+        if not self.MODEL_TYPE:
+            raise NotImplementedError('MODEL is not defined!')
+        self.model = self.MODEL_TYPE(Args=self.args, structure=self,
+                                     *args, **kwargs)
 
     def gradient_operations(self, inputs: list[torch.Tensor],
                             labels: list[torch.Tensor],

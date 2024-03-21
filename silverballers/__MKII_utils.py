@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-27 20:47:50
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 18:18:59
+@LastEditTime: 2024-03-20 21:27:48
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,11 +10,13 @@
 
 from typing import TypeVar, overload
 
-from . import interpHandlers
-from .__baseSubnetwork import BaseSubnetwork, BaseSubnetworkStructure
+from qpid.model import Model
+from qpid.training import Structure
 
-TStructure = TypeVar('TStructure', bound=BaseSubnetworkStructure)
-TModel = TypeVar('TModel', bound=BaseSubnetwork)
+from . import interpHandlers
+
+TStructure = TypeVar('TStructure', bound=Structure)
+TModel = TypeVar('TModel', bound=Model)
 
 
 class SILVERBALLERS_DICT():
@@ -44,8 +46,8 @@ class SILVERBALLERS_DICT():
         ```
     """
 
-    __S_DICT: dict[str, tuple[type[BaseSubnetworkStructure],
-                              type[BaseSubnetwork]]] = {}
+    __S_DICT: dict[str, tuple[type[Structure],
+                              type[Model]]] = {}
     __S_DICT.update(dict(
 
     ))
@@ -71,7 +73,7 @@ class SILVERBALLERS_DICT():
 
     @classmethod
     @overload
-    def get_structure(cls, name: str) -> type[BaseSubnetworkStructure]: ...
+    def get_structure(cls, name: str) -> type[Structure]: ...
 
     @classmethod
     @overload
@@ -90,7 +92,7 @@ class SILVERBALLERS_DICT():
 
     @classmethod
     @overload
-    def get_model(cls, name: str) -> type[BaseSubnetwork]: ...
+    def get_model(cls, name: str) -> type[Model]: ...
 
     @classmethod
     @overload

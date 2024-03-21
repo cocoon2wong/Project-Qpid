@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 11:03:08
+@LastEditTime: 2024-03-20 20:29:48
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -12,7 +12,6 @@ import re
 from typing import TypeVar
 
 from .args import Args, EmptyArgs
-from .silverballers import AgentArgs, HandlerArgs, SilverballersArgs
 
 TArgs = TypeVar('TArgs', bound=EmptyArgs)
 
@@ -22,9 +21,6 @@ MAX_SPACE = 20
 
 ARGS_DIC: dict = {
     Args: ['Basic Args', None],
-    AgentArgs: ['First-stage Silverballers Args', 0],
-    HandlerArgs: ['Second-stage Silverballers Args', 0],
-    SilverballersArgs: ['Silverballers Args', 1],
 }
 
 

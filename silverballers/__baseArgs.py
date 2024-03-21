@@ -2,88 +2,16 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:46:53
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-01-29 15:13:22
+@LastEditTime: 2024-03-20 21:29:34
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
-from ..args import DYNAMIC, STATIC, TEMPORARY, Args
+from ..args import DYNAMIC, STATIC, TEMPORARY, EmptyArgs
 
 
-class BaseSilverballersArgs(Args):
-
-    def __init__(self, terminal_args: list[str] | None = None,
-                 is_temporary=False) -> None:
-
-        super().__init__(terminal_args, is_temporary)
-
-        self._set_default('K', 1)
-        self._set_default('K_train', 1)
-
-    @property
-    def depth(self) -> int:
-        """
-        Depth of the random noise vector.
-        """
-        return self._arg('depth', 16, argtype=STATIC)
-
-    @property
-    def Kc(self) -> int:
-        """
-        The number of style channels in `Agent` model.
-        """
-        return self._arg('Kc', 20, argtype=STATIC)
-
-    @property
-    def key_points(self) -> str:
-        """
-        A list of key time steps to be predicted in the agent model.
-        For example, `'0_6_11'`.
-        """
-        return self._arg('key_points', '0_6_11', argtype=STATIC)
-
-    @property
-    def preprocess(self) -> str:
-        """
-        Controls whether to run any pre-process before the model inference.
-        It accepts a 3-bit-like string value (like `'111'`):
-        - The first bit: `MOVE` trajectories to (0, 0);
-        - The second bit: re-`SCALE` trajectories;
-        - The third bit: `ROTATE` trajectories.
-        """
-        return self._arg('preprocess', '100', argtype=STATIC)
-
-    @property
-    def T(self) -> str:
-        """
-        Type of transformations used when encoding or decoding
-        trajectories.
-        It could be:
-        - `none`: no transformations
-        - `fft`: fast Fourier transform
-        - `fft2d`: 2D fast Fourier transform
-        - `haar`: haar wavelet transform
-        - `db2`: DB2 wavelet transform
-        """
-        return self._arg('T', 'fft', argtype=STATIC, short_name='T')
-
-    @property
-    def feature_dim(self) -> int:
-        """
-        Feature dimensions that are used in most layers.
-        """
-        return self._arg('feature_dim', 128, argtype=STATIC)
-    
-    @property
-    def deterministic(self) -> int:
-        """
-        Make the model prediction only one trajectory for each agent.
-        """
-        return self._arg('deterministic', 0, argtype=STATIC)
-
-
-class SilverballersArgs(BaseSilverballersArgs):
+class SilverballersArgs(EmptyArgs):
 
     def __init__(self, terminal_args: list[str] | None = None,
                  is_temporary=False) -> None:

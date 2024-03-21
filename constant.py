@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-23 18:01:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 10:53:06
+@LastEditTime: 2024-03-20 18:00:40
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -43,6 +43,7 @@ class INPUT_TYPES():
     MAP_PARAS = 'MAP_PARAS'
     DESTINATION_TRAJ = 'DEST'
     GROUNDTRUTH_TRAJ = 'GT'
+    GROUNDTRUTH_KEYPOINTS = 'GT_KEYPOINTS'
     SEG_MAP = 'SEG_MAP'
     SEG_MAP_PARAS = 'SEG_MAP_PARAS'
 

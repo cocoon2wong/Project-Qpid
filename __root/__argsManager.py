@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-18 10:56:42
+@LastEditTime: 2024-03-20 16:49:35
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -66,6 +66,9 @@ class ArgsManager(BaseObject):
 
         # The default args (default)
         self._args_default: dict[str, Any] = {}
+
+        # Args' descriptions that appear in the model summary
+        self._args_desc: dict[str, str] = {}
 
         # A list to save all registered args' names
         self._arg_list = []
@@ -268,7 +271,7 @@ class ArgsManager(BaseObject):
             json.dump(dict(zip(names, values)), f,
                       separators=(',\n', ':'))
 
-    def _get_args_by_index_and_name(self, index: int, name: str):
+    def _get_args_by_index_and_name(self, index: int, names: list[str]):
         if index == 0:
             dic = self._args_load
         elif index == 1:
@@ -280,7 +283,10 @@ class ArgsManager(BaseObject):
         else:
             raise ValueError('Args index not exist.')
 
-        return dic[name] if name in dic.keys() else None
+        for name in names:
+            if name in dic.keys():
+                return dic[name]
+        return None
 
     def _set(self, name: str, value: Any, verbose=False):
         """
@@ -307,7 +313,9 @@ class ArgsManager(BaseObject):
              default: T,
              argtype: str,
              short_name: str | None = None,
-             need_initialize: bool | None = None) -> T:
+             need_initialize: bool = False,
+             other_names: list[str] | None = None,
+             desc_in_model_summary: str | None = None) -> T:
         """
         Get arg from all arg dictionaries according to the priority.
 
@@ -315,12 +323,17 @@ class ArgsManager(BaseObject):
         :param default: Default value of the arg.
         :param argtype: Arg type, canbe `STATIC`, `DYNAMIC`, or `TEMPORARY`.
         :param short_name: Short name of the arg.
-        :param preprocess: The preprocess method to initialize the arg (without
-            return values).
+        :param need_initialize: Set whether this arg need to be initialized before using.
+        :param other_names: A list of other names of this arg. It could be used when \
+            loading args from the saved json files.
+        :param desc_in_model_summary: Set whether this arg appears in the model summary. \
+            It will not appear when it is set to `None`, and other string values will be \
+            used as the description of this arg.
         """
         # Register args before using
         if not self._init_done:
-            self._register(name, default, argtype, short_name)
+            self._register(name, default, argtype, short_name,
+                           desc_in_model_summary)
             if need_initialize:
                 self._args_need_initialize.append(name)
             return default
@@ -329,12 +342,13 @@ class ArgsManager(BaseObject):
         if need_initialize and name in self._args_need_initialize:
             return default
 
-        return self._get(name)
+        return self._get(name if not other_names else [name] + other_names)
 
     def _register(self, name: str,
                   default: Any,
                   argtype: str,
-                  short_name: str | None = None):
+                  short_name: str | None = None,
+                  desc_in_model_summary: str | None = None):
         """
         Register a new arg.
         """
@@ -346,11 +360,15 @@ class ArgsManager(BaseObject):
             if short_name:
                 self._arg_short_name[short_name] = name
 
-    def _get(self, name: str):
+            if d := desc_in_model_summary:
+                self._args_desc[name] = d
+
+    def _get(self, name: str | list[str]):
         """
         Get value of a arg.
 
-        :param name: name of the arg
+        :param name: The name (or all other names) of the arg. \
+            NOTE: `name[0]` should be the main name.       
         :param default: default value of the arg
         :param argtype: type of the arg, can be
             - `STATIC`
@@ -365,8 +383,9 @@ class ArgsManager(BaseObject):
         # _args_manually: 99
         # _args_default: -1
 
-        argtype = self._arg_type[name]
-        default = self._args_default[name]
+        names = name if isinstance(name, list) else [name]
+        argtype = self._arg_type[names[0]]
+        default = self._args_default[names[0]]
 
         if argtype == STATIC:
             order = [99, 0, 1, -1]
@@ -380,7 +399,7 @@ class ArgsManager(BaseObject):
         # Get args from all dictionaries.
         value = None
         for index in order:
-            value = self._get_args_by_index_and_name(index, name)
+            value = self._get_args_by_index_and_name(index, names)
 
             if value is not None:
                 break
