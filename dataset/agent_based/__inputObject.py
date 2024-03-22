@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 09:26:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-28 15:35:09
+@LastEditTime: 2024-03-22 09:42:19
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -68,7 +68,7 @@ class Agent(BaseInputObject):
     ```
     """
 
-    __version__ = 7.0
+    __version__ = 8.0
     _save_items = ['__version__',
                    '_traj', '_traj_future',
                    '_traj_pred', '_traj_linear',
@@ -106,13 +106,30 @@ class Agent(BaseInputObject):
         current agents' last observed point.
         """
         if self._traj_neighbor_force is not None:
-            return self._traj_neighbor_force
+            return self._traj_neighbor_force[..., :self.obs_length, :]
 
         if self._traj_neighbor is None:
             raise ValueError
 
         ref = self.traj[..., -1:, :]
-        return self.padding(self.pickers.get(self._traj_neighbor)) - ref
+        return self.padding(self.pickers.get(self._traj_neighbor[..., :self.obs_length, :])) - ref
+
+    @property
+    def groundtruth_neighbor(self) -> np.ndarray:
+        """
+        All neighbors' groundtruth trajectories (after padding), 
+        shape = (max_agents, pred, dim).
+        NOTE: Returned trajectories are all reletive, corresponding to
+        current agents' last observed point.
+        """
+        if self._traj_neighbor_force is not None:
+            return self._traj_neighbor_force[..., self.obs_length:, :]
+
+        if self._traj_neighbor is None:
+            raise ValueError
+
+        ref = self.traj[..., -1:, :]
+        return self.padding(self.pickers.get(self._traj_neighbor[..., self.obs_length:, :])) - ref
 
     @traj_neighbor.setter
     def traj_neighbor(self, value):
@@ -152,7 +169,6 @@ class Agent(BaseInputObject):
                   frames: np.ndarray,
                   start_frame, obs_frame, end_frame,
                   frame_step=1,
-                  add_noise=False,
                   linear_predict=True):
         """
         Make one training data.
@@ -168,10 +184,6 @@ class Agent(BaseInputObject):
         # Trajectory info
         self.obs_length = (obs_frame - start_frame) // frame_step
         self.total_frame = (end_frame - start_frame) // frame_step
-
-        # data strengthen: noise
-        if add_noise:
-            target_traj += np.random.normal(0, 0.1, target_traj.shape)
 
         self._id = id
         self._type = type
@@ -208,9 +220,12 @@ class Agent(BaseInputObject):
                                             self.obs_length,
                                             pred_frames)
 
-            _n_pred = linear_pred(np.concatenate(self._traj_neighbor, axis=-1),
-                                  self.obs_length,
-                                  pred_frames)
+            _n_pred = linear_pred(
+                np.concatenate(
+                    self._traj_neighbor[..., :self.obs_length, :], axis=-1),
+                self.obs_length,
+                pred_frames
+            )
 
             _n_pred = np.reshape(_n_pred, [pred_frames, n, -1])
             _n_pred = np.transpose(_n_pred, [1, 0, 2])
@@ -324,8 +339,7 @@ class Trajectory():
     def sample(self, start_frame, obs_frame, end_frame,
                matrix,
                frame_step=1,
-               max_neighbor=15,
-               add_noise=False) -> Agent:
+               max_neighbor=15) -> Agent:
         """
         Sample training data from the trajectory.
 
@@ -340,7 +354,7 @@ class Trajectory():
             dis = calculate_length(nei_pos - tar_pos)
             neighbors = neighbors[np.argsort(dis)[1:max_neighbor+1]]
 
-        nei_traj = matrix[start_frame:obs_frame:frame_step, list(neighbors), :]
+        nei_traj = matrix[start_frame:end_frame:frame_step, list(neighbors), :]
         nei_traj = np.transpose(nei_traj, [1, 0, 2])
         tar_traj = self.traj[start_frame:end_frame:frame_step, :]
 
@@ -354,7 +368,6 @@ class Trajectory():
             obs_frame=obs_frame,
             end_frame=end_frame,
             frame_step=frame_step,
-            add_noise=add_noise
         )
 
 

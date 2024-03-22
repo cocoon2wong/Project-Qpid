@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 16:38:10
+@LastEditTime: 2024-03-21 21:08:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -284,6 +284,8 @@ class AgentManager(BaseManager):
                 name, string = ['destination', 'destinations']
             case INPUT_TYPES.GROUNDTRUTH_TRAJ:
                 name, string = ['groundtruth', 'groundtruth']
+            case INPUT_TYPES.NEIGHBOR_GROUNDTRUTH_TRAJ:
+                name, string = ['groundtruth_neighbor', "neighbors' groundtruth"]
             case _:
                 return
 

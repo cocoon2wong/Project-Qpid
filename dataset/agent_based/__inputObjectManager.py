@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-19 14:38:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 15:12:38
+@LastEditTime: 2024-03-22 09:42:31
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -94,7 +94,6 @@ class AgentObjectManager(BaseInputObjectManager):
                                                        obs_frame=obs,
                                                        end_frame=end,
                                                        matrix=matrix,
-                                                       frame_step=frame_step,
-                                                       add_noise=False))
+                                                       frame_step=frame_step))
 
         return train_samples
