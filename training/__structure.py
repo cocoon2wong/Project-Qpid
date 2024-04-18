@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-20 21:23:27
+@LastEditTime: 2024-04-18 21:16:48
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -167,7 +167,8 @@ class Structure(BaseManager):
         Compute device (use GPU if available).
         """
         if self._device is None:
-            if torch.cuda.is_available():
+            if (torch.cuda.is_available() and 
+                int(self.args.gpu.split('_')[0]) >= 0):
                 d = torch.device("cuda")
             elif torch.backends.mps.is_available() and self.args.macos:
                 d = torch.device("mps")
