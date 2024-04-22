@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 18:44:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 15:48:41
+@LastEditTime: 2024-04-22 15:35:20
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -84,9 +84,10 @@ class BaseFilesManager(BaseInputManager):
         if (v := saved['0'].tolist()['__version__']) < (
                 v1 := self.DATA_TYPE.__version__):
             self.log((f'Saved {self.FILE_PREFIX} managers\' version is {v}, ' +
-                      f'which is lower than current {v1}. Please delete' +
-                      ' them and re-run this program, or there could' +
+                      f'which is lower than the required {v1}. Please delete' +
+                      ' them (you can directly delete the `temp_files` dir)' +
+                      ' and re-run this program, or there could' +
                       ' happen something wrong.'),
-                     level='error')
+                     level='warning')
 
         return [self.DATA_TYPE().load_data(v.tolist()) for v in saved.values()]
