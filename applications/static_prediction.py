@@ -28,6 +28,4 @@ class Static(Structure):
     observed positions at the current observation step.
     """
     is_trainable = False
-
-    def create_model(self):
-        self.model = StaticModel(self.args, structure=self)
+    MODEL_TYPE = StaticModel

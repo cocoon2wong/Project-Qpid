@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2024-03-20 17:27:04
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-21 09:14:38
+@LastEditTime: 2024-04-25 19:41:37
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2024 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,6 @@
 
 import torch
 
-from qpid.args import Args
 from qpid.constant import INPUT_TYPES
 from qpid.model import Model
 
@@ -24,14 +23,16 @@ class _BaseInterpHandlerModel(Model):
 
     INTERP_LAYER_TYPE: type[torch.nn.Module] | None = None
 
-    def __init__(self, Args: Args, structure=None, *args, **kwargs):
+    def __init__(self, structure=None, *args, **kwargs):
 
         if self.INTERP_LAYER_TYPE is None:
             raise ValueError
 
         # Init with the force-args
-        Args._set('preprocess', '000')
-        super().__init__(Args, structure, *args, **kwargs)
+        super().__init__(structure, *args, **kwargs)
+
+        # Handler models do not use any process methods
+        self.set_preprocess()
 
         # It only accept interpolation models
         if self.input_pred_steps is None:

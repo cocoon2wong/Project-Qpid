@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-21 09:12:04
+@LastEditTime: 2024-04-25 20:40:08
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -14,7 +14,6 @@ import time
 import numpy as np
 import torch
 
-from ..args import Args
 from ..base import BaseManager
 from ..constant import INPUT_TYPES, PROCESS_TYPES
 from ..dataset import AgentManager, AnnotationManager
@@ -50,10 +49,13 @@ class Model(torch.nn.Module, BaseManager):
     ```
     """
 
-    def __init__(self, Args: Args,
-                 structure=None,
-                 *args, **kwargs):
+    def __init__(self, structure=None, *args, **kwargs):
+        """
+        Init a model object.
 
+        :param structure: The training structure that used to manage this model, \
+            which should has the type `Structure` (or its subclasses).
+        """
         torch.nn.Module.__init__(self)
         BaseManager.__init__(self, manager=structure,
                              name=f'{type(self).__name__}({hex(id(self))})')

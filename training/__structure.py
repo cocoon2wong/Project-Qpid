@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-18 21:16:48
+@LastEditTime: 2024-04-25 20:45:47
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -18,7 +18,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 
 from ..args import Args
 from ..base import BaseManager
-from ..constant import ANN_TYPES, INPUT_TYPES, STRUCTURE_STATUS
+from ..constant import ANN_TYPES, STRUCTURE_STATUS
 from ..dataset import AgentManager, Annotation, AnnotationManager, SplitManager
 from ..model import Model
 from ..utils import WEIGHTS_FORMAT, get_loss_mask, move_to_device
@@ -167,8 +167,8 @@ class Structure(BaseManager):
         Compute device (use GPU if available).
         """
         if self._device is None:
-            if (torch.cuda.is_available() and 
-                int(self.args.gpu.split('_')[0]) >= 0):
+            if (torch.cuda.is_available() and
+                    int(self.args.gpu.split('_')[0]) >= 0):
                 d = torch.device("cuda")
             elif torch.backends.mps.is_available() and self.args.macos:
                 d = torch.device("mps")
@@ -200,16 +200,16 @@ class Structure(BaseManager):
             gpu_id = int(self.args.gpu.split('_')[0])
             torch.cuda.set_device(gpu_id)
 
-    def create_model(self, *args, **kwargs):
+    def create_model(self, *args, **kwargs) -> None:
         """
-        Create models.
-        Please *rewrite* this when training new models.
-        NOTE: The created model should be assign to `self.model`.
+        Create the trainable model objects `self.model` according to the
+        default `MODEL_TYPE` setting.
+        NOTE: The created model objects should be assign to `self.model`
+        inner this method, and this method returns `None` only.
         """
         if not self.MODEL_TYPE:
-            raise NotImplementedError('MODEL is not defined!')
-        self.model = self.MODEL_TYPE(Args=self.args, structure=self,
-                                     *args, **kwargs)
+            raise NotImplementedError('MODEL_TYPE is not defined!')
+        self.model = self.MODEL_TYPE(structure=self, *args, **kwargs)
 
     def gradient_operations(self, inputs: list[torch.Tensor],
                             labels: list[torch.Tensor],

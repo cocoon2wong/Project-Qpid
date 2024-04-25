@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-21 09:24:32
+@LastEditTime: 2024-04-25 20:44:35
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -19,6 +19,7 @@ from qpid.training import Structure
 
 from .__baseArgs import SilverballersArgs
 from .__MKII_utils import SILVERBALLERS_DICT as SDICT
+from .interpHandlers import DirectHandlerModel
 from .interpHandlers.__baseInterpHandler import _BaseInterpHandlerModel
 
 
@@ -40,16 +41,15 @@ class SilverballersModel(Model):
         or a subclass of it.
     """
 
-    def __init__(self, Args: Args,
-                 agent_model: Model,
+    def __init__(self, agent_model: Model,
                  handler_model: Model,
                  structure=None,
                  *args, **kwargs):
 
-        # This model does not need any preprocess layers
-        Args._set('preprocess', '000')
+        super().__init__(structure, *args, **kwargs)
 
-        super().__init__(Args, structure, *args, **kwargs)
+        # This model does not need any preprocess layers
+        self.set_preprocess()
 
         # Args
         self.s_args = self.args.register_subargs(SilverballersArgs, 's_args')
@@ -199,16 +199,22 @@ class SilverballersMKII(Structure):
 
         # Create the second-stage handler model
         min_args_h = Args(handler_args, is_temporary=True)
-        min_args_h._set('input_pred_steps', agent_args.output_pred_steps)
         self.handler = self.HANDLER_STRUCTURE_TYPE(min_args_h, manager=self)
-        self.handler.MODEL_TYPE = self.handler_model_type
+
+        if agent_args.output_pred_steps == 'all':
+            self.handler.MODEL_TYPE = DirectHandlerModel
+            need_load = False
+        else:
+            self.handler.args._set(
+                'input_pred_steps', agent_args.output_pred_steps)
+            self.handler.MODEL_TYPE = self.handler_model_type
+
         self.handler.create_model(as_single_model=False)
         if need_load:
             self.handler.model.load_weights_from_logDir(min_args.loadb)
 
     def create_model(self, *args, **kwargs):
-        self.model = SilverballersModel(self.args,
-                                        agent_model=self.agent.model,
+        self.model = SilverballersModel(agent_model=self.agent.model,
                                         handler_model=self.handler.model,
                                         structure=self,
                                         *args, **kwargs)

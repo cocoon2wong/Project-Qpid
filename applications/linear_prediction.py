@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-15 20:13:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-18 16:09:06
+@LastEditTime: 2024-04-25 20:06:15
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,7 +10,7 @@
 
 import torch
 
-from qpid.args import DYNAMIC, Args, EmptyArgs
+from qpid.args import DYNAMIC, EmptyArgs
 from qpid.model import Model, layers
 from qpid.training import Structure
 
@@ -27,8 +27,13 @@ class LinearArgs(EmptyArgs):
 
 
 class LinearModel(Model):
-    def __init__(self, Args: Args, structure=None, *args, **kwargs):
-        super().__init__(Args, structure, *args, **kwargs)
+    def __init__(self, structure=None, *args, **kwargs):
+        super().__init__(structure, *args, **kwargs)
+
+        self.args._set('model_name', 'Linear Least Squares Prediction Model')
+
+        # This model dose not use any preprocess methods
+        self.set_preprocess()
 
         self.l_args = self.args.register_subargs(LinearArgs, 'linearArgs')
         self.linear = layers.LinearLayerND(obs_frames=self.args.obs_frames,
@@ -42,13 +47,11 @@ class LinearModel(Model):
 
 class Linear(Structure):
     """
-    Linear trajectory prediction model.
+    Training structure for the linear trajectory prediction model.
     It calculates future trajectories by least squares.
     For each trajectory dimension (like x and y in the 2D coordinates),
     it computs trajectories in the future period via `x = a_x * t + b_x`
     and `y = a_y * t + b_y`.
     """
     is_trainable = False
-
-    def create_model(self, *args, **kwargs):
-        self.model = LinearModel(self.args, structure=self)
+    MODEL_TYPE = LinearModel
