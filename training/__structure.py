@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-25 20:45:47
+@LastEditTime: 2024-04-30 10:19:23
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -336,6 +336,12 @@ class Structure(BaseManager):
         best_metric = 10000.0
         best_metrics_dict = {'-': best_metric}
 
+        # Init paths for saving
+        weights_path = os.path.join(self.args.log_dir,
+                                    self.args.model_name + '_epoch{}' +
+                                    WEIGHTS_FORMAT)
+        checkpoint_path = os.path.join(self.args.log_dir, 'best_ade_epoch.txt')
+
         # start training
         for epoch in self.timebar(range(self.args.epochs), text='Training...'):
 
@@ -374,16 +380,19 @@ class Structure(BaseManager):
 
                 # Save model
                 if metric <= best_metric:
+                    # Delete former saved weights (if needed)
+                    if self.args.auto_clear:
+                        if os.path.exists(p := weights_path.format(best_epoch)):
+                            os.remove(p)
+
+                    # Save new weights
                     best_metric = metric
                     best_metrics_dict = metrics_dict
                     best_epoch = epoch
 
                     torch.save(self.model.state_dict(),
-                               os.path.join(self.args.log_dir,
-                                            f'{self.args.model_name}_epoch{epoch}' +
-                                            WEIGHTS_FORMAT))
-
-                    np.savetxt(os.path.join(self.args.log_dir, 'best_ade_epoch.txt'),
+                               weights_path.format(best_epoch))
+                    np.savetxt(checkpoint_path,
                                np.array([best_metric, best_epoch]))
 
             # Save results into log files

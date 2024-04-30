@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-20 16:50:41
+@LastEditTime: 2024-04-30 10:23:02
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -503,3 +503,11 @@ class Args(ArgsManager):
         - The third bit: `ROTATE` trajectories.
         """
         return self._arg('preprocess', '100', argtype=STATIC)
+
+    @property
+    def auto_clear(self) -> int:
+        """
+        Controls whether to clear all other saved weights except for the best one.
+        It performs similar as running `python scripts/clear.py --logs logs`.
+        """
+        return self._arg('auto_clear', 1, argtype=TEMPORARY)
