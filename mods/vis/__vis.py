@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-18 15:51:39
+@LastEditTime: 2024-05-06 16:59:25
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -31,14 +31,12 @@ NEI_OBS_IMAGE = 'neighbor_small.png'
 CURRENT_IMAGE = 'neighbor_current.png'
 GT_IMAGE = 'gt_small.png'
 PRED_IMAGE = 'pred_small.png'
-DISTRIBUTION_IMAGE = 'dis.png'
 
 OBS_IMAGE = get_relative_path(__file__, OBS_IMAGE)
 NEI_OBS_IMAGE = get_relative_path(__file__, NEI_OBS_IMAGE)
 CURRENT_IMAGE = get_relative_path(__file__, CURRENT_IMAGE)
 GT_IMAGE = get_relative_path(__file__, GT_IMAGE)
 PRED_IMAGE = get_relative_path(__file__, PRED_IMAGE)
-DISTRIBUTION_IMAGE = get_relative_path(__file__, DISTRIBUTION_IMAGE)
 
 DRAW_ON_VIDEO = 0
 DRAW_ON_IMAGE = 1
@@ -83,7 +81,6 @@ class Visualization(BaseManager):
         self.current_file = cv2.imread(CURRENT_IMAGE, -1)
         self.pred_file = cv2.imread(PRED_IMAGE, -1)
         self.gt_file = cv2.imread(GT_IMAGE, -1)
-        self.dis_file = cv2.imread(DISTRIBUTION_IMAGE, -1)
 
     @property
     def video_capture(self) -> cv2.VideoCapture | None:
@@ -450,7 +447,7 @@ class Visualization(BaseManager):
         # draw predicted trajectories
         if pred is not None:
             if self.vis_args.draw_distribution:
-                f = self.helper.draw_dis(f, pred, self.dis_file, alpha=0.8)
+                f = self.helper.draw_dis(f, pred, alpha=0.8)
             else:
                 for pred_k in pred:
                     f = self.helper.draw_traj(

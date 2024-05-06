@@ -2,19 +2,21 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-18 15:49:54
+@LastEditTime: 2024-05-06 16:45:55
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+import os
+
 import cv2
 import numpy as np
-import torch
 
 from ...constant import ANN_TYPES
-from ...utils import INIT_POSITION
-from .settings import DISTRIBUTION_COLORBAR, IF_DRAW_LINES
+from ...utils import INIT_POSITION, ROOT_TEMP_DIR, dir_check
+from .settings import (DISTRIBUTION_TEMP_NAME, DISTRIBUTION_TEMP_PATH,
+                       IF_DRAW_LINES)
 
 
 class BaseVisHelper():
@@ -50,51 +52,41 @@ class BaseVisHelper():
 
     def draw_dis(self, source: np.ndarray,
                  inputs: np.ndarray,
-                 png: np.ndarray,
                  alpha: float):
         """
         Draw model predicted trajectories in the distribution way.
 
         :param source: The background image.
         :param inputs: Model predictions, shape = (steps, (K), dim).
+        :param alpha: Transparency (from 0 to 1).
         """
-        # reshape into (K, steps, dim)
-        if inputs.ndim == 2:
-            inputs = inputs[np.newaxis, :, :]
 
-        steps, dim = inputs.shape[-2:]
+        import seaborn as sns
+        from matplotlib import pyplot as plt
+
         h, w = source.shape[:2]
-        f_empty = np.zeros([h, w, 4])
-        f_dis = f_empty
+        dat = inputs.reshape([-1, 2])
 
-        for step in range(steps):
-            step_input = inputs[:, step, :]  # (K, dim)
+        plt.figure(figsize=(h/100, w/100), dpi=100)
+        sns.kdeplot(x=dat[..., 0], y=dat[..., 1], fill=True)
+        plt.subplots_adjust(top=1, bottom=0, right=1,
+                            left=0, hspace=0, wspace=0)
+        plt.margins(0, 0)
+        plt.xlim(0, h)
+        plt.ylim(0, w)
+        plt.axis('off')
+        plt.xticks([])
+        plt.yticks([])
 
-            f = np.zeros([h, w, 4])
-            for _input in step_input:
-                f = self.draw_single(f, _input, png)
+        dir_check(r := os.path.join(ROOT_TEMP_DIR, DISTRIBUTION_TEMP_PATH))
+        plt.savefig(path := os.path.join(r, DISTRIBUTION_TEMP_NAME))
+        plt.close()
 
-            f_alpha = f[:, :, -1] ** 0.2
-            f_alpha = (255 * f_alpha/f_alpha.max()).astype(np.int32)
-            color_map = (step+1)/steps * DISTRIBUTION_COLORBAR[f_alpha]
-            color_map = color_map.astype(np.int32)
-
-            f_alpha = f_alpha[:, :, np.newaxis]
-            f = np.concatenate([color_map, f_alpha], axis=-1)
-            f_dis = ADD(f_dis, f, type='auto')
-
-        # smooth distribution image
-        f_dis = torch.conv2d(
-            torch.from_numpy(
-                np.transpose(f_dis.astype(np.float32),
-                             [2, 0, 1])[:, np.newaxis]
-            ),
-            weight=torch.ones([1, 1, 20, 20])/(20**2),
-            padding='same'
-        ).numpy()
-        f_dis = np.transpose(f_dis[:, 0], [1, 2, 0])
-
-        source = ADD(source, f_dis, alpha=alpha, type='auto')
+        f_dis = cv2.imread(path)
+        f_dis = np.transpose(f_dis, [1, 0, 2])[:, ::-1, :]
+        f_dis_alpha = (255 * (np.sum(f_dis, axis=-1) < 255*3)).astype(int)
+        f_dis_png = np.concatenate([f_dis, f_dis_alpha[..., None]], axis=-1)
+        source = ADD(source, f_dis_png, alpha=alpha, type='auto')
         return source
 
 

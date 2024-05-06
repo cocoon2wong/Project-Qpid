@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-27 19:14:24
+@LastEditTime: 2024-05-06 16:56:42
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -45,7 +45,7 @@ class VisArgs(EmptyArgs):
         If `draw_distribution == 1`, it will draw all results in the distribution
         way, and points from different time steps will be drawn with different colors.
         """
-        return self._arg('draw_distribution', 0, argtype=TEMPORARY)
+        return self._arg('draw_distribution', 0, argtype=TEMPORARY, short_name='dd')
 
     @property
     def draw_extra_outputs(self) -> int:
