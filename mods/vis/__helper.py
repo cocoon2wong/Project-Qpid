@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-06 16:45:55
+@LastEditTime: 2024-05-07 15:47:12
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -52,21 +52,32 @@ class BaseVisHelper():
 
     def draw_dis(self, source: np.ndarray,
                  inputs: np.ndarray,
-                 alpha: float):
+                 alpha: float,
+                 steps: str = 'all'):
         """
         Draw model predicted trajectories in the distribution way.
 
         :param source: The background image.
-        :param inputs: Model predictions, shape = (steps, (K), dim).
+        :param inputs: Model predictions, shape = ((K), steps, dim).
         :param alpha: Transparency (from 0 to 1).
+        :param steps: Indices of the predicted steps to be visualized. \
+            It accepts a string that contains several integers split by `_`. \
+            For example, `'0_6_11'`.
         """
 
         import seaborn as sns
         from matplotlib import pyplot as plt
 
-        h, w = source.shape[:2]
-        dat = inputs.reshape([-1, 2])
+        if steps != 'all':
+            _indices = [int(ii) for ii in steps.split('_') if len(ii)]
+            _indices = np.array(_indices)
+            dat = inputs[..., _indices, :]
+        else:
+            dat = inputs
 
+        dat = dat.reshape([-1, 2])   # inputs shape: ((K), steps, dim)
+
+        h, w = source.shape[:2]
         plt.figure(figsize=(h/100, w/100), dpi=100)
         sns.kdeplot(x=dat[..., 0], y=dat[..., 1], fill=True)
         plt.subplots_adjust(top=1, bottom=0, right=1,

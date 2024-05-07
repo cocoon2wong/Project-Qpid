@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-06 16:56:42
+@LastEditTime: 2024-05-07 15:49:11
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -46,6 +46,17 @@ class VisArgs(EmptyArgs):
         way, and points from different time steps will be drawn with different colors.
         """
         return self._arg('draw_distribution', 0, argtype=TEMPORARY, short_name='dd')
+
+    @property
+    def distribution_steps(self) -> str:
+        """
+        Controls which time step(s) should be considered when visualizing the
+        distribution of forecasted trajectories.
+        It accepts one or more integer numbers (started with 0) split by `'_'`.
+        For example, `'4_8_11'`.
+        Set it to `'all'` to show the distribution of all predictions.
+        """
+        return self._arg('distribution_steps', 'all', argtype=TEMPORARY)
 
     @property
     def draw_extra_outputs(self) -> int:

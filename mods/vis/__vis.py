@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-06 16:59:25
+@LastEditTime: 2024-05-07 15:32:27
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -447,7 +447,8 @@ class Visualization(BaseManager):
         # draw predicted trajectories
         if pred is not None:
             if self.vis_args.draw_distribution:
-                f = self.helper.draw_dis(f, pred, alpha=0.8)
+                f = self.helper.draw_dis(f, pred, alpha=0.8,
+                                         steps=self.vis_args.distribution_steps)
             else:
                 for pred_k in pred:
                     f = self.helper.draw_traj(
