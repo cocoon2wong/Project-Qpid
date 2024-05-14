@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-07 15:32:27
+@LastEditTime: 2024-05-14 11:21:58
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -312,6 +312,8 @@ class Visualization(BaseManager):
             text_func = self.text
             real2pixel = True
             f_empty = np.zeros((f.shape[0], f.shape[1], 4))
+            if self.vis_args.draw_on_empty_canvas:
+                f = 255 * np.ones_like(f)
         else:
             vis_func = self._visualization_plt
             text_func = self._put_text_plt
@@ -447,7 +449,8 @@ class Visualization(BaseManager):
         # draw predicted trajectories
         if pred is not None:
             if self.vis_args.draw_distribution:
-                f = self.helper.draw_dis(f, pred, alpha=0.8,
+                alpha = 0.8 if not self.vis_args.draw_on_empty_canvas else 1.0
+                f = self.helper.draw_dis(f, pred, alpha=alpha,
                                          steps=self.vis_args.distribution_steps)
             else:
                 for pred_k in pred:
@@ -542,8 +545,16 @@ class Visualization(BaseManager):
             if pred.ndim == 2:
                 pred = pred[np.newaxis]
 
-            for p in pred:
-                plt.plot(p[:, 0], p[:, 1], 's')
+            # Draw as the trajectory distribution
+            if self.vis_args.draw_distribution:
+                f = self.helper.draw_dis(f, pred, alpha=1.0,
+                                         steps=self.vis_args.distribution_steps,
+                                         plt_mode=True)
+
+            # Draw as multiple trajectories
+            else:
+                for p in pred:
+                    plt.plot(p[:, 0], p[:, 1], 's')
 
         plt.axis('equal')
 

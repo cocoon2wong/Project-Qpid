@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-07 15:49:11
+@LastEditTime: 2024-05-14 11:24:05
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -57,6 +57,14 @@ class VisArgs(EmptyArgs):
         Set it to `'all'` to show the distribution of all predictions.
         """
         return self._arg('distribution_steps', 'all', argtype=TEMPORARY)
+
+    @property
+    def draw_on_empty_canvas(self) -> int:
+        """
+        Controls whether to draw visualized results on the empty canvas
+        instead of the actual video.
+        """
+        return self._arg('draw_on_empty_canvas', 0, argtype=TEMPORARY)
 
     @property
     def draw_extra_outputs(self) -> int:

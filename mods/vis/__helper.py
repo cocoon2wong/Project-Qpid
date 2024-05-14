@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-07 15:47:12
+@LastEditTime: 2024-05-14 11:23:48
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -53,7 +53,8 @@ class BaseVisHelper():
     def draw_dis(self, source: np.ndarray,
                  inputs: np.ndarray,
                  alpha: float,
-                 steps: str = 'all'):
+                 steps: str = 'all',
+                 plt_mode: bool = False):
         """
         Draw model predicted trajectories in the distribution way.
 
@@ -63,6 +64,7 @@ class BaseVisHelper():
         :param steps: Indices of the predicted steps to be visualized. \
             It accepts a string that contains several integers split by `_`. \
             For example, `'0_6_11'`.
+        :param plt_mode: (Do not change it manually)
         """
 
         import seaborn as sns
@@ -77,9 +79,15 @@ class BaseVisHelper():
 
         dat = dat.reshape([-1, 2])   # inputs shape: ((K), steps, dim)
 
-        h, w = source.shape[:2]
-        plt.figure(figsize=(h/100, w/100), dpi=100)
+        if not plt_mode:
+            h, w = source.shape[:2]
+            plt.figure(figsize=(h/100, w/100), dpi=100)
+
         sns.kdeplot(x=dat[..., 0], y=dat[..., 1], fill=True)
+
+        if plt_mode:
+            return source
+
         plt.subplots_adjust(top=1, bottom=0, right=1,
                             left=0, hspace=0, wspace=0)
         plt.margins(0, 0)
