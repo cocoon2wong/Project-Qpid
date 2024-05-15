@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-20 16:49:35
+@LastEditTime: 2024-05-15 09:44:08
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -213,7 +213,7 @@ class ArgsManager(BaseObject):
         """
         dic = {}
 
-        index = 1
+        index = 0
         name = None
         while True:
             try:
