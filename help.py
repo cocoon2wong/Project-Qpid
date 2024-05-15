@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-20 20:29:48
+@LastEditTime: 2024-05-14 20:31:29
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -99,6 +99,7 @@ def update_readme(new_lines: list[str], md_file: str):
 
 
 def print_help_info(value: str | None = None):
+    import qpid.mods.vis
     files = []
     for T in ARGS_DIC.keys():
         ignore_flag = T._ignore_value_check
