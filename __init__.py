@@ -10,6 +10,13 @@ from .help import print_help_info, register_new_args
 
 __SYSTEM_MANAGER = base.BaseManager(name='SYSTEM')
 
+get_structure = silverballers.SILVERBALLERS_DICT.get_structure
+
+silverballers.register(
+    linear=[applications.Linear, None],
+    static=[applications.Static, None],
+)
+
 
 def log(s: str, level: str = 'info', raiseError=None):
     """
