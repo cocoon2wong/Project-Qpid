@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-14 11:21:58
+@LastEditTime: 2024-05-20 16:52:31
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -442,9 +442,10 @@ class Visualization(BaseManager):
 
             neighbor = neighbor if self.vis_args.draw_full_neighbors \
                 else neighbor[..., -1:, :]
-            f = self.helper.draw_traj(f, neighbor,
-                                      self.neighbor_file,
-                                      draw_lines=False)
+            for nei in neighbor:
+                f = self.helper.draw_traj(
+                    f, nei, self.neighbor_file,
+                    draw_lines=self.vis_args.draw_lines)
 
         # draw predicted trajectories
         if pred is not None:
