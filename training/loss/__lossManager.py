@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-20 17:10:32
+@LastEditTime: 2024-05-21 20:56:17
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -45,7 +45,7 @@ class LossManager(BaseManager):
     def set(self, loss_dict: (
         dict[type[BaseLossLayer], float] |
         list[tuple[type[BaseLossLayer], tuple[float, dict]]]
-    )):
+    ), clear_before_setting: bool = True):
         """
         Set loss functions and their weights.
 
@@ -61,13 +61,13 @@ class LossManager(BaseManager):
                 [loss.FDE, [1.0, {'index': 2, 'name': 'FDE@80ms'}]],
             ])
             ```
-
-            NOTE: The callable loss function must have the `**kwargs` in
-            their definitions.
+        :param clear_before_setting: Choose whether to clear original loss \
+            layers before applying new layers.
         """
-        self.layers = []
-        self.loss_weights = []
-        self.loss_paras = []
+        if clear_before_setting:
+            self.layers = []
+            self.loss_weights = []
+            self.loss_paras = []
 
         if type(loss_dict) is dict:
             items = loss_dict.items()
