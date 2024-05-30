@@ -2,227 +2,208 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-25 20:44:35
+@LastEditTime: 2024-05-30 09:45:45
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+import os
+
 import torch
 
-from qpid.__root import BaseObject
 from qpid.args import Args
 from qpid.base import BaseManager
-from qpid.constant import INPUT_TYPES, INTERPOLATION_TYPES
+from qpid.constant import INPUT_TYPES
 from qpid.model import Model
 from qpid.training import Structure
 
 from .__baseArgs import SilverballersArgs
 from .__MKII_utils import SILVERBALLERS_DICT as SDICT
-from .interpHandlers import DirectHandlerModel
-from .interpHandlers.__baseInterpHandler import _BaseInterpHandlerModel
 
 
 class SilverballersModel(Model):
     """
     SilverballersModel
     ---
-    The two-stage silverballers model.
+    The container of multi-stage trajectory prediction models.
     NOTE: This model is typically used for testing, not training.
     The SilverballersModel itself is not trainable. It only serves 
     as a container that provides a running environment for different 
-    agent and handler sub-networks.
-
-    Member Managers
-    ---
-    - (Soft member) Stage-1 Subnetwork, type is `BaseAgentModel`
-        or a subclass of it;
-    - (Soft member) Stage-2 Subnetwork, type is `BaseHandlerModel`
-        or a subclass of it.
+    subnetworks with different prediction stages.
     """
 
-    def __init__(self, agent_model: Model,
-                 handler_model: Model,
-                 structure=None,
-                 *args, **kwargs):
-
+    def __init__(self, substructures: list[Structure],
+                 structure=None, *args, **kwargs):
+        """
+        :param substructures: A list of training structures of subnetworks.
+        """
         super().__init__(structure, *args, **kwargs)
 
-        # This model does not need any preprocess layers
-        self.set_preprocess()
+        # Init containers
+        input_types = []
+        self._subnetwork_count = 0
 
         # Args
         self.s_args = self.args.register_subargs(SilverballersArgs, 's_args')
 
-        # Layers
-        self.agent = agent_model
-        self.handler = handler_model
+        # This model does not need any preprocess layers
+        self.set_preprocess()
 
-        # Set model inputs
-        self.a_types = self.agent.input_types
-        self.h_types = self.handler.input_types
-        self.h_types.remove(INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        # Assign each subnetwork
+        for s in substructures:
+            net = s.model
+            net.as_single_model = False
 
-        # Make sure that observed trajectories are the first input in the list
-        input_types = list(set(self.a_types + self.h_types))
-        input_types.remove(INPUT_TYPES.OBSERVED_TRAJ)
-        input_types = [INPUT_TYPES.OBSERVED_TRAJ] + input_types
+            # Remove the type groundtruth from model inputs
+            if (gt := INPUT_TYPES.GROUNDTRUTH_TRAJ) in net.input_types:
+                net.input_types.remove(gt)
+            input_types += net.input_types
+
+            self.add_subnetwork(net)
+
+        # Set input types
+        input_types = list(set(input_types))
         self.set_inputs(*input_types)
 
+    @property
+    def subnetworks(self) -> dict[int, Model]:
+        res = {}
+        for i in range(self._subnetwork_count):
+            try:
+                net = self.get_submodule(f'subnetwork_{i}')
+                res[i] = net
+            except:
+                break
+        return res
+
+    def add_subnetwork(self, net: Model):
+        self.add_module(f'subnetwork_{self._subnetwork_count}', net)
+        self._subnetwork_count += 1
+
     def forward(self, inputs, training=None, mask=None, *args, **kwargs):
-        ######################
-        # Stage-1 Subnetwork #
-        ######################
-        a_inputs = [self.get_input(inputs, d) for d in self.a_types]
-        a_outputs = self.agent.implement(a_inputs)
+        model_outputs: dict[int, list] = {}
+        for index, net in self.subnetworks.items():
+            _inputs = [self.get_input(inputs, d) for d in net.input_types]
+            if (index_last := index - 1) in model_outputs.keys():
+                keypoints = model_outputs[index_last][0]
+                _inputs = _inputs + [keypoints]
 
-        # Down sampling from K*Kc generations (if needed)
-        if self.s_args.down_sampling_rate < 1.0:
-            a_pred = a_outputs[0]
-            K_current = a_pred.shape[-3]
-            K_new = K_current * self.s_args.down_sampling_rate
-            new_index = torch.randperm(K_current)[:int(K_new)]
-            a_pred = a_pred[..., new_index, :, :]
-            a_outputs[0] = a_pred
+            _outputs = net.implement(_inputs)
 
-        ######################
-        # Stage-2 Subnetwork #
-        ######################
-        h_inputs = [self.get_input(inputs, d) for d in self.h_types]
-        h_outputs = self.handler.implement(h_inputs + [a_outputs[0]])
+            # Down sampling from K*Kc generations (if needed)
+            if self.s_args.down_sampling_rate < 1.0:
+                _pred = _outputs[0]
+                K_current = _pred.shape[-3]
+                K_new = K_current * self.s_args.down_sampling_rate
+                new_index = torch.randperm(K_current)[:int(K_new)]
+                _pred = _pred[..., new_index, :, :]
+                _outputs[0] = _pred
 
-        if not training and (c := self.s_args.channel) != -1:
-            h_outputs[0] = h_outputs[0][..., c, None, :, :]
+            # Save outputs
+            model_outputs[index] = _outputs
 
-        return [h_outputs[0]] + [a_outputs] + [h_outputs]
+        return [_outputs[0]] + list(model_outputs.values())
 
     def print_info(self, **kwargs):
-        info = {'Stage-1 Subnetwork': f"'{self.agent.name}' from '{self.s_args.loada}'",
-                'Stage-2 Subnetwork': f"'{self.handler.name}' from '{self.s_args.loadb}'"}
-
-        self.print_parameters(**info)
-        self.agent.print_info(**kwargs)
-        self.handler.print_info(**kwargs)
+        info = {}
+        for index, net in self.subnetworks.items():
+            info[f'Network {index}'] = net.name
+        super().print_info(**info, **kwargs)
+        for net in self.subnetworks.values():
+            net.print_info(**kwargs)
 
 
 class SilverballersMKII(Structure):
     """
     SilverballersMKII Structure
     ---
-    Basic structure to run the `agent-handler` based silverballers model.
+    Basic structure to run the multi-stage `SilverballersModel` model.
     NOTE: It is only used for TESTING silverballers models, not training.
-
-    Member Managers
-    ---
-    - Stage-1 Subnetwork Manager, type is `BaseAgentStructure` or its subclass;
-    - Stage-2 Subnetwork Manager, type is `BaseHandlerStructure` or its subclass;
-    - All members from the `Structure`.
     """
-
-    AGENT_STRUCTURE_TYPE = Structure
-    HANDLER_STRUCTURE_TYPE = Structure
 
     is_trainable = False
 
-    def __init__(self, args: list[str], manager: BaseManager | None = None, name='Train Manager'):
+    def __init__(self, args: list[str],
+                 manager: BaseManager | None = None,
+                 name='Train Manager'):
 
-        temp_args = Args(args, is_temporary=True)
-        min_args = temp_args.register_subargs(SilverballersArgs, 's_min_args')
-        a_model_path = min_args.loada
-        b_model_path = min_args.loadb
+        # Args
+        main_args = Args(args)
+        mkii_args = main_args.register_subargs(SilverballersArgs, 'mkii_args')
 
         # Init log-related functions
-        BaseObject.__init__(self)
+        BaseManager.__init__(self)
+
+        # Structures of all subnetworks
+        self.substructures: list[Structure] = []
 
         # Check args
-        if 'null' in [a_model_path, b_model_path]:
-            self.log('`Agent` or `Handler` model not found!' +
-                     ' Please specific their paths via `--loada` (`-la`)' +
-                     ' or `--loadb` (`-lb`).',
+        if 'null' in mkii_args.loads:
+            self.log('Model not found!',
                      level='error', raiseError=KeyError)
 
-        # Assign the model type of the first-stage subnetwork
-        _args_a = Args(is_temporary=True).load_args_from_json(a_model_path)
-        a_m_type: type[Model] = SDICT.get_model(_args_a.model)
-        a_s_type: type[Structure] = SDICT.get_structure(_args_a.model)
+        for path in mkii_args.loads.split(','):
+            # Init model and training structure of the subnetwork
+            if not os.path.exists(path):
+                _args = Args(args)
+                _load = False
+                try:
+                    s_type = SDICT.get_structure(path)
+                except NotImplementedError as e:
+                    self.log(f'Weights `{path}` does not exist.' +
+                             ' Please check your spell.',
+                             level='error', raiseError=type(e))
+            else:
+                _args = Args(['--load', path] + args)
+                _load = True
+                s_type = SDICT.get_structure(_args.model)
 
-        # Assign the model type of the second-stage subnetwork
-        interp_model = INTERPOLATION_TYPES.get_type(b_model_path)
-        if interp_model is None:
-            _args_b = Args(is_temporary=True).load_args_from_json(b_model_path)
-            interp_model = _args_b.model
+            if not s_type.MODEL_TYPE:
+                s_type.MODEL_TYPE = SDICT.get_model(path)
 
-        h_m_type: type[Model] = SDICT.get_model(interp_model)
-        h_s_type: type[Structure] = SDICT.get_structure(interp_model)
+            # Set force args
+            if len(self.substructures) and (s_last := self.substructures[-1]):
+                _args_last = s_last.args
+            else:
+                _args_last = _args
 
-        # Assign types of all subnetworks
-        self.agent_model_type = a_m_type
-        self.handler_model_type = h_m_type
-        if a_s_type:
-            self.AGENT_STRUCTURE_TYPE = a_s_type
+            self.set_args(_args, ref_args=_args_last)
 
-        if h_s_type:
-            self.HANDLER_STRUCTURE_TYPE = h_s_type
+            if len(self.substructures):
+                _args._set('input_pred_steps', _args_last.output_pred_steps)
 
-        # Load basic args from the saved agent model
-        agent_args = Args(args + ['--load', min_args.loada], is_temporary=True)
+            # Create model (subnetwork)
+            s = s_type(_args, manager=self)
+            s.create_model()
+            if _load:
+                s.model.load_weights_from_logDir(path)
 
-        manual_args = ['--split', str(agent_args.split),
-                       '--anntype', str(agent_args.anntype),
-                       '--obs_frames', str(agent_args.obs_frames),
-                       '--pred_frames', str(agent_args.pred_frames),
-                       '--interval', str(agent_args.interval),
-                       '--model_type', str(agent_args.model_type)]
+            self.substructures.append(s)
 
-        # Assign args from the saved Agent-Model's args
-        if temp_args.batch_size > agent_args.batch_size:
-            manual_args += ['--batch_size', str(agent_args.batch_size)]
+            if len(s.model.output_pred_steps) == s.args.pred_frames:
+                break
 
-        # Init the structure
-        # The above `temp_args` has become the `self.args`
-        super().__init__(args + manual_args)
-        self.s_args = self.args.register_subargs(SilverballersArgs, 's_args')
+        self.set_args(main_args, ref_args=self.substructures[0].args)
+        super().__init__(main_args)
 
-        # Config the second-stage handler model
-        if issubclass(self.handler_model_type, _BaseInterpHandlerModel):
-            handler_args = None
-            need_load = False
-        else:
-            handler_args = args + ['--load', min_args.loadb]
-            need_load = True
-
-        # Create the first-stage agent model
-        self.agent = self.AGENT_STRUCTURE_TYPE(agent_args, manager=self)
-        self.agent.MODEL_TYPE = self.agent_model_type
-        self.agent.create_model()
-        self.agent.model.load_weights_from_logDir(min_args.loada)
-
-        # Create the second-stage handler model
-        min_args_h = Args(handler_args, is_temporary=True)
-        self.handler = self.HANDLER_STRUCTURE_TYPE(min_args_h, manager=self)
-
-        if agent_args.output_pred_steps == 'all':
-            self.handler.MODEL_TYPE = DirectHandlerModel
-            need_load = False
-        else:
-            self.handler.args._set(
-                'input_pred_steps', agent_args.output_pred_steps)
-            self.handler.MODEL_TYPE = self.handler_model_type
-
-        self.handler.create_model(as_single_model=False)
-        if need_load:
-            self.handler.model.load_weights_from_logDir(min_args.loadb)
+    def set_args(self, args: Args, ref_args: Args):
+        args._set('dataset', ref_args.dataset)
+        args._set('split', ref_args.split)
+        args._set('anntype', ref_args.anntype)
+        args._set('obs_frames', ref_args.obs_frames)
+        args._set('pred_frames', ref_args.pred_frames)
+        args._set('interval', ref_args.interval)
+        args._set('batch_size', ref_args.batch_size)
+        args._set('model_type', ref_args.model_type)
 
     def create_model(self, *args, **kwargs):
-        self.model = SilverballersModel(agent_model=self.agent.model,
-                                        handler_model=self.handler.model,
-                                        structure=self,
-                                        *args, **kwargs)
+        self.model = SilverballersModel(self.substructures, self)
 
     def print_test_results(self, loss_dict: dict[str, float], **kwargs):
         super().print_test_results(loss_dict, **kwargs)
-        self.log(f'Test with 1st sub-network `{self.s_args.loada}` ' +
-                 f'and 2nd seb-network `{self.s_args.loadb}` done.')
+        self.log(f'Test with subnetworks ' +
+                 f'{[s.args.load for s in self.substructures]} done.')
 
 
-SDICT.register(MKII=[SilverballersMKII, None])
+SDICT.register(MKII=[SilverballersMKII, SilverballersModel])

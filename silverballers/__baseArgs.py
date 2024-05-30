@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:46:53
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-20 21:29:34
+@LastEditTime: 2024-05-30 09:52:42
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
 """
 
-from ..args import DYNAMIC, STATIC, TEMPORARY, EmptyArgs
+from qpid.args import DYNAMIC, STATIC, TEMPORARY, EmptyArgs
 
 
 class SilverballersArgs(EmptyArgs):
@@ -19,18 +19,13 @@ class SilverballersArgs(EmptyArgs):
         super().__init__(terminal_args, is_temporary)
 
     @property
-    def loada(self) -> str:
+    def loads(self) -> str:
         """
-        Path to load the first-stage agent model.
+        Paths to load a stacked model with series of subnetworks.
+        Paths of all subnetworks' weights should be splited with `,`
+        (it does not contain any blanks).
         """
-        return self._arg('loada', 'null', argtype=TEMPORARY, short_name='la')
-
-    @property
-    def loadb(self) -> str:
-        """
-        Path to load the second-stage handler model.
-        """
-        return self._arg('loadb', 'null', argtype=TEMPORARY, short_name='lb')
+        return self._arg('loads', 'null', argtype=TEMPORARY)
 
     @property
     def down_sampling_rate(self) -> float:
