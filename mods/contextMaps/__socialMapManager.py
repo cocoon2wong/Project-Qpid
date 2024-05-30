@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-10-17 18:02:39
+@LastEditTime: 2024-05-30 12:12:17
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -10,13 +10,13 @@
 
 import numpy as np
 
-from ...base import BaseManager, SecondaryBar
-from ...constant import INPUT_TYPES
-from ...dataset import Clip
-from ...dataset.__base import BaseInputManager
-from ...dataset.agent_based import Agent
+from qpid.base import BaseManager, SecondaryBar
+from qpid.dataset import Clip
+from qpid.dataset.__base import BaseInputManager
+from qpid.dataset.agent_based import Agent
+
 from .__trajMapManager import TrajMapManager
-from .settings import AVOID_SIZE, INTEREST_SIZE
+from .settings import AVOID_SIZE, INPUT_TYPES, INTEREST_SIZE
 from .utils import add, cut, pooling2D
 
 

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-14 20:31:29
+@LastEditTime: 2024-05-30 13:27:00
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -58,13 +58,12 @@ def read_comments(args: Args) -> list[str]:
     return results
 
 
-def get_doc(args: list[Args], titles: list[str],
-            father_indices: list[int]) -> list[str]:
+def get_doc(args: list[Args], titles: list[str]) -> list[str]:
 
     new_lines = []
     all_args = [[] for _ in range(len(args))]
 
-    for index, (arg, title, father) in enumerate(zip(args, titles, father_indices)):
+    for index, (arg, title) in enumerate(zip(args, titles)):
         new_lines += [f'\n### {title}\n\n']
         c = read_comments(arg)
         c.sort()
@@ -72,10 +71,7 @@ def get_doc(args: list[Args], titles: list[str],
         for new_line in c:
             name = new_line.split('`')[1]
             all_args[index].append(name)
-            if father is None:
-                father = 0
-            if (name not in all_args[father]) or (index == father):
-                new_lines.append(new_line)
+            new_lines.append(new_line)
 
     return new_lines
 
@@ -96,44 +92,3 @@ def update_readme(new_lines: list[str], md_file: str):
 
     with open(md_file, 'w+') as f:
         f.writelines(all_lines)
-
-
-def print_help_info(value: str | None = None):
-    import qpid.mods.vis
-    files = []
-    for T in ARGS_DIC.keys():
-        ignore_flag = T._ignore_value_check
-        T._ignore_value_check = True
-        _arg = T(is_temporary=True)
-        files.append(_arg)
-        T._ignore_value_check = ignore_flag
-
-    titles = [v[0] for v in ARGS_DIC.values()]
-    father_indices = [v[1] for v in ARGS_DIC.values()]
-
-    doc_lines = get_doc(files, titles, father_indices)
-    if value is None:
-        pass
-    elif value == 'all_args':
-        [print(doc) for doc in doc_lines]
-    else:
-        doc_lines = [doc for doc in doc_lines if doc[5:].startswith(value)]
-        [print(doc) for doc in doc_lines]
-    return doc_lines
-
-
-def register_new_args(arg_type: type[TArgs],
-                      friendly_name: str,
-                      package_name: str | None = None,
-                      farther_index: int | None = None):
-    """
-    Register new args defined by additional mods to the training structure.
-
-    :param arg_type: Type of the new arg object.
-    :param friendly_name: Friendly name of the class of args that showed to users.
-    :param package_name: Name of the package where the new args are included.
-    """
-    if not package_name:
-        package_name = arg_type.__name__
-
-    ARGS_DIC.update({arg_type: [friendly_name, farther_index]})

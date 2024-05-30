@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-25 14:51:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-20 19:59:17
+@LastEditTime: 2024-05-30 12:11:03
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -15,14 +15,13 @@ import numpy as np
 import torch
 
 from qpid.base import BaseManager
-from qpid.constant import INPUT_TYPES
 from qpid.dataset import Clip, SplitManager
 from qpid.dataset.__base import BaseExtInputManager
 from qpid.utils import dir_check
 
 from .__args import ContextMapsArgs
-from .settings import (MAP_HALF_SIZE, POOLING_BEFORE_SAVING, SEG_IMG,
-                       WINDOW_EXPAND_METER, WINDOW_EXPAND_PIXEL,
+from .settings import (INPUT_TYPES, MAP_HALF_SIZE, POOLING_BEFORE_SAVING,
+                       SEG_IMG, WINDOW_EXPAND_METER, WINDOW_EXPAND_PIXEL,
                        WINDOW_SIZE_METER, WINDOW_SIZE_PIXEL)
 
 

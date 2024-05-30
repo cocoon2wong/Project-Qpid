@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-23 18:01:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-29 19:03:16
+@LastEditTime: 2024-05-30 11:58:20
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -40,13 +40,9 @@ class INPUT_TYPES():
     OBSERVED_TRAJ = 'TRAJ'
     NEIGHBOR_TRAJ = 'TRAJ_NEIGHBOR'
     NEIGHBOR_GROUNDTRUTH_TRAJ = 'NEIGHBOR_GT_TRAJ'
-    MAP = 'MAP'
-    MAP_PARAS = 'MAP_PARAS'
     DESTINATION_TRAJ = 'DEST'
     GROUNDTRUTH_TRAJ = 'GT'
     GROUNDTRUTH_KEYPOINTS = 'GT_KEYPOINTS'
-    SEG_MAP = 'SEG_MAP'
-    SEG_MAP_PARAS = 'SEG_MAP_PARAS'
 
 
 class OUTPUT_TYPES():

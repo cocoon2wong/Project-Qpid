@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 09:45:45
+@LastEditTime: 2024-05-30 11:12:21
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -12,6 +12,7 @@ import os
 
 import torch
 
+import qpid
 from qpid.args import Args
 from qpid.base import BaseManager
 from qpid.constant import INPUT_TYPES
@@ -19,7 +20,6 @@ from qpid.model import Model
 from qpid.training import Structure
 
 from .__baseArgs import SilverballersArgs
-from .__MKII_utils import SILVERBALLERS_DICT as SDICT
 
 
 class SilverballersModel(Model):
@@ -149,7 +149,7 @@ class SilverballersMKII(Structure):
                 _args = Args(args)
                 _load = False
                 try:
-                    s_type = SDICT.get_structure(path)
+                    s_type = qpid.get_structure(path)
                 except NotImplementedError as e:
                     self.log(f'Weights `{path}` does not exist.' +
                              ' Please check your spell.',
@@ -157,10 +157,10 @@ class SilverballersMKII(Structure):
             else:
                 _args = Args(['--load', path] + args)
                 _load = True
-                s_type = SDICT.get_structure(_args.model)
+                s_type = qpid.get_structure(_args.model)
 
             if not s_type.MODEL_TYPE:
-                s_type.MODEL_TYPE = SDICT.get_model(path)
+                s_type.MODEL_TYPE = qpid.get_model(path)
 
             # Set force args
             if len(self.substructures) and (s_last := self.substructures[-1]):
@@ -204,6 +204,3 @@ class SilverballersMKII(Structure):
         super().print_test_results(loss_dict, **kwargs)
         self.log(f'Test with subnetworks ' +
                  f'{[s.args.load for s in self.substructures]} done.')
-
-
-SDICT.register(MKII=[SilverballersMKII, SilverballersModel])

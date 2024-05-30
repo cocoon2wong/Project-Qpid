@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 17:49:36
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 10:11:47
+@LastEditTime: 2024-05-30 12:10:55
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -27,3 +27,8 @@ AVOID_SIZE = 15     # Avoid size in grid cells when modeling social interaction
 INTEREST_SIZE = 20  # Interest size in grid cells when modeling social interaction
 
 POOLING_BEFORE_SAVING = True
+
+
+class INPUT_TYPES():
+    MAP = 'MAP'
+    MAP_PARAS = 'MAP_PARAS'

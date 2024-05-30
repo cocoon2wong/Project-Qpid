@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-10-17 14:57:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-02 19:22:25
+@LastEditTime: 2024-05-30 13:02:43
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from typing import Any, TypeVar, overload
+from typing import Any, TypeVar
 
 from ..__root import BaseObject
 from ..args import Args
@@ -119,14 +119,14 @@ class BaseManager(BaseObject):
 
         :return member: Member manager with the specific type.
         """
-        return self.members_dict[mtype][mindex]
+        return self.members_dict[mtype][mindex]  # type: ignore
 
     def get_manager(self, mtype: type[T]) -> T:
         """
         Get the manager object of this manager.
         This method is only used for type hints.
         """
-        return self.manager
+        return self.manager  # type: ignore
 
     def get_top_manager(self):
         """
@@ -145,7 +145,7 @@ class BaseManager(BaseObject):
 
         :return members: A list of member objects.
         """
-        return self.members_dict[mtype]
+        return self.members_dict[mtype]  # type: ignore
 
     def print_info_all(self, include_self=True, debug=False):
         """

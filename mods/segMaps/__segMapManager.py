@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-11-08 10:04:32
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-08 20:28:21
+@LastEditTime: 2024-05-30 12:28:14
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -12,11 +12,11 @@ import cv2
 import numpy as np
 
 from qpid.base import BaseManager
-from qpid.constant import DATASET_CONFIGS, INPUT_TYPES
+from qpid.constant import DATASET_CONFIGS
 from qpid.dataset.__base import BaseExtInputManager
 from qpid.utils import dir_check
 
-from .settings import NORMALIZED_SIZE
+from .settings import INPUT_TYPES, NORMALIZED_SIZE
 
 
 class SegMapManager(BaseExtInputManager):

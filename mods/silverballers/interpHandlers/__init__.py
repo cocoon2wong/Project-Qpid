@@ -8,6 +8,7 @@
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+import qpid
 from qpid.training import Structure
 
 from ..constant import INTERPOLATION_TYPES
@@ -21,3 +22,5 @@ INTERPOLATION_HANDLER_DICT: dict = {
     INTERPOLATION_TYPES.LINEAR_ACC: [Structure, LinearAccHandlerModel],
     INTERPOLATION_TYPES.NEWTON: [Structure, NewtonHandlerModel],
 }
+
+qpid.register(**INTERPOLATION_HANDLER_DICT)

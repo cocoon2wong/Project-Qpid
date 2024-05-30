@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-20 20:07:55
+@LastEditTime: 2024-05-30 12:12:01
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -14,14 +14,13 @@ import cv2
 import numpy as np
 
 from qpid.base import BaseManager, SecondaryBar
-from qpid.constant import INPUT_TYPES
 from qpid.dataset import Clip
 from qpid.dataset.__base import BaseExtInputManager
 from qpid.dataset.agent_based import Agent
 from qpid.utils import dir_check
 
 from .__mapParasManager import MapParasManager
-from .settings import MAP_HALF_SIZE
+from .settings import INPUT_TYPES, MAP_HALF_SIZE
 from .utils import add, cut, pooling2D
 
 

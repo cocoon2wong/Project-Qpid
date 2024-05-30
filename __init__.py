@@ -4,45 +4,28 @@ Q-Pid
 A training "engine" for trajectory prediction models (based on PyTorch).
 """
 
-from . import (applications, args, base, help, model, silverballers, training,
-               utils)
-from .help import print_help_info, register_new_args
+from . import applications, args, base, help, model, training, utils
+from .__system import SystemManager as __SysMgr
 
-__SYSTEM_MANAGER = base.BaseManager(name='SYSTEM')
+sys_mgr = __SysMgr()
 
-get_structure = silverballers.SILVERBALLERS_DICT.get_structure
+add_arg_alias = sys_mgr.add_arg_alias
+get_structure = sys_mgr.get_structure
+get_model = sys_mgr.get_model
 
-silverballers.register(
+register = sys_mgr.register
+register_args = sys_mgr.register_args
+register_input_type = sys_mgr.register_input_type
+
+log = sys_mgr.log
+set_log_path = sys_mgr.set_log_path
+set_log_stream_handler = sys_mgr.set_log_stream_handler
+print_help_info = sys_mgr.print_help_info
+
+
+register(
     linear=[applications.Linear, None],
     static=[applications.Static, None],
 )
 
-
-def log(s: str, level: str = 'info', raiseError=None):
-    """
-    The system-level log function.
-
-    :param s: The text to log.
-    :param level: Log level, can be one of `['info', 'warning', 'error', 'debug']`.
-    :param raiseError: Some exception to raise after logging.
-    """
-    __SYSTEM_MANAGER.log(s, level, raiseError)
-
-
-def _log_mod_loaded(name: str):
-    log(f'Mod `{name}` successfully loaded.')
-
-
-def set_log_path(p: str):
-    """
-    Set the path of the log file.
-    """
-    utils.LOG_FILE = p
-
-
-def set_log_stream_handler(handler):
-    """
-    Set the log handler (which handles terminal-like outputs).
-    Type of the handler should be `logging.Handler`.
-    """
-    utils.LOG_STREAM_HANDLER = handler
+register_args(args.Args, 'Basic Args')

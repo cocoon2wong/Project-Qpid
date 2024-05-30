@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-22 16:26:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-07 11:27:05
+@LastEditTime: 2024-05-30 12:13:07
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -11,13 +11,13 @@
 import cv2
 import numpy as np
 
-from ...base import BaseManager
-from ...constant import INPUT_TYPES
-from ...dataset import Clip, SplitManager
-from ...dataset.__base import BaseInputManager
-from ...dataset.agent_based import Agent
+from qpid.base import BaseManager
+from qpid.dataset import Clip, SplitManager
+from qpid.dataset.__base import BaseInputManager
+from qpid.dataset.agent_based import Agent
+
 from .__trajMapManager import TrajMapManager
-from .settings import SEG_IMG
+from .settings import INPUT_TYPES, SEG_IMG
 
 
 class TrajMapManager_seg(TrajMapManager):

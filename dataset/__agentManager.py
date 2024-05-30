@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-21 21:08:04
+@LastEditTime: 2024-05-30 13:07:24
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -171,27 +171,15 @@ class AgentManager(BaseManager):
         Set the type of model inputs and outputs.
         Accept all types in `INPUT_TYPES`.
         """
-        if INPUT_TYPES.MAP in input_types:
-            from qpid.mods import contextMaps as maps
-            p = maps.settings.POOLING_BEFORE_SAVING
-            args = self.args.register_subargs(maps.ContextMapsArgs,
-                                              name=maps.__name__)
+        from .. import sys_mgr
 
-            self.ext_mgrs.append(maps.MapParasManager(self))
-            if not args.use_seg_maps:
-                self.ext_mgrs.append(maps.TrajMapManager(self, p))
-            else:
-                self.ext_mgrs.append(maps.TrajMapManager_seg(self, p))
-            self.ext_mgrs.append(maps.SocialMapManager(self, p))
+        # Check if there are new types added by other mods
+        for t in input_types:
+            if ((t in sys_mgr.input_type_handler_dict.keys()) and
+                (handler := sys_mgr.input_type_handler_dict[t])):
+                handler(self)
 
-        if INPUT_TYPES.SEG_MAP in input_types:
-            from qpid.mods import segMaps
-            self.ext_mgrs.append(segMaps.SegMapManager(self))
-
-        if INPUT_TYPES.SEG_MAP_PARAS in input_types:
-            from qpid.mods import segMaps
-            self.ext_mgrs.append(segMaps.SegMapParasManager(self))
-
+        # Assign data types
         self.model_inputs = input_types
         self.model_labels = label_types
 

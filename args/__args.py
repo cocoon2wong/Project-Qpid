@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-30 10:23:02
+@LastEditTime: 2024-05-30 10:59:11
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -19,21 +19,7 @@ STATIC = ARG_TYPES.STATIC
 TEMPORARY = ARG_TYPES.TEMPORARY
 NA = 'Unavailable'
 
-ARG_ALIAS: dict[str, list[str]] = {}
-
-
-def add_arg_alias(alias: str | list[str], command: list[str]):
-    """
-    Add a new alias for running args.
-
-    :param alias: The alias string(s).
-    :param command: Commands, should be a list of strings.
-    """
-    if isinstance(alias, str):
-        alias = [alias]
-
-    for a in alias:
-        ARG_ALIAS[a] = command
+ARG_ALIAS: dict[str, list[str] | tuple[list[str], str]] = {}
 
 
 def parse_arg_alias(terminal_args: list[str] | None):
@@ -47,9 +33,17 @@ def parse_arg_alias(terminal_args: list[str] | None):
     while index != len(terminal_args):
         item = terminal_args[index]
         if item in ARG_ALIAS.keys():
+            configs = ARG_ALIAS[item]
+            if isinstance(configs, tuple):
+                commands: list[str] = configs[0]
+                value: str = configs[1].format(terminal_args[index+1])
+            else:
+                commands: list[str] = configs
+                value: str = terminal_args[index+1]
+
             terminal_args = (terminal_args[:index] +
-                             ARG_ALIAS[item] +
-                             terminal_args[index+1:])
+                             commands + [value] +
+                             terminal_args[index+2:])
         index += 1
     return terminal_args
 
