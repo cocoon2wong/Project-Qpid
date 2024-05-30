@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 13:27:00
+@LastEditTime: 2024-05-30 13:32:13
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -71,7 +71,9 @@ def get_doc(args: list[Args], titles: list[str]) -> list[str]:
         for new_line in c:
             name = new_line.split('`')[1]
             all_args[index].append(name)
-            new_lines.append(new_line)
+
+            if (name not in all_args[0]) or (index == 0):
+                new_lines.append(new_line)
 
     return new_lines
 
