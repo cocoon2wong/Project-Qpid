@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 10:50:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-01 21:03:15
+@LastEditTime: 2024-05-30 09:19:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -10,6 +10,7 @@
 
 import torch
 
+from ...constant import INPUT_TYPES
 from .__layers import BaseLossLayer
 
 
@@ -24,7 +25,7 @@ class AIOU(BaseLossLayer):
                 mask: torch.Tensor, training=None, *args, **kwargs):
 
         pred = outputs[0]
-        GT = labels[0]
+        GT = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
         mask_count = torch.sum(mask)
 
         # reshape to (..., K, steps, dim)
@@ -59,8 +60,9 @@ class FIOU(AIOU):
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
+        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
         return super().forward([outputs[0][..., -1, None, :]],
-                               [labels[0][..., -1, None, :]],
+                               [label[..., -1, None, :]],
                                inputs, mask, training, *args, **kwargs)
 
 

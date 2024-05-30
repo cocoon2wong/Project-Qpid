@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2024-03-18 15:59:40
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-18 16:10:22
+@LastEditTime: 2024-05-30 09:17:01
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2024 Conghao Wong, All Rights Reserved.
@@ -10,13 +10,15 @@
 
 import torch
 
+from qpid.constant import INPUT_TYPES
 from qpid.model import Model
 from qpid.training import Structure
 
 
 class StaticModel(Model):
     def forward(self, inputs, training=None, mask=None, *args, **kwargs):
-        return torch.repeat_interleave(input=inputs[0][..., -1:, :],
+        obs = self.get_input(inputs, INPUT_TYPES.OBSERVED_TRAJ)
+        return torch.repeat_interleave(input=obs[..., -1:, :],
                                        repeats=self.args.pred_frames,
                                        dim=-2)
 

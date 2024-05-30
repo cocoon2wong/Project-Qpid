@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-07-15 20:13:07
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-25 20:06:15
+@LastEditTime: 2024-05-29 21:38:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,6 +11,7 @@
 import torch
 
 from qpid.args import DYNAMIC, EmptyArgs
+from qpid.constant import INPUT_TYPES
 from qpid.model import Model, layers
 from qpid.training import Structure
 
@@ -41,7 +42,7 @@ class LinearModel(Model):
                                            diff=self.l_args.weights)
 
     def forward(self, inputs: list[torch.Tensor], training=None, *args, **kwargs):
-        trajs = inputs[0]
+        trajs = self.get_input(inputs, INPUT_TYPES.OBSERVED_TRAJ)
         return self.linear(trajs)
 
 

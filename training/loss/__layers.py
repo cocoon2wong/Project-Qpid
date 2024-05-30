@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-21 09:38:38
+@LastEditTime: 2024-05-30 09:20:50
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -11,6 +11,7 @@
 import torch
 
 from ...base import BaseManager
+from ...constant import INPUT_TYPES
 from ...dataset import Annotation as Picker
 from ...model import Model
 from .__ade import ADE_2D
@@ -65,7 +66,8 @@ class l2(BaseLossLayer):
                 inputs: list, mask=None,
                 training=None, *args, **kwargs):
 
-        label = pick_keypoints_from_gt(self, pred := outputs[0], labels[0])
+        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        label = pick_keypoints_from_gt(self, pred := outputs[0], label)
         return ADE_2D(pred, label, coe=self.coe, mask=mask)
 
 
@@ -81,18 +83,16 @@ class ADE(BaseLossLayer):
                 mask=None, training=None, *args, **kwargs):
 
         pred = outputs[0]
-        label = labels[0]
-        obs = inputs[0]
+        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
         if (pred.shape[-2] == label.shape[-2]) and (points > 0):
             pred = pred[..., :points, :]
             label = label[..., :points, :]
-            obs = label[..., :points, :]
         else:
             label = pick_keypoints_from_gt(self, pred, label)
 
         # Expand to (..., K, pred, dim)
-        if pred.ndim == obs.ndim:
+        if pred.ndim == label.ndim:
             pred = pred[..., None, :, :]
 
         ade = []
@@ -115,7 +115,7 @@ class FDE(ADE):
                 mask=None, training=None, *args, **kwargs):
 
         pred = outputs[0]
-        label = labels[0]
+        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
         if (pred.shape[-2] != label.shape[-2]):
             index = -1
             label = pick_keypoints_from_gt(self, pred, label)
@@ -135,7 +135,8 @@ class avgCenter(BaseLossLayer):
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
-        label = pick_keypoints_from_gt(self, pred := outputs[0], labels[0])
+        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        label = pick_keypoints_from_gt(self, pred := outputs[0], label)
         return ADE_2D(self.picker.get_center(pred),
                       self.picker.get_center(label),
                       self.coe, mask)
@@ -150,7 +151,8 @@ class finalCenter(avgCenter):
     def forward(self, outputs: list, labels: list, inputs: list,
                 mask=None, training=None, *args, **kwargs):
 
-        label = pick_keypoints_from_gt(self, pred := outputs[0], labels[0])
+        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        label = pick_keypoints_from_gt(self, pred := outputs[0], label)
         return super().forward([pred[..., -1, None, :]],
                                [label[..., -1, None, :]],
                                inputs,

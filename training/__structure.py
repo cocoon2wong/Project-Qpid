@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-30 10:19:23
+@LastEditTime: 2024-05-30 09:22:16
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -18,7 +18,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 
 from ..args import Args
 from ..base import BaseManager
-from ..constant import ANN_TYPES, STRUCTURE_STATUS
+from ..constant import ANN_TYPES, INPUT_TYPES, STRUCTURE_STATUS
 from ..dataset import AgentManager, Annotation, AnnotationManager, SplitManager
 from ..model import Model
 from ..utils import WEIGHTS_FORMAT, get_loss_mask, move_to_device
@@ -492,7 +492,9 @@ class Structure(BaseManager):
                 metrics_dict.update(loss_dict)
 
             # Check if there are valid trajectories in this batch
-            mask = get_loss_mask(x[0], gt[0])
+            obs = self.model.get_input(x, INPUT_TYPES.OBSERVED_TRAJ)
+            label = self.model.get_label(gt, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+            mask = get_loss_mask(obs, label)
             valid_count = torch.sum(mask)
             if valid_count == 0:
                 outputs[0] = torch.zeros_like(outputs[0]) / 0.0

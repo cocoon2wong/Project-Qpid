@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-21 20:56:17
+@LastEditTime: 2024-05-30 09:21:39
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,9 @@
 import torch
 
 from ...base import BaseManager
+from ...constant import INPUT_TYPES
 from ...dataset import Annotation, AnnotationManager
+from ...model import Model
 from ...utils import get_loss_mask
 from .__layers import BaseLossLayer
 
@@ -41,6 +43,10 @@ class LossManager(BaseManager):
     def picker(self) -> Annotation:
         picker = self.manager.get_member(AnnotationManager)
         return picker.target
+
+    @property
+    def model(self) -> Model:
+        return self.manager.model  # type: ignore
 
     def set(self, loss_dict: (
         dict[type[BaseLossLayer], float] |
@@ -99,17 +105,17 @@ class LossManager(BaseManager):
 
         :param outputs: A list of the model's output tensors. \
             `outputs[0]` should be the predicted trajectories.
-        :param labels: A list of groundtruth tensors. \
-            `labels[0]` should be the groundtruth trajectories.
-        :param inputs: A list of model inputs. \
-            `inputs[0]` should be the observed trajectories.
+        :param labels: A list of groundtruth tensors.
+        :param inputs: A list of model inputs.
 
         :return summary: The weighted sum of all loss functions.
         :return loss_dict: A dict of values of all loss functions.
         """
 
         loss_dict: dict[str, torch.Tensor] = {}
-        mask = get_loss_mask(inputs[0], labels[0])
+        obs = self.model.get_input(inputs, INPUT_TYPES.OBSERVED_TRAJ)
+        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        mask = get_loss_mask(obs, label)
         for layer, paras in zip(self.layers, self.loss_paras):
             name = layer.name
             if len(paras):
