@@ -1,8 +1,8 @@
 """
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
-@LastEditors: Conghao Wong
-@LastEditTime: 2024-05-15 09:44:08
+@LastEditors: Ziqian Zou
+@LastEditTime: 2024-06-06 09:31:40
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -113,7 +113,7 @@ class ArgsManager(BaseObject):
     @property
     def verbose(self) -> int:
         """
-        Controls if print verbose logs and outputs to the terminal.
+        Controls whether to print verbose logs and outputs to the terminal.
         """
         return self._arg('verbose', 0, argtype=TEMPORARY, short_name='v')
 
@@ -147,7 +147,7 @@ class ArgsManager(BaseObject):
 
     def register_subargs(self, arg_type: type[T], name: str) -> T:
         """
-        Register new args that used in extra mods to the current args.
+        Register new args that are used in extra mods to the current args.
         """
         if ((not name in self._subargs_types.keys()) or
                 (not name in self._subargs_dict.keys())):
@@ -178,7 +178,7 @@ class ArgsManager(BaseObject):
 
     def _visit_args(self):
         """
-        Vist all args.
+        Visit all args.
         """
         for arg_name in self.get_args_names():
             getattr(self, arg_name)
@@ -209,7 +209,7 @@ class ArgsManager(BaseObject):
 
     def load_args_from_terminal(self, argv: list[str]):
         """
-        Load args from the user inputs.
+        Load args from user's inputs.
         """
         dic = {}
 

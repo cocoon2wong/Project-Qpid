@@ -1,8 +1,8 @@
 """
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
-@LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 10:59:11
+@LastEditors: Ziqian Zou
+@LastEditTime: 2024-06-05 21:30:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -165,21 +165,21 @@ class Args(ArgsManager):
     @property
     def experimental(self) -> bool:
         """
-        NOTE: It is only used for code test.
+        NOTE: It is only used for code tests.
         """
         return self._arg('experimental', False, argtype=TEMPORARY)
 
     @property
     def model_type(self) -> str:
         """
-        Model type, canbe `'agent-based'` or `'frame-based'`.
+        Model type. It can be `'agent-based'` or `'frame-based'`.
         """
         return self._arg('model_type', 'agent-based', argtype=STATIC)
 
     @property
     def max_agents(self) -> int:
         """
-        Max number of agents to predict in one frame.
+        Max number of agents to predict per frame.
         It only works when `model_type == 'frame-based'`.
         """
         return self._arg('max_agents', 50, argtype=STATIC)
@@ -283,7 +283,7 @@ class Args(ArgsManager):
     @property
     def compute_loss(self) -> int:
         """
-        Controls whether compute losses when testing.
+        Controls whether to compute losses when testing.
         """
         return self._arg('compute_loss', 0, argtype=TEMPORARY)
 
@@ -349,7 +349,7 @@ class Args(ArgsManager):
     @property
     def draw_videos(self) -> str:
         """
-        Controls whether draw visualized results on video frames and save as images.
+        Controls whether to draw visualized results on video frames and save them as images.
         Accept the name of one video clip.
         The codes will first try to load the video according to the path
         saved in the `plist` file, and if successful it will draw the
@@ -435,7 +435,7 @@ class Args(ArgsManager):
         """
         Assign the prediction type.
         It is now only used for silverballers models that are trained
-        with annotation type `coordinate` but want to test on datasets
+        with annotation type `coordinate` but to be tested on datasets
         with annotation type `boundingbox`.
         """
         return self._arg('force_anntype', 'null', argtype=TEMPORARY)
@@ -443,7 +443,7 @@ class Args(ArgsManager):
     @property
     def macos(self) -> int:
         """
-        (Experimental) Choose whether enable the `MPS (Metal Performance Shaders)`
+        (Experimental) Choose whether to enable the `MPS (Metal Performance Shaders)`
         on Apple platforms (instead of running on CPUs).
         """
         return self._arg('macos', 0, argtype=TEMPORARY)
@@ -451,13 +451,13 @@ class Args(ArgsManager):
     @property
     def input_pred_steps(self) -> str:
         """
-        Indices of future time steps that used as extra model inputs.
+        Indices of future time steps that are used as extra model inputs.
         It accepts a string that contains several integer numbers separated
         with `'_'`. For example, `'3_6_9'`.
         It will take the corresponding ground truth points as the input when 
         training the model, and take the first output of the former network
         as this input when testing the model.
-        Set it to `'null'` to disable this extra model inputs.
+        Set it to `'null'` to disable these extra model inputs.
         """
         return self._arg('input_pred_steps', 'null', argtype=STATIC)
 
@@ -502,6 +502,6 @@ class Args(ArgsManager):
     def auto_clear(self) -> int:
         """
         Controls whether to clear all other saved weights except for the best one.
-        It performs similar as running `python scripts/clear.py --logs logs`.
+        It performs similarly to running `python scripts/clear.py --logs logs`.
         """
         return self._arg('auto_clear', 1, argtype=TEMPORARY)
