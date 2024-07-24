@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 15:11:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-07 21:39:02
+@LastEditTime: 2024-07-24 09:12:18
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -46,6 +46,8 @@ class BaseInputObject():
         self.linear_predict = False
 
         self.manager: BaseManager | None = None
+
+        self.loss_weight = 1.0
 
     def copy(self):
         return copy.deepcopy(self)

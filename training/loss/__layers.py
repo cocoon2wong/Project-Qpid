@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 09:20:50
+@LastEditTime: 2024-07-24 10:07:31
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -68,7 +68,9 @@ class l2(BaseLossLayer):
 
         label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
         label = pick_keypoints_from_gt(self, pred := outputs[0], label)
-        return ADE_2D(pred, label, coe=self.coe, mask=mask)
+        weights = self.model.get_input(inputs, INPUT_TYPES.LOSS_WEIGHT)
+        coe = self.coe * weights if training else self.coe
+        return ADE_2D(pred, label, coe, mask=mask)
 
 
 class ADE(BaseLossLayer):

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 13:07:24
+@LastEditTime: 2024-07-24 10:18:36
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -209,6 +209,11 @@ class AgentManager(BaseManager):
         else:
             mode = 'test'
 
+        # Init loss weights
+        loss_weights: dict = eval(self.args.loss_weights)
+        if not (L := INPUT_TYPES.LOSS_WEIGHT) in self.model_inputs:
+            self.model_inputs.append(L)
+
         # Init data-holder
         self.metadata[mode] = TrajectoryDataset(input_types=self.model_inputs,
                                                 label_types=self.model_labels)
@@ -224,6 +229,12 @@ class AgentManager(BaseManager):
 
             # Get new agents
             agents = self.file_manager.run(clip)
+
+            # Assign clip-wise loss weights
+            if len(loss_weights) and clip_name in loss_weights.keys():
+                for agent in agents:
+                    agent.loss_weight = loss_weights[clip_name]
+
             self.append(agents)
 
             # Load extra model inputs
@@ -274,10 +285,13 @@ class AgentManager(BaseManager):
                 name, string = ['groundtruth', 'groundtruth']
             case INPUT_TYPES.NEIGHBOR_GROUNDTRUTH_TRAJ:
                 name, string = ['groundtruth_neighbor', "neighbors' groundtruth"]
+            case INPUT_TYPES.LOSS_WEIGHT:
+                name, string = ['loss_weight', None]
             case _:
                 return
 
-        value = get_attributes(self.agents, name, desc_pattern.format(string))
+        value = get_attributes(self.agents, name,
+                               None if not string else desc_pattern.format(string))
         self.metadata[mode].add_data(type_name, value)
 
     def print_info(self, **kwargs):

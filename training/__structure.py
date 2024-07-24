@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 09:22:16
+@LastEditTime: 2024-07-24 09:59:13
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -488,7 +488,7 @@ class Structure(BaseManager):
             metrics, metrics_dict = self.metrics.compute(outputs, gt, x)
 
             if self.args.compute_loss:
-                _, loss_dict = self.loss.compute(outputs, gt, x)
+                _, loss_dict = self.loss.compute(outputs, gt, x, training=True)
                 metrics_dict.update(loss_dict)
 
             # Check if there are valid trajectories in this batch

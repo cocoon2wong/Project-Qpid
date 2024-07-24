@@ -1,8 +1,8 @@
 """
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
-@LastEditors: Ziqian Zou
-@LastEditTime: 2024-06-05 21:30:04
+@LastEditors: Conghao Wong
+@LastEditTime: 2024-07-24 10:14:21
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -286,6 +286,14 @@ class Args(ArgsManager):
         Controls whether to compute losses when testing.
         """
         return self._arg('compute_loss', 0, argtype=TEMPORARY)
+
+    @property
+    def loss_weights(self) -> str:
+        """
+        Configure the agent-wise loss weights.
+        It now only supports the dataset-clip-wise re-weight.
+        """
+        return self._arg('loss_weights', '{}', argtype=DYNAMIC)
 
     @property
     def model(self) -> str:
