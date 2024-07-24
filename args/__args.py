@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 10:14:21
+@LastEditTime: 2024-07-24 16:15:21
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -294,6 +294,14 @@ class Args(ArgsManager):
         It now only supports the dataset-clip-wise re-weight.
         """
         return self._arg('loss_weights', '{}', argtype=DYNAMIC)
+
+    @property
+    def compute_relative_metrics(self) -> int:
+        """
+        Controls whether to compute relative ADE and relative FDE
+        instead of the original ADE and FDE.
+        """
+        return self._arg('compute_relative_metrics', 0, argtype=TEMPORARY)
 
     @property
     def model(self) -> str:

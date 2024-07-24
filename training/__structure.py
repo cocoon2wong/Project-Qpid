@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 09:59:13
+@LastEditTime: 2024-07-24 16:17:43
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -84,11 +84,18 @@ class Structure(BaseManager):
         # Set loss functions, and metrics
         self.loss.set({loss.l2: 1.0})
 
+        if not self.args.compute_relative_metrics:
+            ADE = loss.ADE
+            FDE = loss.FDE
+        else:
+            ADE = loss.RADE
+            FDE = loss.RFDE
+
         if self.args.anntype in [ANN_TYPES.BB_2D,
                                  ANN_TYPES.BB_3D]:
 
-            self.metrics.set({loss.ADE: 1.0,
-                              loss.FDE: 0.0,
+            self.metrics.set({ADE: 1.0,
+                              FDE: 0.0,
                               loss.AIOU: 0.0,
                               loss.FIOU: 0.0})
 
@@ -100,16 +107,16 @@ class Structure(BaseManager):
 
             if self.args.pred_frames == 10:
                 self.metrics.set([
-                    (loss.FDE, (0.0, dict(index=1, name=f'FDE@{2*i}ms'))),
-                    (loss.FDE, (0.0, dict(index=3, name=f'FDE@{4*i}ms'))),
-                    (loss.FDE, (0.0, dict(index=7, name=f'FDE@{8*i}ms'))),
-                    (loss.FDE, (1.0, dict(index=9, name=f'FDE@{10*i}ms'))),
+                    (FDE, (0.0, dict(index=1, name=f'FDE@{2*i}ms'))),
+                    (FDE, (0.0, dict(index=3, name=f'FDE@{4*i}ms'))),
+                    (FDE, (0.0, dict(index=7, name=f'FDE@{8*i}ms'))),
+                    (FDE, (1.0, dict(index=9, name=f'FDE@{10*i}ms'))),
                 ])
 
             elif self.args.pred_frames == 25:
                 self.metrics.set([
-                    (loss.FDE, (0.0, dict(index=13, name=f'FDE@{14*i}ms'))),
-                    (loss.FDE, (1.0, dict(index=24, name=f'FDE@{25*i}ms'))),
+                    (FDE, (0.0, dict(index=13, name=f'FDE@{14*i}ms'))),
+                    (FDE, (1.0, dict(index=24, name=f'FDE@{25*i}ms'))),
                 ])
 
         # Configs for `NBA` dataset
@@ -118,15 +125,15 @@ class Structure(BaseManager):
               (self.args.obs_frames == 5) and
               (self.args.pred_frames == 10)):
             self.metrics.set([
-                (loss.ADE, (0.0, dict(points=5, name='ADE@2.0s'))),
-                (loss.FDE, (0.0, dict(index=4, name='FDE@2.0s'))),
-                (loss.ADE, (0.0, dict(points=10, name='ADE@4.0s'))),
-                (loss.FDE, (1.0, dict(index=9, name='FDE@4.0s'))),
+                (ADE, (0.0, dict(points=5, name='ADE@2.0s'))),
+                (FDE, (0.0, dict(index=4, name='FDE@2.0s'))),
+                (ADE, (0.0, dict(points=10, name='ADE@4.0s'))),
+                (FDE, (1.0, dict(index=9, name='FDE@4.0s'))),
             ])
 
         else:
-            self.metrics.set({loss.ADE: 1.0,
-                              loss.FDE: 0.0})
+            self.metrics.set({ADE: 1.0,
+                              FDE: 0.0})
 
     @property
     def status(self) -> int:
