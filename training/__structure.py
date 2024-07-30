@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 16:17:43
+@LastEditTime: 2024-07-30 16:03:11
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -94,10 +94,13 @@ class Structure(BaseManager):
         if self.args.anntype in [ANN_TYPES.BB_2D,
                                  ANN_TYPES.BB_3D]:
 
-            self.metrics.set({ADE: 1.0,
-                              FDE: 0.0,
-                              loss.AIOU: 0.0,
-                              loss.FIOU: 0.0})
+            if self.is_prepared_for_training:
+                self.metrics.set({ADE: 1.0, FDE: 0.0})
+            else:
+                self.metrics.set({ADE: 1.0,
+                                  FDE: 0.0,
+                                  loss.AIOU: 0.0,
+                                  loss.FIOU: 0.0})
 
         # These configs are only used on `Human3.6M` dataset
         elif ((not self.is_prepared_for_training) and
