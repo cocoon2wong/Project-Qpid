@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 18:44:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-22 15:35:20
+@LastEditTime: 2024-08-06 10:20:20
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -42,16 +42,12 @@ class BaseFilesManager(BaseInputManager):
 
     def get_temp_file_path(self, clip: Clip) -> str:
         base_dir = clip.temp_dir
-        if (self.args.obs_frames, self.args.pred_frames) == (8, 12):
-            f_name = self.FILE_PREFIX
-        else:
-            f_name = (f'{self.FILE_PREFIX}_' +
-                      f'{self.args.obs_frames}to{self.args.pred_frames}')
-
-        endstring = '' if self.args.step == 4 else str(self.args.step)
-        if endstring.endswith('.0'):
-            endstring = endstring[:-2]
-        f_name = f_name + endstring + '.npz'
+        f_name = '{}_{}to{}_interval{}_samplestep{}.npz'
+        f_name = f_name.format(self.FILE_PREFIX,
+                               self.args.obs_frames,
+                               self.args.pred_frames,
+                               self.args.interval,
+                               self.args.step)
         return os.path.join(base_dir, f_name)
 
     # For type hinting
