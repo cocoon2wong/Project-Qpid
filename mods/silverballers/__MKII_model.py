@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 11:12:21
+@LastEditTime: 2024-10-09 19:15:02
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -181,7 +181,8 @@ class SilverballersMKII(Structure):
 
             self.substructures.append(s)
 
-            if len(s.model.output_pred_steps) == s.args.pred_frames:
+            if ((len(s.model.output_pred_steps) == s.args.pred_frames) or
+                (s.model.as_final_stage_model)):
                 break
 
         self.set_args(main_args, ref_args=self.substructures[0].args)

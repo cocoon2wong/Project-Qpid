@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-04-25 20:40:08
+@LastEditTime: 2024-10-09 19:14:34
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -79,6 +79,8 @@ class Model(torch.nn.Module, BaseManager):
             self.as_single_model = kwargs['as_single_model']
         else:
             self.as_single_model = True
+
+        self.as_final_stage_model = False
 
         self.set_inputs(INPUT_TYPES.OBSERVED_TRAJ)
         self.set_labels(INPUT_TYPES.GROUNDTRUTH_TRAJ)
