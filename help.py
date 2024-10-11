@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 13:32:13
+@LastEditTime: 2024-10-11 11:21:49
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -45,6 +45,10 @@ def read_comments(args: Args) -> list[str]:
             short_name_desc = f' (short for {ss})'
 
         doc = getattr(args.__class__, arg).__doc__
+
+        if doc is None:
+            doc = '(Working in process)'
+
         doc = doc.replace('\n', ' ')
         for _ in range(MAX_SPACE):
             doc = doc.replace('  ', ' ')
