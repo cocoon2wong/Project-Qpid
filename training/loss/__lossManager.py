@@ -2,19 +2,20 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 09:21:39
+@LastEditTime: 2024-10-16 19:27:19
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+import numpy as np
 import torch
 
 from ...base import BaseManager
 from ...constant import INPUT_TYPES
 from ...dataset import Annotation, AnnotationManager
 from ...model import Model
-from ...utils import get_loss_mask
+from ...utils import decode_string, get_loss_mask
 from .__layers import BaseLossLayer
 
 
@@ -37,7 +38,6 @@ class LossManager(BaseManager):
         self.scale = trajectory_scale
         self.layers: list[BaseLossLayer] = []
         self.loss_weights: list[float] = []
-        self.loss_paras: list[dict] = []
 
     @property
     def picker(self) -> Annotation:
@@ -72,8 +72,6 @@ class LossManager(BaseManager):
         """
         if clear_before_setting:
             self.layers = []
-            self.loss_weights = []
-            self.loss_paras = []
 
         if type(loss_dict) is dict:
             items = loss_dict.items()
@@ -86,15 +84,16 @@ class LossManager(BaseManager):
             k: type[BaseLossLayer]
 
             if isinstance(vs, list | tuple):
-                weights = vs[0]
+                weight = vs[0]
                 parameters = vs[1]
             else:
-                weights = vs
+                weight = vs
                 parameters = {}
 
-            self.layers.append(k(coe=self.scale, manager=self))
-            self.loss_weights.append(weights)
-            self.loss_paras.append(parameters)
+            layer = k(coe=self.scale, manager=self)
+            layer.loss_weight = weight
+            layer.loss_paras = parameters
+            self.layers.append(layer)
 
     def compute(self, outputs: list[torch.Tensor],
                 labels: list[torch.Tensor],
@@ -110,44 +109,76 @@ class LossManager(BaseManager):
 
         :return summary: The weighted sum of all loss functions.
         :return loss_dict: A dict of values of all loss functions.
+        :return count_dict: A dict of weights of all loss functions.
         """
 
         loss_dict: dict[str, torch.Tensor] = {}
+        count_dict: dict[str, int] = {}
+        weight_dict: dict[str, float] = {}
+
         obs = self.model.get_input(inputs, INPUT_TYPES.OBSERVED_TRAJ)
         label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
         mask = get_loss_mask(obs, label)
-        for layer, paras in zip(self.layers, self.loss_paras):
+
+        if self.args.compute_metrics_with_types:
+            types_code = self.model.get_input(inputs, INPUT_TYPES.AGENT_TYPES)
+            types_decode = np.array([decode_string(s.cpu().numpy())
+                                    for s in types_code])
+            types_list = list(set(types_decode))
+
+        for layer in self.layers:
             name = layer.name
+            paras = layer.loss_paras
+            weight = layer.loss_weight
+
             if len(paras):
                 if 'name' in paras.keys():
                     name = paras['name']
                 else:
                     name += f'@{paras}'
 
-            value = layer(outputs=outputs, labels=labels,
-                          inputs=inputs, mask=mask,
-                          training=training, **paras)
+            # Compute losses or metrics on all classes
+            if training or not self.args.compute_metrics_with_types:
+                value = layer(outputs=outputs, labels=labels,
+                              inputs=inputs, mask=mask,
+                              training=training, **paras)
 
-            loss_dict[f'{name}({self.name})'] = value
+                loss_dict[f'{name}({self.name})'] = value
+                count_dict[f'{name}({self.name})'] = len(outputs[0])
+                weight_dict[f'{name}({self.name})'] = weight
 
-        if (l := len(self.loss_weights)):
-            if l != len(loss_dict):
-                raise ValueError('Incorrect loss weights!')
-            weights = torch.tensor(self.loss_weights, dtype=torch.float32)
+            # Compute losses or metrics on each class separately
+            else:
+                for _type in types_list:
+                    indices = torch.from_numpy(
+                        np.where(types_decode == _type)[0])
+                    _value = layer(outputs=gather_batch_inputs(outputs, indices),
+                                   labels=gather_batch_inputs(labels, indices),
+                                   inputs=gather_batch_inputs(inputs, indices),
+                                   mask=mask[indices], training=training, **paras)
 
-        else:
-            weights = torch.ones(len(loss_dict))
+                    loss_dict[f'{name}({self.name}, {_type})'] = _value
+                    count_dict[f'{name}({self.name}, {_type})'] = len(indices)
+                    weight_dict[f'{name}({self.name}, {_type})'] = weight
 
-        summary = torch.matmul(
-            torch.unsqueeze(torch.stack(list(loss_dict.values())), 0),
-            torch.unsqueeze(weights.to(mask.device), 1)
-        )
-        summary = torch.reshape(summary, ())
-        return summary, loss_dict
+        summary = torch.tensor(0.0)
+        for loss_name, loss_value in loss_dict.items():
+            summary = summary + loss_value * weight_dict[loss_name]
+
+        if not training:
+            loss_dict['__sum'] = summary
+            count_dict['__sum'] = len(outputs[0])
+
+        return summary, loss_dict, count_dict
 
     def print_info(self, **kwargs):
         funcs = [type(f).__name__ for f in self.layers]
         return super().print_info(LossLayers=funcs,
-                                  Weights=self.loss_weights,
-                                  LossParameters=self.loss_paras,
                                   **kwargs)
+
+
+def gather_batch_inputs(inputs: list[torch.Tensor], indices: torch.Tensor):
+    if not isinstance(inputs[0], torch.Tensor):
+        return []
+    else:
+        return [_i[indices] for _i in inputs]

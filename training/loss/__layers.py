@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 10:07:31
+@LastEditTime: 2024-10-16 18:12:38
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -35,6 +35,9 @@ class BaseLossLayer(torch.nn.Module):
         self.trainable = False
         self.manager = manager
         self.coe = coe
+
+        self.loss_weight = 1.0
+        self.loss_paras = {}
 
     @property
     def model(self) -> Model:

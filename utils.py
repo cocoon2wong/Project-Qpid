@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-11-06 18:19:24
+@LastEditTime: 2024-10-16 20:14:33
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -49,6 +49,9 @@ LOG_STREAM_HANDLER = logging.StreamHandler()
 # Weights configs
 WEIGHTS_FORMAT = '.pt'
 CHECKPOINT_FILENAME = 'best_ade_epoch.txt'
+
+# Type of agents
+MAX_TYPE_NAME_LEN = 30
 
 
 def dir_check(target_dir: str) -> str:
@@ -156,3 +159,17 @@ def batch_matmul(a: torch.Tensor, b: torch.Tensor, transpose_b=False):
     res = torch.matmul(_a, _b)
 
     return torch.reshape(res, list(batch) + list(res.shape[1:]))
+
+
+def encode_string(name: str, depth=MAX_TYPE_NAME_LEN) -> np.ndarray:
+    _array = np.array([ord(s) for s in name])
+
+    if (l := len(_array)) < depth:
+        _array = np.concatenate([_array, np.zeros(depth - l)])
+    else:
+        _array = _array[:depth]
+    return _array
+
+
+def decode_string(array: np.ndarray) -> str:
+    return ''.join([chr(_a) for _a in array.astype(int) if _a])

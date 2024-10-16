@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 16:15:21
+@LastEditTime: 2024-10-16 19:42:09
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -521,3 +521,10 @@ class Args(ArgsManager):
         It performs similarly to running `python scripts/clear.py --logs logs`.
         """
         return self._arg('auto_clear', 1, argtype=TEMPORARY)
+    
+    @property
+    def compute_metrics_with_types(self) -> int:
+        """
+        Controls whether to compute metrics separately on different kinds of agents.
+        """
+        return self._arg('compute_metrics_with_types', 0, argtype=TEMPORARY)

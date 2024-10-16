@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-08-03 10:50:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 10:18:36
+@LastEditTime: 2024-10-16 20:09:57
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -209,6 +209,10 @@ class AgentManager(BaseManager):
         else:
             mode = 'test'
 
+        # Init types of agents
+        if not (t := INPUT_TYPES.AGENT_TYPES) in self.model_inputs:
+            self.model_inputs.append(t)
+
         # Init loss weights
         loss_weights: dict = eval(self.args.loss_weights)
         if not (L := INPUT_TYPES.LOSS_WEIGHT) in self.model_inputs:
@@ -287,6 +291,8 @@ class AgentManager(BaseManager):
                 name, string = ['groundtruth_neighbor', "neighbors' groundtruth"]
             case INPUT_TYPES.LOSS_WEIGHT:
                 name, string = ['loss_weight', None]
+            case INPUT_TYPES.AGENT_TYPES:
+                name, string = ['type', None]
             case _:
                 return
 

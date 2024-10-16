@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-23 18:01:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 09:23:13
+@LastEditTime: 2024-10-16 15:23:08
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -44,6 +44,7 @@ class INPUT_TYPES():
     GROUNDTRUTH_TRAJ = 'GT'
     GROUNDTRUTH_KEYPOINTS = 'GT_KEYPOINTS'
     LOSS_WEIGHT = 'LOSS_WEIGHT'
+    AGENT_TYPES = 'AGENT_TYPES'
 
 
 class OUTPUT_TYPES():

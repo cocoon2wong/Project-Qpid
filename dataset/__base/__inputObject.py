@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 15:11:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-07-24 09:12:18
+@LastEditTime: 2024-10-16 20:07:01
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -12,11 +12,10 @@ import copy
 from typing import overload
 
 import numpy as np
-import torch
 from tqdm import tqdm
 
 from ...base import BaseManager
-from ...utils import INIT_POSITION, get_loss_mask
+from ...utils import INIT_POSITION, encode_string, get_loss_mask
 from .__picker import AnnotationManager
 
 
@@ -230,6 +229,10 @@ def get_attributes(objects: BaseInputObject | list[BaseInputObject],
     items: list[np.ndarray] = []
     repeats = tqdm(objects, tqdm_description) if tqdm_description else objects
     for _object in repeats:
-        items.append(getattr(_object, name))
+        _item = getattr(_object, name)
+
+        if isinstance(_item, str):
+            _item = encode_string(_item)
+        items.append(_item)
 
     return np.array(items, dtype=np.float32)

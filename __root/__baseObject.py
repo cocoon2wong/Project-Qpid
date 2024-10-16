@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 10:05:11
 @LastEditors: Conghao Wong
-@LastEditTime: 2023-12-06 15:54:59
+@LastEditTime: 2024-10-16 19:22:10
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -171,6 +171,9 @@ class BaseObject():
 
         print(f'>>> [{self.name}]: {title}')
         for key, value in kwargs.items():
+            if key.startswith('__'):
+                continue
+
             if isinstance(value, torch.Tensor):
                 value = value.numpy()
 
