@@ -94,6 +94,7 @@ class AgentObjectManager(BaseInputObjectManager):
                                                        obs_frame=obs,
                                                        end_frame=end,
                                                        matrix=matrix,
-                                                       frame_step=frame_step))
+                                                       frame_step=frame_step,
+                                                       max_neighbor=self.args.max_agents))
 
         return train_samples
