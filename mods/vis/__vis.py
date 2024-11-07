@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-20 16:52:31
+@LastEditTime: 2024-11-07 21:21:56
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -526,25 +526,30 @@ class Visualization(BaseManager):
         :param obs: Observations, shape = (..., 2)
         """
 
+        _p = '-' if self.vis_args.draw_lines else ''
+
         # draw neighbors' trajectories
         if neighbor is not None:
-            plt.plot(neighbor[:, -1, 0], neighbor[:, -1, 1], 'o',
-                     color='darkorange', markersize=13)
-            _nei = np.reshape(neighbor, [-1, 2])
-            plt.plot(_nei[:, 0], _nei[:, 1], 's', color='purple')
+            neighbor = neighbor[None] if neighbor.ndim == 2 else neighbor
+            for nei in neighbor:
+                plt.plot(nei[-1, 0], nei[-1, 1], _p + 'o',
+                         color='darkorange', markersize=13)
+
+                plt.plot(nei[:, 0], nei[:, 1], _p + 's', color='purple')
 
         # draw observations
         if obs is not None:
-            _obs = np.reshape(obs, [-1, 2])
-            plt.plot(_obs[:, 0], _obs[:, 1], 's', color='cornflowerblue')
+            obs = obs[None] if obs.ndim == 2 else obs
+            for o in obs:
+                plt.plot(o[:, 0], o[:, 1], _p + 's', color='cornflowerblue')
 
         if gt is not None:
-            _gt = np.reshape(gt, [-1, 2])
-            plt.plot(_gt[:, 0], _gt[:, 1], 's', color='lightgreen')
+            gt = gt[None] if gt.ndim == 2 else gt
+            for g in gt:
+                plt.plot(g[:, 0], g[:, 1], _p + 's', color='lightgreen')
 
         if pred is not None:
-            if pred.ndim == 2:
-                pred = pred[np.newaxis]
+            pred = pred[None] if pred.ndim == 2 else pred
 
             # Draw as the trajectory distribution
             if self.vis_args.draw_distribution:
@@ -555,7 +560,7 @@ class Visualization(BaseManager):
             # Draw as multiple trajectories
             else:
                 for p in pred:
-                    plt.plot(p[:, 0], p[:, 1], 's')
+                    plt.plot(p[:, 0], p[:, 1], _p + 's')
 
         plt.axis('equal')
 
