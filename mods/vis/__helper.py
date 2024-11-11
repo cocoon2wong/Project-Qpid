@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-14 11:23:48
+@LastEditTime: 2024-11-11 13:53:44
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -122,7 +122,7 @@ class CoordinateHelper(BaseVisHelper):
     def draw_traj(self, source: np.ndarray,
                   inputs: np.ndarray,
                   png: np.ndarray,
-                  color=(255, 255, 255),
+                  color: None | tuple[int, int, int] = None,
                   width=3,
                   draw_lines=True):
 
@@ -130,23 +130,34 @@ class CoordinateHelper(BaseVisHelper):
             return source
 
         steps, dim = inputs.shape[-2:]
+        _color = (255, 255, 255) if color is None else color
 
         # draw lines
         if draw_lines and self.draw_lines and steps >= 2:
+            _lines = np.zeros_like(source)
             traj = np.column_stack([inputs.T[1], inputs.T[0]])
             for left, right in zip(traj[:-1], traj[1:]):
-                cv2.line(img=source,
+                cv2.line(img=_lines,
                          pt1=(left[0], left[1]),
                          pt2=(right[0], right[1]),
-                         color=color, thickness=width)
-                source[:, :, -1] = 255 * np.sign(source[:, :, 0])
+                         color=_color, thickness=width)
 
-        # recolor the image
-        if 255 not in color:
+            # Add the alpha channel
+            _lines_alpha = 255 * (np.sum(_lines[..., :3], axis=-1) > 0)
+            _lines[..., -1] = _lines_alpha
+
+            # Add lines to the image
+            source = ADD(source, _lines, type='auto')
+
+        # recolor the marker
+        if color is not None:
             if png.shape[-1] == 4:
-                color = np.concatenate([np.array(color), [255]], axis=-1)
+                _c = np.concatenate([np.array(color), [255]], axis=-1)
+            else:
+                _c = np.array(color)
+
             png = (png.astype(float) *
-                   color[np.newaxis, np.newaxis] / 255).astype(np.uint8)
+                   _c[np.newaxis, np.newaxis] / 255).astype(np.uint8)
 
         # draw points
         if inputs.ndim > 2:
