@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-09 19:14:34
+@LastEditTime: 2024-11-12 15:52:32
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -110,6 +110,16 @@ class Model(torch.nn.Module, BaseManager):
         Trajectory picker (from the top manager object).
         """
         return self.get_top_manager().get_member(AgentManager).picker
+
+    @property
+    def parameter_count(self) -> int:
+        """
+        The number of parameters in this model.
+        """
+        count = 0
+        for param in self.parameters():
+            count += torch.prod(torch.tensor(param.shape)).numpy()
+        return count
 
     @property
     def average_inference_time(self) -> int | str:
@@ -339,7 +349,8 @@ class Model(torch.nn.Module, BaseManager):
                 'Prediction settings': f'{self.args.obs_frames} frames ' +
                                        f'-> {self.args.pred_frames} frames, ' +
                                        f'interval = {self.args.interval} seconds',
-                'Pre/post-process layers': p_layers}
+                'Pre/post-process layers': p_layers,
+                'Parameters Amount': f'{self.parameter_count:,}'}
 
         if (s := self.input_pred_steps) is not None:
             info.update({'Index of input future steps': s})
