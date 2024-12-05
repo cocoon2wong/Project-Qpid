@@ -13,3 +13,4 @@ from .__iou import AIOU, FIOU
 from .__layers import ADE, FDE, BaseLossLayer, avgCenter, finalCenter, l2
 from .__lossManager import LossManager
 from .__rade import RADE, RFDE
+from .__settings import add_loss_rules, add_metrics_rules

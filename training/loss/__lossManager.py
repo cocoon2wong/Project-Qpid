@@ -2,21 +2,25 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-16 19:27:19
+@LastEditTime: 2024-12-05 16:49:58
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
+from typing import Callable
+
 import numpy as np
 import torch
 
+from ...args import Args
 from ...base import BaseManager
 from ...constant import INPUT_TYPES
 from ...dataset import Annotation, AnnotationManager
 from ...model import Model
 from ...utils import decode_string, get_loss_mask
 from .__layers import BaseLossLayer
+from .__settings import LOSS_RULES, METRICS_RULES
 
 
 class LossManager(BaseManager):
@@ -175,6 +179,19 @@ class LossManager(BaseManager):
         funcs = [type(f).__name__ for f in self.layers]
         return super().print_info(LossLayers=funcs,
                                   **kwargs)
+
+    def set_default_metrics(self):
+        self._set_rule(METRICS_RULES)
+
+    def set_default_loss(self):
+        self._set_rule(LOSS_RULES)
+
+    def _set_rule(self, rules: list[Callable[[Args], None | list | dict]]):
+        for rule in rules[::-1]:
+            v = rule(self.args)
+            if v is not None:
+                self.set(v)
+                return
 
 
 def gather_batch_inputs(inputs: list[torch.Tensor], indices: torch.Tensor):

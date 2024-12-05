@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-16 20:12:12
+@LastEditTime: 2024-12-05 16:47:44
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -81,62 +81,9 @@ class Structure(BaseManager):
         self.model: Model
         self.optimizer: torch.optim.Optimizer
 
-        # Set loss functions, and metrics
-        self.loss.set({loss.l2: 1.0})
-
-        if not self.args.compute_relative_metrics:
-            ADE = loss.ADE
-            FDE = loss.FDE
-        else:
-            ADE = loss.RADE
-            FDE = loss.RFDE
-
-        if self.args.anntype in [ANN_TYPES.BB_2D,
-                                 ANN_TYPES.BB_3D]:
-
-            if self.is_prepared_for_training:
-                self.metrics.set({ADE: 1.0, FDE: 0.0})
-            else:
-                self.metrics.set({ADE: 1.0,
-                                  FDE: 0.0,
-                                  loss.AIOU: 0.0,
-                                  loss.FIOU: 0.0})
-
-        # These configs are only used on `Human3.6M` dataset
-        elif ((not self.is_prepared_for_training) and
-              (self.args.dataset == 'Human3.6M') and
-              (self.args.anntype in [ANN_TYPES.SKE_3D_17])):
-            i = int(1000 * self.args.interval)  # Sample interval
-
-            if self.args.pred_frames == 10:
-                self.metrics.set([
-                    (FDE, (0.0, dict(index=1, name=f'FDE@{2*i}ms'))),
-                    (FDE, (0.0, dict(index=3, name=f'FDE@{4*i}ms'))),
-                    (FDE, (0.0, dict(index=7, name=f'FDE@{8*i}ms'))),
-                    (FDE, (1.0, dict(index=9, name=f'FDE@{10*i}ms'))),
-                ])
-
-            elif self.args.pred_frames == 25:
-                self.metrics.set([
-                    (FDE, (0.0, dict(index=13, name=f'FDE@{14*i}ms'))),
-                    (FDE, (1.0, dict(index=24, name=f'FDE@{25*i}ms'))),
-                ])
-
-        # Configs for `NBA` dataset
-        elif ((not self.is_prepared_for_training) and
-              (self.args.dataset == 'NBA') and
-              (self.args.obs_frames == 5) and
-              (self.args.pred_frames == 10)):
-            self.metrics.set([
-                (ADE, (0.0, dict(points=5, name='ADE@2.0s'))),
-                (FDE, (0.0, dict(index=4, name='FDE@2.0s'))),
-                (ADE, (0.0, dict(points=10, name='ADE@4.0s'))),
-                (FDE, (1.0, dict(index=9, name='FDE@4.0s'))),
-            ])
-
-        else:
-            self.metrics.set({ADE: 1.0,
-                              FDE: 0.0})
+        # Set default loss functions and metrics
+        self.loss.set_default_loss()
+        self.metrics.set_default_metrics()
 
     @property
     def status(self) -> int:
