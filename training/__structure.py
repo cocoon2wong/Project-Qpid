@@ -1,8 +1,8 @@
 """
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
-@LastEditors: Conghao Wong
-@LastEditTime: 2024-10-16 20:12:12
+@LastEditors: Ziqian Zou
+@LastEditTime: 2024-10-23 10:45:11
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -534,12 +534,14 @@ class Structure(BaseManager):
 
             # Print number of agents in each class
             for layer_name in avg_metrics.keys():
-                if layer_name.split('(')[0] in layers_with_units:
-                    avg_metrics[layer_name] = f'{avg_metrics[layer_name]} ({unit})'
+                if (layer_name.split('(')[0] in layers_with_units) or (layer_name.split('@')[0] in layers_with_units):
+                    avg_metrics[layer_name] = f'{
+                        avg_metrics[layer_name]} ({unit})'
 
                 if self.args.compute_metrics_with_types:
                     _cnt = all_count[layer_name]
-                    avg_metrics[layer_name] = f'{avg_metrics[layer_name]} (on {_cnt} agents)'
+                    avg_metrics[layer_name] = f'{
+                        avg_metrics[layer_name]} (on {_cnt} agents)'
 
             # Resort keys
             avg_metrics = dict(sorted(avg_metrics.items(),
@@ -550,8 +552,10 @@ class Structure(BaseManager):
                 self.log('The "AverageInferenceTime" is for reference only and you can set a lower "batch_size" ' +
                          'or change a bigger dataset to obtain a more accurate result.')
 
-            avg_metrics['Average Inference Time'] = f'{self.model.average_inference_time} ms'
-            avg_metrics['Fastest Inference Time'] = f'{self.model.fastest_inference_time} ms'
+            avg_metrics['Average Inference Time'] = f'{
+                self.model.average_inference_time} ms'
+            avg_metrics['Fastest Inference Time'] = f'{
+                self.model.fastest_inference_time} ms'
 
         if not return_results:
             outputs_all = None
