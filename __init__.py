@@ -23,9 +23,37 @@ set_log_stream_handler = sys_mgr.set_log_stream_handler
 print_help_info = sys_mgr.print_help_info
 
 
+# Register simple trajectory prediction models
 register(
     linear=[applications.Linear, None],
     static=[applications.Static, None],
 )
 
+# Register basic prediction args
 register_args(args.Args, 'Basic Args')
+
+
+def entrance(terminal_args: list[str], train_or_test=True):
+    """
+    Main entrance for training or testing models from terminals.
+    """
+    _temp_args = args.Args(terminal_args, is_temporary=True)
+
+    # Check if `-h` or `--help` in args
+    if (h := _temp_args.help) != 'null':
+        print_help_info('all_args' if h == 'True' else h)
+        exit()
+
+    # Init the structure
+    t_type = get_structure(_temp_args.model)
+    t = t_type(terminal_args)
+
+    # Start training or testing
+    if train_or_test:
+        t.train_or_test()
+
+    # (DEBUG) Verbose mode
+    if t.args.verbose:
+        t.print_info_all()
+
+    return t
