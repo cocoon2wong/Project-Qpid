@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-05 16:47:44
+@LastEditTime: 2024-12-06 09:49:06
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -18,11 +18,10 @@ from torch.utils.tensorboard.writer import SummaryWriter
 
 from ..args import Args
 from ..base import BaseManager
-from ..constant import ANN_TYPES, STRUCTURE_STATUS
+from ..constant import STRUCTURE_STATUS
 from ..dataset import AgentManager, Annotation, AnnotationManager, SplitManager
 from ..model import Model
 from ..utils import WEIGHTS_FORMAT, move_to_device
-from . import loss
 from .loss import LossManager
 
 
@@ -187,8 +186,8 @@ class Structure(BaseManager):
         """
         # Compute predictions
         outputs = self.model.implement(inputs, training=True)
-        loss, loss_dict, _ = self.loss.compute(outputs, labels,
-                                               inputs, training=True)
+        loss, loss_dict = self.loss.compute(outputs, labels,
+                                            inputs, training=True)
         loss_move_average = 0.7 * loss + 0.3 * loss_move_average.item()
 
         # Compute gradients and run optimizer
@@ -354,7 +353,7 @@ class Structure(BaseManager):
 
             # Save results into log files
             log_dict = dict(epoch=epoch,
-                            best=list(best_metrics_dict.values()),
+                            best=np.array(list(best_metrics_dict.values())),
                             **loss_dict,
                             **metrics_dict)
 
@@ -422,92 +421,77 @@ class Structure(BaseManager):
         :param is_during_training: Indicates whether it is test during training.
 
         :return outputs: A list of model outputs (or `None` when `return_results == False`).
-        :return metric: The weighted sum of all metrics.
+        :return weighted_sum: The weighted sum of all metrics.
         :return metric_dict: A dict of all metrics.
         """
         # Init variables for test
-        outputs_all = []
-
-        all_metrics: dict[str, list[tuple[int, torch.Tensor]]] = {}
-        all_count: dict[str, int] = {}
+        outputs = []
 
         # Hide the time bar when training
         timebar = self.timebar(ds, 'Test...') if show_timebar else ds
 
+        # Clear all saved loss/metrics
+        self.loss.clear_memory()
+        self.metrics.clear_memory()
+
+        # Compute loss/metrics on all batches
         for x, gt in timebar:
             # Move data to GPU
             x = move_to_device(x, self.device)
             gt = move_to_device(gt, self.device)
 
             # Run model, compute metrics and loss
-            outputs = self.model.implement(x)
-            _, _metrics, _count = self.metrics.compute(outputs, gt, x)
+            batch_outputs = self.model.implement(x)
+            self.metrics.compute(batch_outputs, gt, x)
 
             if self.args.compute_loss:
-                _, _loss, _ = self.loss.compute(outputs, gt, x, training=True)
-                _metrics.update(_loss)
-
-            # Add metrics and outputs to their dicts
-            for _name, _value in _count.items():
-                if not _name in all_count.keys():
-                    all_count[_name] = 0
-                all_count[_name] += _value
-
-            for _name, _value in _metrics.items():
-                if not _name in all_metrics.keys():
-                    all_metrics[_name] = []
-                all_metrics[_name].append((_count[_name], _value))
+                self.loss.compute(batch_outputs, gt, x)
 
             if return_results:
-                outputs_all.append(outputs)
+                outputs.append(batch_outputs)
+
+        # Get all metrics and losses
+        metrics_dict, metrics_info, weighted_sum = self.metrics.pack_values()
+
+        if self.args.compute_loss:
+            loss_dict, loss_info, _ = self.loss.pack_values()
+            metrics_dict.update(loss_dict)
+            metrics_info.update(loss_info)
 
         # Stack all model results
         if return_results:
-            outputs_all = stack_batch_outputs(outputs_all)
+            outputs = stack_batch_outputs(outputs)
+        else:
+            outputs = None
 
-        # Calculate average metrics
-        avg_metrics = {}
-        for _name, _value in all_metrics.items():
-            _value = torch.tensor(_value)
-            _sum = torch.sum(_value.T[0] * _value.T[1])
-            _cnt = torch.sum(_value.T[0])
-            avg_metrics[_name] = (_sum/_cnt)
-
+        # Print metrics and other information
         if not is_during_training:
-            # Show metrics with units
             unit = self.get_member(AgentManager).get_member(SplitManager).type
-            layers_with_units = [
-                l.name for l in self.metrics.layers if l.has_unit]
 
-            # Print number of agents in each class
-            for layer_name in avg_metrics.keys():
-                if layer_name.split('(')[0] in layers_with_units:
-                    avg_metrics[layer_name] = f'{avg_metrics[layer_name]} ({unit})'
+            for layer_name, value in metrics_dict.items():
+                postfix = ''
+                if metrics_info[layer_name][2]:
+                    postfix += f' ({unit})'
 
                 if self.args.compute_metrics_with_types:
-                    _cnt = all_count[layer_name]
-                    avg_metrics[layer_name] = f'{avg_metrics[layer_name]} (on {_cnt} agents)'
+                    postfix += f' (on {metrics_info[layer_name][0]} agents)'
 
-            # Resort keys
-            avg_metrics = dict(sorted(avg_metrics.items(),
-                                      key=lambda item: item[0]))
+                if len(postfix):
+                    metrics_dict[layer_name] = f'{value}{postfix}'
+
+            # Resort according to keys
+            metrics_dict = dict(sorted(metrics_dict.items(),
+                                       key=lambda item: item[0]))
 
             # Compute the inference time
             if len(self.model.inference_times) < 3:
                 self.log('The "AverageInferenceTime" is for reference only and you can set a lower "batch_size" ' +
                          'or change a bigger dataset to obtain a more accurate result.')
 
-            avg_metrics['Average Inference Time'] = f'{self.model.average_inference_time} ms'
-            avg_metrics['Fastest Inference Time'] = f'{self.model.fastest_inference_time} ms'
+            metrics_dict['Average Inference Time'] = f'{self.model.average_inference_time} ms'
+            metrics_dict['Fastest Inference Time'] = f'{self.model.fastest_inference_time} ms'
 
-        if not return_results:
-            outputs_all = None
-
-        summary = avg_metrics['__sum']
-        if is_during_training:
-            avg_metrics.pop('__sum')
-
-        return outputs_all, summary, avg_metrics
+        return outputs, weighted_sum, metrics_dict
 
     def print_info(self, **kwargs):
         info: dict = {'Batch size': self.args.batch_size}

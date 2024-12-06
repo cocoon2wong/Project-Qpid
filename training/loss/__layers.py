@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-16 18:12:38
+@LastEditTime: 2024-12-06 09:01:35
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -25,19 +25,35 @@ class BaseLossLayer(torch.nn.Module):
     # The unit is the same as datasets' annotations.
     has_unit = False
 
-    def __init__(self, coe: float,
-                 manager: BaseManager,
+    def __init__(self, manager: BaseManager,
+                 traj_coe: float,
+                 extra_parameters: dict = {},
+                 value_weight=1.0,
+                 name_postfix: str = '',
                  *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
-        self.name = self.__class__.__name__
         self.trainable = False
-        self.manager = manager
-        self.coe = coe
 
-        self.loss_weight = 1.0
-        self.loss_paras = {}
+        self.manager = manager
+        self.coe = traj_coe
+
+        self.loss_weight = value_weight
+        self.loss_paras = extra_parameters
+
+        self.value: dict[str, torch.Tensor] = {}
+        self.batch_size: dict[str, int] = {}
+
+        self.name = self.__class__.__name__
+
+        if len(extra_parameters):
+            if 'name' in extra_parameters.keys():
+                self.name = extra_parameters['name']
+            else:
+                self.name += f'@{extra_parameters}'
+
+        self.name += name_postfix
 
     @property
     def model(self) -> Model:
@@ -56,6 +72,32 @@ class BaseLossLayer(torch.nn.Module):
                 training=None, *args, **kwargs):
 
         raise NotImplementedError
+
+    def compute(self, outputs: list[torch.Tensor],
+                labels: list[torch.Tensor],
+                inputs: list[torch.Tensor],
+                mask=None, training=None, type='', **kwargs):
+
+        if training:
+            self.clear_memory()     # Prevent wrong loss computations
+
+        v = self(outputs=outputs,
+                 labels=labels,
+                 inputs=inputs,
+                 mask=mask, training=training,
+                 **self.loss_paras, **kwargs)
+
+        if type not in self.value.keys():
+            self.value[type] = []
+            self.batch_size[type] = []
+
+        self.value[type].append(v)
+        self.batch_size[type].append(len(outputs[0]))
+        return v
+
+    def clear_memory(self):
+        self.value = {}
+        self.batch_size = {}
 
 
 class l2(BaseLossLayer):

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-05 16:49:58
+@LastEditTime: 2024-12-06 09:53:29
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -94,9 +94,12 @@ class LossManager(BaseManager):
                 weight = vs
                 parameters = {}
 
-            layer = k(coe=self.scale, manager=self)
-            layer.loss_weight = weight
-            layer.loss_paras = parameters
+            layer = k(manager=self,
+                      traj_coe=self.scale,
+                      extra_parameters=parameters,
+                      value_weight=weight,
+                      name_postfix=f'({self.name})')
+
             self.layers.append(layer)
 
     def compute(self, outputs: list[torch.Tensor],
@@ -111,69 +114,92 @@ class LossManager(BaseManager):
         :param labels: A list of groundtruth tensors.
         :param inputs: A list of model inputs.
 
-        :return summary: The weighted sum of all loss functions.
-        :return loss_dict: A dict of values of all loss functions.
-        :return count_dict: A dict of weights of all loss functions.
+        :return weighted_sum: The weighted sum of all loss functions. \
+            It returns a `None` when `training == False`.
+        :return loss_dict: A dict of values of all loss functions. \
+            It returns a `None` when `training == False`.
         """
 
-        loss_dict: dict[str, torch.Tensor] = {}
-        count_dict: dict[str, int] = {}
-        weight_dict: dict[str, float] = {}
-
+        # Mask valid agents
         obs = self.model.get_input(inputs, INPUT_TYPES.OBSERVED_TRAJ)
         label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
         mask = get_loss_mask(obs, label)
 
-        if self.args.compute_metrics_with_types:
+        # Decode agent types (if needed)
+        # TODO: Train models with different agent-type-related loss functions
+        if not training and self.args.compute_metrics_with_types:
             types_code = self.model.get_input(inputs, INPUT_TYPES.AGENT_TYPES)
-            types_decode = np.array([decode_string(s.cpu().numpy())
-                                    for s in types_code])
-            types_list = list(set(types_decode))
+            types = np.array([decode_string(s.cpu().numpy())
+                              for s in types_code])
+            types_list = list(set(types))
 
         for layer in self.layers:
-            name = layer.name
-            paras = layer.loss_paras
-            weight = layer.loss_weight
-
-            if len(paras):
-                if 'name' in paras.keys():
-                    name = paras['name']
-                else:
-                    name += f'@{paras}'
-
-            # Compute losses or metrics on all classes
+            # Compute losses or metrics on all classes (types of agents)
             if training or not self.args.compute_metrics_with_types:
-                value = layer(outputs=outputs, labels=labels,
-                              inputs=inputs, mask=mask,
-                              training=training, **paras)
-
-                loss_dict[f'{name}({self.name})'] = value
-                count_dict[f'{name}({self.name})'] = len(outputs[0])
-                weight_dict[f'{name}({self.name})'] = weight
+                layer.compute(outputs, labels, inputs, mask, training)
 
             # Compute losses or metrics on each class separately
             else:
                 for _type in types_list:
-                    indices = torch.from_numpy(
-                        np.where(types_decode == _type)[0])
-                    _value = layer(outputs=gather_batch_inputs(outputs, indices),
-                                   labels=gather_batch_inputs(labels, indices),
-                                   inputs=gather_batch_inputs(inputs, indices),
-                                   mask=mask[indices], training=training, **paras)
+                    indices = torch.from_numpy(np.where(types == _type)[0])
+                    layer.compute(gather_type(outputs, indices),
+                                  gather_type(labels, indices),
+                                  gather_type(inputs, indices),
+                                  mask[indices], training, type=_type)
 
-                    loss_dict[f'{name}({self.name}, {_type})'] = _value
-                    count_dict[f'{name}({self.name}, {_type})'] = len(indices)
-                    weight_dict[f'{name}({self.name}, {_type})'] = weight
+        if training:
+            # Compute average loss
+            value_dict, _, weighted_sum = self.pack_values()
+            return weighted_sum, value_dict
 
-        summary = torch.tensor(0.0)
-        for loss_name, loss_value in loss_dict.items():
-            summary = summary + loss_value * weight_dict[loss_name]
+        else:
+            return None, None
 
-        if not training:
-            loss_dict['__sum'] = summary
-            count_dict['__sum'] = len(outputs[0])
+    def pack_values(self):
+        """
+        Gather computation results from all loss/metrics layers
 
-        return summary, loss_dict, count_dict
+        :return value_dict: All loss values in a dictionary. Keys are their names.
+        :return info_dict: A dictionary to save all loss-related information.\
+            Each value is a list with 3 members: `[count, weight, has_unit]`.\
+            `count` is the number of agents that loss have computed on (it is a\
+            `torch.Tensor` object with type `torch.float32`); \
+            `weight` is the weight of the final loss value, and it is mainly \
+            used during training; and `has_unit` indicates whether this loss \
+            or metric is absolute and has a unit like `meters`.
+        :return weighted_sum: The weighted sum loss (mainly used during training).  
+        """
+        value_dict = {}
+        info_dict = {}
+        for layer in self.layers:
+            for _type in layer.value.keys():
+                _key = layer.name + f'({_type})' if len(_type) else layer.name
+
+                _loss = torch.stack(layer.value[_type])
+                _weights = torch.tensor(layer.batch_size[_type],
+                                        dtype=torch.float32)
+                _loss = (torch.sum(_loss * _weights) /
+                         (_count := torch.sum(_weights)))
+
+                value_dict.update({_key: _loss})
+                info_dict.update({_key: [_count,
+                                         layer.loss_weight,
+                                         layer.has_unit]})
+
+        # Weighted-sum all single losses
+        weighted_sum = torch.tensor(0.0)
+        count = 0
+        for _key in value_dict.keys():
+            _count = info_dict[_key][0] * info_dict[_key][1]
+            weighted_sum = weighted_sum + value_dict[_key] * _count
+            count = count + _count
+
+        weighted_sum = weighted_sum/count
+        return value_dict, info_dict, weighted_sum
+
+    def clear_memory(self):
+        for layer in self.layers:
+            layer.clear_memory()
 
     def print_info(self, **kwargs):
         funcs = [type(f).__name__ for f in self.layers]
@@ -194,7 +220,7 @@ class LossManager(BaseManager):
                 return
 
 
-def gather_batch_inputs(inputs: list[torch.Tensor], indices: torch.Tensor):
+def gather_type(inputs: list[torch.Tensor], indices: torch.Tensor):
     if not isinstance(inputs[0], torch.Tensor):
         return []
     else:
