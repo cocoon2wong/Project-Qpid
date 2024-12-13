@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-06 09:49:06
+@LastEditTime: 2024-12-13 10:21:49
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -290,7 +290,7 @@ class Structure(BaseManager):
 
         best_epoch = 0
         best_metric = 10000.0
-        best_metrics_dict = {'-': best_metric}
+        best_metrics_dict = {}
 
         # Init paths for saving
         weights_path = os.path.join(self.args.log_dir,
@@ -330,6 +330,7 @@ class Structure(BaseManager):
 
                 _, metric, metrics_dict = self.__test_on_dataset(
                     ds=ds_val,
+                    return_results=False,
                     show_timebar=False,
                     is_during_training=True
                 )
@@ -349,11 +350,13 @@ class Structure(BaseManager):
                     torch.save(self.model.state_dict(),
                                weights_path.format(best_epoch))
                     np.savetxt(checkpoint_path,
-                               np.array([best_metric, best_epoch]))
+                               np.array([best_metric.cpu(),
+                                         best_epoch]))
 
             # Save results into log files
             log_dict = dict(epoch=epoch,
-                            best=np.array(list(best_metrics_dict.values())),
+                            best=torch.tensor(
+                                [i.cpu() for i in best_metrics_dict.values()]),
                             **loss_dict,
                             **metrics_dict)
 
@@ -364,9 +367,6 @@ class Structure(BaseManager):
             for name, value in log_dict.items():
                 if name == 'best':
                     value = best_metrics_dict
-                    if '-' in value.keys():
-                        continue
-
                     for k, v in value.items():
                         tb.add_scalar(k + ' (Best)', v, epoch)
 
@@ -407,6 +407,23 @@ class Structure(BaseManager):
         )
         return metric, metrics_dict, outputs
 
+    @overload
+    def __test_on_dataset(self, ds: DataLoader,
+                          return_results: bool,
+                          show_timebar: bool,
+                          is_during_training: bool) -> \
+        tuple[list[torch.Tensor],
+              torch.Tensor,
+              dict[str, torch.Tensor]]: ...
+
+    @overload
+    def __test_on_dataset(self, ds: DataLoader,
+                          return_results: bool,
+                          show_timebar: bool) -> \
+        tuple[list[torch.Tensor],
+              torch.Tensor,
+              dict[str, torch.Tensor | str]]: ...
+
     @torch.no_grad()
     def __test_on_dataset(self, ds: DataLoader,
                           return_results=False,
@@ -425,7 +442,7 @@ class Structure(BaseManager):
         :return metric_dict: A dict of all metrics.
         """
         # Init variables for test
-        outputs = []
+        _outputs = []
 
         # Hide the time bar when training
         timebar = self.timebar(ds, 'Test...') if show_timebar else ds
@@ -448,7 +465,7 @@ class Structure(BaseManager):
                 self.loss.compute(batch_outputs, gt, x)
 
             if return_results:
-                outputs.append(batch_outputs)
+                _outputs.append(batch_outputs)
 
         # Get all metrics and losses
         metrics_dict, metrics_info, weighted_sum = self.metrics.pack_values()
@@ -460,11 +477,14 @@ class Structure(BaseManager):
 
         # Stack all model results
         if return_results:
-            outputs = stack_batch_outputs(outputs)
+            outputs = stack_batch_outputs(_outputs)
         else:
-            outputs = None
+            outputs = []
 
         # Print metrics and other information
+        metrics = {}
+        metrics.update(metrics_dict)
+
         if not is_during_training:
             unit = self.get_member(AgentManager).get_member(SplitManager).type
 
@@ -477,21 +497,21 @@ class Structure(BaseManager):
                     postfix += f' (on {metrics_info[layer_name][0]} agents)'
 
                 if len(postfix):
-                    metrics_dict[layer_name] = f'{value}{postfix}'
+                    metrics[layer_name] = f'{value}{postfix}'
 
             # Resort according to keys
-            metrics_dict = dict(sorted(metrics_dict.items(),
-                                       key=lambda item: item[0]))
+            metrics = dict(sorted(metrics.items(),
+                                  key=lambda item: item[0]))
 
             # Compute the inference time
             if len(self.model.inference_times) < 3:
                 self.log('The "AverageInferenceTime" is for reference only and you can set a lower "batch_size" ' +
                          'or change a bigger dataset to obtain a more accurate result.')
 
-            metrics_dict['Average Inference Time'] = f'{self.model.average_inference_time} ms'
-            metrics_dict['Fastest Inference Time'] = f'{self.model.fastest_inference_time} ms'
+            metrics['Average Inference Time'] = f'{self.model.average_inference_time} ms'
+            metrics['Fastest Inference Time'] = f'{self.model.fastest_inference_time} ms'
 
-        return outputs, weighted_sum, metrics_dict
+        return outputs, weighted_sum, metrics
 
     def print_info(self, **kwargs):
         info: dict = {'Batch size': self.args.batch_size}
@@ -506,7 +526,7 @@ class Structure(BaseManager):
         return super().print_info(**kwargs, **info)
 
     def print_train_results(self, best_epoch: int,
-                            best_metric: float | np.ndarray):
+                            best_metric: float | np.ndarray | torch.Tensor):
         """
         Print train results on the screen.
         """
@@ -572,10 +592,17 @@ def _get_item(item: list[torch.Tensor | list[torch.Tensor]],
     return res
 
 
-def stack_batch_outputs(outputs: list[list[(
-    torch.Tensor |
-    list[torch.Tensor]
-)]]) -> list[torch.Tensor | list[torch.Tensor]]:
+@overload
+def stack_batch_outputs(
+    outputs: list[list[torch.Tensor]]) -> list[torch.Tensor]: ...
+
+
+@overload
+def stack_batch_outputs(
+    outputs: list[list[list[torch.Tensor]]]) -> list[list[torch.Tensor]]: ...
+
+
+def stack_batch_outputs(outputs):
     """
     Stack several batches' model outputs.
     Input of this function should be a list of model outputs,

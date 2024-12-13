@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-06 09:01:35
+@LastEditTime: 2024-12-13 10:27:56
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -42,8 +42,8 @@ class BaseLossLayer(torch.nn.Module):
         self.loss_weight = value_weight
         self.loss_paras = extra_parameters
 
-        self.value: dict[str, torch.Tensor] = {}
-        self.batch_size: dict[str, int] = {}
+        self.value: dict[str, list[torch.Tensor]] = {}
+        self.batch_size: dict[str, list[int]] = {}
 
         self.name = self.__class__.__name__
 
@@ -57,14 +57,14 @@ class BaseLossLayer(torch.nn.Module):
 
     @property
     def model(self) -> Model:
-        return self.manager.manager.model
+        return self.manager.manager.model   # type: ignore
 
     @property
     def picker(self) -> Picker:
         """
         The `Picker` object to transfer annotations.
         """
-        return self.manager.picker
+        return self.manager.picker          # type: ignore
 
     def forward(self, outputs: list[torch.Tensor],
                 labels: list[torch.Tensor],

@@ -2,13 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-10-12 11:13:46
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-06 09:53:29
+@LastEditTime: 2024-12-13 10:27:42
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
-from typing import Callable
+from typing import Any, Callable, overload
 
 import numpy as np
 import torch
@@ -102,6 +102,17 @@ class LossManager(BaseManager):
 
             self.layers.append(layer)
 
+    @overload
+    def compute(self, outputs: list[torch.Tensor],
+                labels: list[torch.Tensor],
+                inputs: list[torch.Tensor]) -> tuple[None, None]: ...
+
+    @overload
+    def compute(self, outputs: list[torch.Tensor],
+                labels: list[torch.Tensor],
+                inputs: list[torch.Tensor],
+                training: bool) -> tuple[torch.Tensor, dict[str, torch.Tensor]]: ...
+
     def compute(self, outputs: list[torch.Tensor],
                 labels: list[torch.Tensor],
                 inputs: list[torch.Tensor],
@@ -132,10 +143,13 @@ class LossManager(BaseManager):
             types = np.array([decode_string(s.cpu().numpy())
                               for s in types_code])
             types_list = list(set(types))
+        else:
+            types = None
+            types_list = None
 
         for layer in self.layers:
             # Compute losses or metrics on all classes (types of agents)
-            if training or not self.args.compute_metrics_with_types:
+            if (types is None) or (types_list is None):
                 layer.compute(outputs, labels, inputs, mask, training)
 
             # Compute losses or metrics on each class separately
@@ -155,7 +169,9 @@ class LossManager(BaseManager):
         else:
             return None, None
 
-    def pack_values(self):
+    def pack_values(self) -> tuple[dict[str, torch.Tensor],
+                                   dict[str, list],
+                                   torch.Tensor]:
         """
         Gather computation results from all loss/metrics layers
 
@@ -169,15 +185,15 @@ class LossManager(BaseManager):
             or metric is absolute and has a unit like `meters`.
         :return weighted_sum: The weighted sum loss (mainly used during training).  
         """
-        value_dict = {}
-        info_dict = {}
+        value_dict: dict[str, torch.Tensor] = {}
+        info_dict: dict[str, list] = {}
         for layer in self.layers:
             for _type in layer.value.keys():
                 _key = layer.name + f'({_type})' if len(_type) else layer.name
 
                 _loss = torch.stack(layer.value[_type])
                 _weights = torch.tensor(layer.batch_size[_type],
-                                        dtype=torch.float32)
+                                        dtype=torch.float32).to(_loss.device)
                 _loss = (torch.sum(_loss * _weights) /
                          (_count := torch.sum(_weights)))
 
@@ -212,7 +228,7 @@ class LossManager(BaseManager):
     def set_default_loss(self):
         self._set_rule(LOSS_RULES)
 
-    def _set_rule(self, rules: list[Callable[[Args], None | list | dict]]):
+    def _set_rule(self, rules: list[Callable[[Args], Any]]):
         for rule in rules[::-1]:
             v = rule(self.args)
             if v is not None:
