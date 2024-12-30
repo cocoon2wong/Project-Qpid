@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 15:28:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-01-15 19:36:10
+@LastEditTime: 2024-12-30 15:42:10
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -38,6 +38,7 @@ class ProcessModel(torch.nn.Module):
         self.valid_layer_count: int = -1
         self.layer_indices: list[int] = []
         self.preprocess_input_types: list[str] = []
+        self.inputs_original: list[torch.Tensor] = []
 
         self.postprocess_input_types = [OUTPUT_TYPES.PREDICTED_TRAJ]
         self.process_paras = {PROCESS_TYPES.MOVE: Args.pmove}
@@ -145,19 +146,21 @@ class ProcessModel(torch.nn.Module):
                 training=None,
                 *args, **kwargs) -> list[torch.Tensor]:
 
-        if preprocess:
-            layer_indices = self.layer_indices
-            type_var_name = 'preprocess_input_types'
-            input_types = self.preprocess_input_types
-        else:
-            layer_indices = self.layer_indices[::-1]
-            type_var_name = 'postprocess_input_types'
-            input_types = self.postprocess_input_types
-
         if isinstance(inputs, torch.Tensor):
             inputs = [inputs]
         elif isinstance(inputs, tuple):
             inputs = list(inputs)
+
+        if preprocess:
+            layer_indices = self.layer_indices
+            type_var_name = 'preprocess_input_types'
+            input_types = self.preprocess_input_types
+            self.inputs_original = inputs
+        else:
+            layer_indices = self.layer_indices[::-1]
+            type_var_name = 'postprocess_input_types'
+            input_types = self.postprocess_input_types
+            self.inputs_original = []
 
         for i in layer_indices:
             p = self.get_submodule(f'process_layer_{i}')
