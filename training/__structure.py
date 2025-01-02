@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-13 10:21:49
+@LastEditTime: 2025-01-02 15:22:56
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -212,12 +212,12 @@ class Structure(BaseManager):
             case STRUCTURE_STATUS.TEST:
                 self.test()
             case STRUCTURE_STATUS.TEST_WITH_SAVED_WEIGHTS:
-                self.model.load_weights_from_logDir(self.args.load)
+                self.model.load(self.args.load, device=self.device_cpu)
                 self.test()
             case STRUCTURE_STATUS.TRAIN:
                 self.train()
             case STRUCTURE_STATUS.TRAIN_WITH_SAVED_WEIGHTS:
-                self.model.load_weights_from_logDir(self.args.restore)
+                self.model.load(self.args.restore, device=self.device_cpu)
                 self.train()
 
     @torch.no_grad()

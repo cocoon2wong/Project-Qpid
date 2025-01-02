@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-05 16:43:28
+@LastEditTime: 2025-01-02 15:28:43
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -273,12 +273,24 @@ class Args(ArgsManager):
     def log_dir(self) -> str:
         """
         Folder to save training logs and model weights.
-        Logs will save at `args.save_base_dir/current_model`.
+        Logs will save at `${save_base_dir}/${log_dir}`.
         DO NOT change this arg manually. (You can still change
-        the path by passing the `save_base_dir` arg.)
+        the saving path by passing the `save_base_dir` arg.)
         """
         return self._arg('log_dir', NA, argtype=STATIC,
                          need_initialize=True)
+
+    @property
+    def load_epoch(self) -> int:
+        """
+        Load model weights that is saved after specific training epochs. It
+        will try to load the weight file in the `load` dir whose name is end
+        with `_epoch${load_epoch}`.
+        This arg only works when the `auto_clear` arg is disabled (by passing
+        `--auto_clear 0` when training).
+        Set it to `-1` to disable this function.
+        """
+        return self._arg('load_epoch', -1, argtype=TEMPORARY)
 
     @property
     def compute_loss(self) -> int:
@@ -513,7 +525,7 @@ class Args(ArgsManager):
         It performs similarly to running `python scripts/clear.py --logs logs`.
         """
         return self._arg('auto_clear', 1, argtype=TEMPORARY)
-    
+
     @property
     def compute_metrics_with_types(self) -> int:
         """

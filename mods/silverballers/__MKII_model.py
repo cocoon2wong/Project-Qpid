@@ -177,7 +177,7 @@ class SilverballersMKII(Structure):
             s = s_type(_args, manager=self)
             s.create_model()
             if _load:
-                s.model.load_weights_from_logDir(path)
+                s.model.load(path, device=self.device_cpu)
 
             self.substructures.append(s)
 

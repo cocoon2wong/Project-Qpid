@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-11 15:37:33
+@LastEditTime: 2025-01-02 15:25:44
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -120,9 +120,9 @@ class ArgsManager(BaseObject):
     @property
     def load(self) -> str:
         """
-        Folder to load model (to test). If set to `null`, the
-        training manager will start training new models according
-        to other given args.
+        Folder to load model weights (to test). If it is set to `null`, the
+        training manager will start training new models according to other
+        reveived args. NOTE: Leave this arg to `null` when training new models.
         """
         return self._arg('load', 'null', argtype=TEMPORARY, short_name='l')
 

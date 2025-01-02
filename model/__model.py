@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-11-12 15:52:32
+@LastEditTime: 2025-01-02 15:21:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -318,25 +318,43 @@ class Model(torch.nn.Module, BaseManager):
         """
         return self.processor.set_process(*args, **kwargs)
 
-    def load_weights_from_logDir(self, weights_dir: str):
-        all_files = os.listdir(weights_dir)
-        weights_files = [f for f in all_files
-                         if WEIGHTS_FORMAT in f]
+    def load(self, dir: str, device: torch.device):
+        """
+        Load model weights from the given directory.
+        """
+        # Check all possible weights files in this dir
+        all_files = os.listdir(dir)
+        weights_files = [f for f in all_files if WEIGHTS_FORMAT in f]
         weights_files.sort()
 
-        if CHECKPOINT_FILENAME in all_files:
-            p = os.path.join(weights_dir, CHECKPOINT_FILENAME)
+        # Load according to the received arg
+        if (e := self.args.load_epoch) >= 0:
+            weights_files = [f for f in weights_files
+                             if f'_epoch{e}{WEIGHTS_FORMAT}' in f]
+
+        # Load according to the checkpoint file
+        elif CHECKPOINT_FILENAME in all_files:
+            p = os.path.join(dir, CHECKPOINT_FILENAME)
             epoch = int(np.loadtxt(p)[1])
 
             weights_files = [f for f in weights_files
                              if f'_epoch{epoch}{WEIGHTS_FORMAT}' in f]
 
+        else:
+            self.log('Neither the checkpoint file nor the arg `load_epoch` ' +
+                     f'was found in `{dir}`. This may result in ' +
+                     'incorrect weights being loaded.',
+                     level='warning')
+
+        if not len(weights_files):
+            self.log(f'Failed to load model weights from `{dir}`!',
+                     level='error', raiseError=ValueError)
+
         weights_name = weights_files[-1]
-        p = os.path.join(weights_dir, weights_name)
-        dic = torch.load(p, map_location=self.structure.device_cpu)
+        p = os.path.join(dir, weights_name)
+        dic = torch.load(p, map_location=device)
         self.load_state_dict(dic)
-        self.log(f'Successfully load weights from `{p}`.',
-                 only_log_under_verbose_mode=True)
+        self.log(f'Model weights successfully loaded from `{p}`.')
 
     def print_info(self, **kwargs):
         try:
