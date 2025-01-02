@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-02 15:22:56
+@LastEditTime: 2025-01-02 16:09:19
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -65,8 +65,6 @@ class Structure(BaseManager):
 
         # Init device
         self.set_gpu()
-        self._device: torch.device | None = None
-        self._device_local: torch.device | None = None
 
         # Init managers
         self.agent_manager = AgentManager(self)
@@ -122,7 +120,8 @@ class Structure(BaseManager):
         """
         Compute device (use GPU if available).
         """
-        if self._device is None:
+        if ('_device' not in self.__dict__.keys() or
+                self._device is None):
             if (torch.cuda.is_available() and
                     int(self.args.gpu.split('_')[0]) >= 0):
                 d = torch.device("cuda")
@@ -130,7 +129,6 @@ class Structure(BaseManager):
                 d = torch.device("mps")
             else:
                 d = torch.device("cpu")
-
             self._device = d
         return self._device
 
@@ -139,7 +137,8 @@ class Structure(BaseManager):
         """
         Basic compute device (like CPU).
         """
-        if self._device_local is None:
+        if ('_device_local' not in self.__dict__.keys() or
+                self._device_local is None):
             self._device_local = torch.device("cpu")
         return self._device_local
 
