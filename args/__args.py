@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-02 15:28:43
+@LastEditTime: 2025-01-03 15:33:57
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -12,7 +12,7 @@ import os
 
 from ..__root import ArgsManager
 from ..constant import ARG_TYPES
-from ..utils import DATASET_CONFIG_DIR, DEFAULT_LOG_DIR, TIME, dir_check
+from ..utils import DATASET_DICT, DEFAULT_LOG_DIR, TIME, dir_check
 
 DYNAMIC = ARG_TYPES.DYNAMIC
 STATIC = ARG_TYPES.STATIC
@@ -85,23 +85,10 @@ class Args(ArgsManager):
         # This argument can only be set manually by codes
         # or read from the saved JSON file
         elif 'dataset' not in self._args_load.keys():
-
-            dirs = os.listdir(DATASET_CONFIG_DIR)
-
-            split_list: list[tuple[str, str]] = []
-            for d in dirs:
-                try:
-                    _path = os.path.join(DATASET_CONFIG_DIR, d)
-                    for p in os.listdir(_path):
-                        if p.endswith('.plist'):
-                            split_list.append((d, p.split('.plist')[0]))
-                except:
-                    pass
-
             dataset = None
-            for _dataset, _split in split_list:
-                if self.split == _split:
-                    dataset = _dataset
+            for dataset_name, split_dict in DATASET_DICT.items():
+                if self.split in split_dict.keys():
+                    dataset = dataset_name
                     break
 
             if not dataset:

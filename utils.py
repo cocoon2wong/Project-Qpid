@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-16 20:14:33
+@LastEditTime: 2025-01-02 17:07:48
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -173,3 +173,32 @@ def encode_string(name: str, depth=MAX_TYPE_NAME_LEN) -> np.ndarray:
 
 def decode_string(array: np.ndarray) -> str:
     return ''.join([chr(_a) for _a in array.astype(int) if _a])
+
+
+def check_datasets(root=DATASET_CONFIG_DIR):
+    """
+    Get all supported datasets/splits/clips from the `dataset_configs` folder.
+    """
+    datasets: dict[str, dict[str, list[str]]] = {}
+    for dataset in os.listdir(root):
+        subset_path = os.path.join(root, dataset)
+        if not os.path.isdir(subset_path):
+            continue
+
+        for file in os.listdir(subset_path):
+            if file.endswith('.plist'):
+                split = file.split('.plist')[0]
+                split_file = os.path.join(subset_path, file)
+
+                _d = load_from_plist(split_file)
+                clips = _d['test'] + _d['train'] + _d['val']
+                clips = list(set(clips))
+
+                if not dataset in datasets.keys():
+                    datasets[dataset] = {}
+                datasets[dataset][split] = clips
+
+    return datasets
+
+
+DATASET_DICT = check_datasets()
