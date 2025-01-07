@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-02 15:25:44
+@LastEditTime: 2025-01-07 09:52:15
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -93,7 +93,11 @@ class ArgsManager(BaseObject):
 
         # Load json args
         if (l := self.load) != 'null':
-            self.load_args_from_json(l)
+            from .. import sys_mgr
+            if l in sys_mgr.static_models:
+                self._set_default('model', l)
+            else:
+                self.load_args_from_json(l)
 
         # Restore reference args before training and testing
         if self.restore_args != 'null':

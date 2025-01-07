@@ -27,6 +27,7 @@ print_help_info = sys_mgr.print_help_info
 register(
     linear=[applications.Linear, None],
     static=[applications.Static, None],
+    as_static_models=True,
 )
 
 # Register basic prediction args

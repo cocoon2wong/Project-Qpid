@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2024-05-30 09:58:23
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 13:29:39
+@LastEditTime: 2025-01-07 09:52:56
 @Github: https://cocoon2wong.github.io
 @Copyright 2024 Conghao Wong, All Rights Reserved.
 """
@@ -61,6 +61,7 @@ class SystemManager(BaseManager):
                                            type[Model]]] = {}
         self.__args_dict: dict[type[Args | EmptyArgs], str] = {}
         self.__input_type_handler_dict: dict = {}
+        self.__static_models: list[str] = []
 
     @property
     def log_path(self) -> str:
@@ -77,6 +78,10 @@ class SystemManager(BaseManager):
     @property
     def args_dict(self):
         return self.__args_dict
+
+    @property
+    def static_models(self):
+        return self.__static_models
 
     @property
     def input_type_handler_dict(self) -> \
@@ -100,7 +105,7 @@ class SystemManager(BaseManager):
         """
         utils.LOG_STREAM_HANDLER = handler
 
-    def register(self, **kwargs):
+    def register(self, as_static_models=False, **kwargs):
         """
         Register new qpid models.
         Arg format:
@@ -110,9 +115,16 @@ class SystemManager(BaseManager):
         ```python
         register(va=[VA, VAModel], vb=[VB, VBModel])
         ```
+
+        NOTE: For models that do not need training, please pass a parameter
+        `as_static_models=True` to make them canbe load directly from their
+        model names.
         """
         for k, v in kwargs.items():
             self.__model_dict[k] = v
+
+        if as_static_models:
+            self.__static_models += list(kwargs.keys())
 
     def register_args(self, atype: type[Args | EmptyArgs],
                       friendly_name: str):
