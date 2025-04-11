@@ -52,13 +52,7 @@ jobs:
           cp -r ./Project-Zero-Divided/_layouts ./
           cp -r ./Project-Zero-Divided/assets ./
 
-      - name: Fetch the new readme
-        run: |
-          pip install requests
-          python ./fetch_readme.py
-
-          # Build job
-  
+      # Build job
       - name: Setup Ruby
         # https://github.com/ruby/setup-ruby/releases/tag/v1.207.0
         uses: ruby/setup-ruby@4a9ddd6f338a97768b8006bf671dfbad383215f4
