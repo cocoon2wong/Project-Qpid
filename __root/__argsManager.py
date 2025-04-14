@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-07 09:52:15
+@LastEditTime: 2025-04-14 17:27:09
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -72,6 +72,7 @@ class ArgsManager(BaseObject):
 
         # A list to save all registered args' names
         self._arg_list = []
+
         # Types of all args, e.g. `STATIC`.
         self._arg_type: dict[str, str] = {}
 
@@ -80,8 +81,8 @@ class ArgsManager(BaseObject):
         # Values: Full names.
         self._arg_short_name: dict[str, str] = {}
 
-        # A list to save all initialized args
-        self._processed_args: list[str] = []
+        # Aliases of all args
+        self._arg_aliases: dict[str, list[str]] = {}
 
         # Register all args used in this object
         self._visit_args()
@@ -328,7 +329,7 @@ class ArgsManager(BaseObject):
         :param name: Name of the arg, should be the same as the property's name.
         :param default: Default value of the arg.
         :param argtype: Arg type, canbe `STATIC`, `DYNAMIC`, or `TEMPORARY`.
-        :param short_name: Short name of the arg.
+        :param short_name: Short name of the arg. It does not contain a `-`.
         :param need_initialize: Set whether this arg need to be initialized before using.
         :param other_names: A list of other names of this arg. It could be used when \
             loading args from the saved json files.
@@ -338,7 +339,8 @@ class ArgsManager(BaseObject):
         """
         # Register args before using
         if not self._init_done:
-            self._register(name, default, argtype, short_name,
+            self._register(name, default, argtype,
+                           short_name, other_names,
                            desc_in_model_summary)
             if need_initialize:
                 self._args_need_initialize.append(name)
@@ -354,6 +356,7 @@ class ArgsManager(BaseObject):
                   default: Any,
                   argtype: str,
                   short_name: str | None = None,
+                  other_names: list[str] | None = None,
                   desc_in_model_summary: str | None = None):
         """
         Register a new arg.
@@ -365,6 +368,9 @@ class ArgsManager(BaseObject):
 
             if short_name:
                 self._arg_short_name[short_name] = name
+
+            if other_names is not None and len(other_names):
+                self._arg_aliases[name] = other_names
 
             if d := desc_in_model_summary:
                 self._args_desc[name] = d

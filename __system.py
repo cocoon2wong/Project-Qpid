@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2024-05-30 09:58:23
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-07 09:52:56
+@LastEditTime: 2025-04-14 17:52:32
 @Github: https://cocoon2wong.github.io
 @Copyright 2024 Conghao Wong, All Rights Reserved.
 """
@@ -13,7 +13,7 @@ from . import args, constant, utils
 from .args import Args, EmptyArgs
 from .base import BaseManager
 from .dataset import AgentManager
-from .help import get_doc
+from .help import get_args_docs
 from .model import Model
 from .training import Structure
 
@@ -154,27 +154,37 @@ class SystemManager(BaseManager):
             else:
                 args.ARG_ALIAS[a] = command
 
-    def print_help_info(self, value: str | None = None):
-        files = []
-        for T in self.args_dict.keys():
-            ignore_flag = T._ignore_value_check
-            T._ignore_value_check = True
-            _arg = T(is_temporary=True)
-            files.append(_arg)
-            T._ignore_value_check = ignore_flag
+    def get_all_args_docs(self, filter: str | None = None,
+                          html=False, print_docs=True):
+        """
+        Get the documents of all registered args.
+        It returns a list of strings.
+
+        :param filter: The filter for arg's name. \
+            It matches from the first letter of the name.
+        :param html: Choose whether to return a HTML-format output.
+        :param print_docs: Choose whether to display results to terminals.
+        """
+        args = []
+        for _T in self.args_dict.keys():
+            ignore_flag = _T._ignore_value_check
+            _T._ignore_value_check = True
+
+            _arg = _T(is_temporary=True)
+
+            args.append(_arg)
+            _T._ignore_value_check = ignore_flag
 
         titles = list(self.args_dict.values())
-        doc_lines = get_doc(files, titles)
+        docs = get_args_docs(args, titles, html)
 
-        if value is None:
-            pass
-        elif value == 'all_args':
-            [print(doc) for doc in doc_lines]
-        else:
-            doc_lines = [doc for doc in doc_lines if doc[5:].startswith(value)]
-            [print(doc) for doc in doc_lines]
+        if not ((filter is None) or (filter == 'all_args')):
+            docs = [doc for doc in docs if f'--{filter}' in doc]
 
-        return doc_lines
+        if print_docs:
+            [print(doc) for doc in docs]
+
+        return docs
 
     @overload
     def get_structure(self, name: str) -> type[Structure]: ...

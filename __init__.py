@@ -20,7 +20,8 @@ register_input_type = sys_mgr.register_input_type
 log = sys_mgr.log
 set_log_path = sys_mgr.set_log_path
 set_log_stream_handler = sys_mgr.set_log_stream_handler
-print_help_info = sys_mgr.print_help_info
+
+get_all_args_docs = sys_mgr.get_all_args_docs
 
 
 # Register simple trajectory prediction models
@@ -42,7 +43,7 @@ def entrance(terminal_args: list[str], train_or_test=True):
 
     # Check if `-h` or `--help` in args
     if (h := _temp_args.help) != 'null':
-        print_help_info('all_args' if h == 'True' else h)
+        get_all_args_docs('all_args' if h == 'True' else h)
         exit()
 
     # Init the structure

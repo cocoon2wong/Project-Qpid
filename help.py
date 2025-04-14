@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 19:26:52
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-11 11:21:49
+@LastEditTime: 2025-04-14 17:51:29
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -23,63 +23,132 @@ ARGS_DIC: dict = {
     Args: ['Basic Args', None],
 }
 
+DOC_TEMPLATE_REGULAR = """- `--{}`{}:
+  {}
+    - Type=`{}`, argtype=`{}`;{}
+    - The default value is `{}`.
+"""
 
-def read_comments(args: Args) -> list[str]:
+DOC_TEMPLATE_HTML = """
+<details>
+    <summary>
+        `--{}`{}
+    </summary>
+    <p>
+        {}
+    </p>
+    <ul>
+        <li>Type=`{}`, argtype=`{}`;</li>{}
+        <li>The default value is `{}`.</li>
+    </ul>
+</details>
+"""
+
+
+def get_arg_doc(arg: Args, html=False) -> list[str]:
+    """
+    Get documents of all arg-elements for the given `Args` object.
+    """
 
     results = []
-    for arg in args._arg_list:
+    for name in arg._arg_list:
 
-        name = arg
-        default = args._args_default[name]
+        default = arg._args_default[name]
         dtype = type(default).__name__
-        argtype = args._arg_type[name]
+        argtype = arg._arg_type[name]
 
+        # Check if there are any short names
         short_name_desc = ''
-        if name in args._arg_short_name.values():
+        if name in arg._arg_short_name.values():
             short_names = []
-            for key in args._arg_short_name.keys():
-                if args._arg_short_name[key] == name:
+            for key in arg._arg_short_name.keys():
+                if arg._arg_short_name[key] == name:
                     short_names.append(key)
 
             ss = ' '.join(['`-{}`'.format(s) for s in short_names])
             short_name_desc = f' (short for {ss})'
 
-        doc = getattr(args.__class__, arg).__doc__
+        # Check if there are any aliases
+        other_names_desc = ''
+        if name in arg._arg_aliases.keys():
+            aliases = [f'`--{a}`' for a in arg._arg_aliases[name]]
+
+            if not html:
+                other_names_desc = (
+                    '\n    - This arg can also be spelled as '
+                    + ', '.join(aliases)
+                    + ';'
+                )
+            else:
+                other_names_desc = (
+                    '<li>This arg can also be spelled as'
+                    + ', '.join(aliases)
+                    + ';</li>'
+                )
+
+        doc = getattr(arg.__class__, name).__doc__
 
         if doc is None:
             doc = '(Working in process)'
 
+        # Trim spaces (as tabs) and `\n`s
         doc = doc.replace('\n', ' ')
         for _ in range(MAX_SPACE):
+            if '  ' not in doc:
+                break
             doc = doc.replace('  ', ' ')
 
-        s = (f'- `--{name}`' + short_name_desc +
-             f': type=`{dtype}`, argtype=`{argtype}`.\n' +
-             f' {doc}\n  The default value is `{default}`.')
-        results.append(s + '\n')
-        # print(s)
+        while doc.startswith(' '):
+            doc = doc[1:]
+
+        while doc.endswith(' '):
+            doc = doc[:-1]
+
+        if not doc.endswith('.'):
+            doc += '.'
+
+        # Fill into templates
+        t = DOC_TEMPLATE_REGULAR if not html else DOC_TEMPLATE_HTML
+
+        line = t.format(
+            name, short_name_desc,
+            doc, dtype, argtype,
+            other_names_desc, default,
+        )
+
+        # Post-fix
+        if html:
+            line = re.sub('`(.+?)`', '<code>\\1</code>', line)
+
+        results.append(line)
 
     return results
 
 
-def get_doc(args: list[Args], titles: list[str]) -> list[str]:
+def get_args_docs(args: list[Args], titles: list[str], html=False) -> list[str]:
+    """
+    Get documents from the given `Args` objects.
+    """
 
-    new_lines = []
-    all_args = [[] for _ in range(len(args))]
+    lines = []
+    processed_args = [[] for _ in range(len(args))]
 
     for index, (arg, title) in enumerate(zip(args, titles)):
-        new_lines += [f'\n### {title}\n\n']
-        c = read_comments(arg)
+        lines += [f'\n### {title}\n\n']
+        c = get_arg_doc(arg, html=html)
         c.sort()
 
         for new_line in c:
-            name = new_line.split('`')[1]
-            all_args[index].append(name)
+            if not html:
+                name = new_line.split('`')[1]
+            else:
+                name = re.findall('<code>(.+?)</code>', new_line)[0]
 
-            if (name not in all_args[0]) or (index == 0):
-                new_lines.append(new_line)
+            processed_args[index].append(name)
+            if (name not in processed_args[0]) or (index == 0):
+                lines.append(new_line)
 
-    return new_lines
+    return lines
 
 
 def update_readme(new_lines: list[str], md_file: str):
