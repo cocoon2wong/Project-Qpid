@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-02 15:21:04
+@LastEditTime: 2025-04-22 10:15:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -377,8 +377,29 @@ class Model(torch.nn.Module, BaseManager):
             info.update({'Index of predicted future steps': s})
 
         # Print descriptions of important args
+        sub_dicts: dict[str, dict] = {}
         for _arg in [self.args] + list(self.args._subargs_dict.values()):
             for name, desc in _arg._args_desc.items():
-                info[desc] = _arg._get(name)
+                value = _arg._get(name)
+
+                # Add as a single line
+                if isinstance(desc, str):
+                    info[desc] = value
+
+                # Add as an item of the arg-group
+                elif (isinstance(desc, tuple) or isinstance(desc, list)):
+                    _class, _desc = desc[:2]
+                    _desc = ' ' * 4 + _desc
+
+                    if not _class in sub_dicts.keys():
+                        sub_dicts[_class] = {_class: None}
+
+                    sub_dicts[_class][_desc] = value
+
+                else:
+                    raise ValueError(desc)
+
+        for sub_dict in sub_dicts.values():
+            info.update(sub_dict)
 
         return super().print_info(**info, **kwargs)

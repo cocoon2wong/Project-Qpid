@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 12:41:16
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-04-14 17:27:09
+@LastEditTime: 2025-04-22 10:30:09
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -68,7 +68,7 @@ class ArgsManager(BaseObject):
         self._args_default: dict[str, Any] = {}
 
         # Args' descriptions that appear in the model summary
-        self._args_desc: dict[str, str] = {}
+        self._args_desc: dict[str, str | tuple[str, str]] = {}
 
         # A list to save all registered args' names
         self._arg_list = []
@@ -322,7 +322,7 @@ class ArgsManager(BaseObject):
              short_name: str | None = None,
              need_initialize: bool = False,
              other_names: list[str] | None = None,
-             desc_in_model_summary: str | None = None) -> T:
+             desc_in_model_summary: str | tuple[str, str] | None = None) -> T:
         """
         Get arg from all arg dictionaries according to the priority.
 
@@ -333,9 +333,10 @@ class ArgsManager(BaseObject):
         :param need_initialize: Set whether this arg need to be initialized before using.
         :param other_names: A list of other names of this arg. It could be used when \
             loading args from the saved json files.
-        :param desc_in_model_summary: Set whether this arg appears in the model summary. \
+        :param desc_in_model_summary: Set whether this arg will appear in the model summary. \
             It will not appear when it is set to `None`, and other string values will be \
-            used as the description of this arg.
+            used as the description of this arg. If this arg belongs to some arg-group, \
+            please pass them in the tuple-like way, like `('ARG GROUP', 'Arg desc')`.
         """
         # Register args before using
         if not self._init_done:
@@ -357,7 +358,7 @@ class ArgsManager(BaseObject):
                   argtype: str,
                   short_name: str | None = None,
                   other_names: list[str] | None = None,
-                  desc_in_model_summary: str | None = None):
+                  desc_in_model_summary: str | tuple[str, str] | None = None):
         """
         Register a new arg.
         """

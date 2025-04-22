@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-11-11 10:05:11
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-16 19:22:10
+@LastEditTime: 2025-04-22 10:11:25
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -181,8 +181,11 @@ class BaseObject():
                 if len(value) > utils.LOG_MAX_LIST_LEN:
                     value = list(value[:utils.LOG_MAX_LIST_LEN]) + ['...']
 
+            spaces = len(key) - len(key.lstrip(' '))
+            key = key[spaces:]
+
             if value is not None:
-                print(f'    - {key}: {value}.')
+                print(f'    {" " * spaces}- {key}: {value}.')
             else:
                 print(f'    + {key}:')
 
