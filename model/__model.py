@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-04-22 10:15:04
+@LastEditTime: 2025-04-23 16:38:31
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -353,7 +353,17 @@ class Model(torch.nn.Module, BaseManager):
         weights_name = weights_files[-1]
         p = os.path.join(dir, weights_name)
         dic = torch.load(p, map_location=device)
-        self.load_state_dict(dic)
+
+        # Fully or partially Load weights into models 
+        try:
+            self.load_state_dict(dic, strict=False if self.args.load_part else True)
+        except RuntimeError:
+            self.log('The loaded weight does not match the code. Please ' + 
+                     'check the above outputs for detailed descriptions. ' +
+                     'Consider adding the arg `--load_part` to fix it ' + 
+                     'if you insist on loading this weight.',
+                     level='error', raiseError=ValueError)
+            
         self.log(f'Model weights successfully loaded from `{p}`.')
 
     def print_info(self, **kwargs):

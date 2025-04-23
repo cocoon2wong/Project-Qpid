@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-03 15:33:57
+@LastEditTime: 2025-04-23 16:42:44
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -238,6 +238,17 @@ class Args(ArgsManager):
         NOTE: It only supports training or testing on one GPU.
         """
         return self._arg('gpu', '0', argtype=TEMPORARY)
+
+    @property
+    def load_part(self) -> int:
+        """
+        Choose whether to load only a part of the model weights if the
+        `state_dict` of the saved model and the model in the code do not match.
+
+        *IMPORTANT NOTE*: This arg is only used for some ablation experiments. It
+        MAY lead to incorrect predictions or metrics.
+        """
+        return self._arg('load_part', 0, argtype=TEMPORARY)
 
     @property
     def save_base_dir(self) -> str:
