@@ -9,7 +9,7 @@ breadcrumbs: true
  * @Author: Conghao Wong
  * @Date: 2025-04-11 10:13:41
  * @LastEditors: Conghao Wong
- * @LastEditTime: 2025-04-30 10:53:42
+ * @LastEditTime: 2025-05-19 16:46:55
  * @Github: https://cocoon2wong.github.io
  * Copyright 2025 Conghao Wong, All Rights Reserved.
 -->
@@ -33,6 +33,47 @@ Click the following buttons to learn how it works.
 </div>
 
 ## Getting Started
+
+### Dataset Preparation
+
+Please process the original dataset files to produce `qpid`-readable data files, including all processed dataset files in `dataset_processed` and their corresponding configs in `dataset_configs`.
+See the required data formats in [this document](./docs/dataset/file-formats).
+
+For datasets used in our paper, you can use the attached `dataset_original` module to generate processed dataset files.
+
+> [!WARNING]
+> Make sure that the submodule `dataset_original` is properly initialized if you want to generate dataset files in this way.
+> Please use `git submodule update --init --recursive` to initialize all submodules.
+
+> [!NOTE]
+> We have also provided our used dataset files in [this page](./docs/dataset/create-processed-dataset-files).
+> You can download them and put them into the `dataset_configs` and `dataset_processed` folders manually.
+
+For example, you can run the following commands *line-by-line* to generate processed files in `ETH-UCY` and `SDD` (Stanford Drone Dataset):
+
+```bash
+cd dataset_original
+python main_ethucysdd.py
+```
+
+Then, make soft links of these folders (or you can simply copy them manually)
+
+```bash
+cd ..
+ln -s ./dataset_original/dataset_configs ./
+ln -s ./dataset_original/dataset_processed ./
+```
+
+These processed dataset folders should be organized in the following way:
+
+```none
+(ROOT_DIR)
+|__qpid
+|__dataset_original
+|__dataset_configs
+|__dataset_processed
+|__...
+```
 
 ### Code Entrance
 
@@ -134,3 +175,6 @@ Here, we can see several properties of this arg, including
   For example, `--batch_size 1000` equals to the short-name-value `-bs 1000`, while `--bs 1000` is not a valid arg and the code will not parse it.
 
 - **Default Value**
+
+  Default values of these args.
+  It works for each arg when there are no manaul inputs from the terminal or saved values from the `args.json` file.
