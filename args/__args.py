@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-04-23 16:42:44
+@LastEditTime: 2025-05-22 15:12:31
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -417,6 +417,14 @@ class Args(ArgsManager):
         This arg only works for multiple-generation models.
         """
         return self._arg('K_train', 10, argtype=STATIC)
+
+    @property
+    def down_sampling_rate(self) -> float:
+        """
+        Selects whether to down-sample from multiple-generated predicted
+        trajectories. This arg only works for multiple-generative models.
+        """
+        return self._arg('down_sampling_rate', 1.0, argtype=TEMPORARY)
 
     @property
     def anntype(self) -> str:

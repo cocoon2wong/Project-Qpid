@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-02 16:09:19
+@LastEditTime: 2025-05-22 15:14:59
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -456,8 +456,15 @@ class Structure(BaseManager):
             x = move_to_device(x, self.device)
             gt = move_to_device(gt, self.device)
 
-            # Run model, compute metrics and loss
+            # Run model
             batch_outputs = self.model.implement(x)
+
+            # Down-sampling from multiple predictions (if needed)
+            if (r := self.args.down_sampling_rate) < 1.0:
+                batch_outputs = self.model.down_sample_predictions(
+                    outputs=batch_outputs, inputs=x, rate=r)
+
+            # Compute metrics and loss functions
             self.metrics.compute(batch_outputs, gt, x)
 
             if self.args.compute_loss:
@@ -631,41 +638,3 @@ def stack_batch_outputs(outputs):
             raise NotImplementedError
 
     return final_outputs
-
-
-@overload
-def weighted_average(inputs: list[torch.Tensor],
-                     weights: list[int]) -> torch.Tensor: ...
-
-
-@overload
-def weighted_average(inputs: list[list[torch.Tensor]],
-                     weights: list[int], return_numpy: bool) -> \
-    list[np.ndarray]: ...
-
-
-@overload
-def weighted_average(inputs: list[torch.Tensor],
-                     weights: list[int], return_numpy: bool) -> \
-    np.ndarray: ...
-
-
-def weighted_average(inputs: list[torch.Tensor] | list[list[torch.Tensor]],
-                     weights: list[int], return_numpy=False):
-    """
-    Weighted sum all the inputs.
-    NOTE: `inputs` and `weights` should have the same length.
-    """
-    x = torch.tensor(inputs, dtype=torch.float32)
-    w = torch.tensor(weights, dtype=torch.float32)
-    count = torch.sum(w)
-
-    while w.ndim < x.ndim:
-        w = w[..., None]
-
-    res = torch.sum(x * w / count, dim=0)
-
-    if return_numpy:
-        res = res.numpy()
-
-    return list(res) if res.ndim else res

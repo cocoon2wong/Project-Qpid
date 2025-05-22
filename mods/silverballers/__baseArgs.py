@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-09-06 18:46:53
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-30 09:52:42
+@LastEditTime: 2025-05-22 15:04:00
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -26,14 +26,6 @@ class SilverballersArgs(EmptyArgs):
         (it does not contain any blanks).
         """
         return self._arg('loads', 'null', argtype=TEMPORARY)
-
-    @property
-    def down_sampling_rate(self) -> float:
-        """
-        Down sampling rate to sample trajectories from
-        all N = K*Kc trajectories.
-        """
-        return self._arg('down_sampling_rate', 1.0, argtype=TEMPORARY)
 
     @property
     def pick_trajectories(self) -> float:

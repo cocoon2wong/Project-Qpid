@@ -2,15 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-06-22 09:58:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-09 19:15:02
+@LastEditTime: 2025-05-22 15:14:12
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import os
-
-import torch
 
 import qpid
 from qpid.args import Args
@@ -89,18 +87,8 @@ class SilverballersModel(Model):
                 keypoints = model_outputs[index_last][0]
                 _inputs = _inputs + [keypoints]
 
+            # Run this submodel and save outputs
             _outputs = net.implement(_inputs)
-
-            # Down sampling from K*Kc generations (if needed)
-            if self.s_args.down_sampling_rate < 1.0:
-                _pred = _outputs[0]
-                K_current = _pred.shape[-3]
-                K_new = K_current * self.s_args.down_sampling_rate
-                new_index = torch.randperm(K_current)[:int(K_new)]
-                _pred = _pred[..., new_index, :, :]
-                _outputs[0] = _pred
-
-            # Save outputs
             model_outputs[index] = _outputs
 
         return [_outputs[0]] + list(model_outputs.values())
@@ -182,7 +170,7 @@ class SilverballersMKII(Structure):
             self.substructures.append(s)
 
             if ((len(s.model.output_pred_steps) == s.args.pred_frames) or
-                (s.model.as_final_stage_model)):
+                    (s.model.as_final_stage_model)):
                 break
 
         self.set_args(main_args, ref_args=self.substructures[0].args)

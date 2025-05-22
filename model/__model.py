@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-04-23 16:38:31
+@LastEditTime: 2025-05-22 15:10:13
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -262,6 +262,43 @@ class Model(torch.nn.Module, BaseManager):
         # Postprocess
         return self.processor(outputs, preprocess=False, training=training)
 
+    def down_sample_predictions(self, outputs: list[torch.Tensor],
+                                inputs: list[torch.Tensor],
+                                rate: float) -> list[torch.Tensor]:
+        """
+        Down-sampling the final predicted trajectories (if this model is a 
+        multiple-generative model).
+        NOTE: This method is typically used when the required number of
+        trajectories is less than the actual model's generated ones.
+
+        :param outputs: All this model's outputs.
+        :param inputs: All this model's inputs. This is used to check if the \
+            model is a multi-generation model.
+        :param rate: The down-sampling rate, from 0.0 to 1.0.
+
+        :return outputs: The list of outputs, containing the down-sampled \
+            forecasted trajectories.
+        """
+        # Unpack outputs and inputs
+        x = self.get_input(inputs, INPUT_TYPES.OBSERVED_TRAJ)
+        y = outputs[0]
+
+        if x.ndim == y.ndim:
+            self.log('It seems that you are trying to down-sample outputs ' +
+                     'from this non-multi-generative model. ' +
+                     'Please check your args.',
+                     level='warning')
+            return outputs
+
+        # Shape of `x` is `(..., obs, dim)`
+        # Shape of `y` is `(..., K, pred, dim)`
+        k_current = y.shape[-3]
+        k_new = int(k_current * rate)
+        k_selected = torch.randperm(k_current)[:k_new]
+
+        y_selected = y[..., k_selected, :, :]
+        return [y_selected] + outputs[1:]
+
     def set_inputs(self, *args):
         """
         Set input types of the model.
@@ -354,16 +391,17 @@ class Model(torch.nn.Module, BaseManager):
         p = os.path.join(dir, weights_name)
         dic = torch.load(p, map_location=device)
 
-        # Fully or partially Load weights into models 
+        # Fully or partially Load weights into models
         try:
-            self.load_state_dict(dic, strict=False if self.args.load_part else True)
+            self.load_state_dict(
+                dic, strict=False if self.args.load_part else True)
         except RuntimeError:
-            self.log('The loaded weight does not match the code. Please ' + 
+            self.log('The loaded weight does not match the code. Please ' +
                      'check the above outputs for detailed descriptions. ' +
-                     'Consider adding the arg `--load_part` to fix it ' + 
+                     'Consider adding the arg `--load_part` to fix it ' +
                      'if you insist on loading this weight.',
                      level='error', raiseError=ValueError)
-            
+
         self.log(f'Model weights successfully loaded from `{p}`.')
 
     def print_info(self, **kwargs):
