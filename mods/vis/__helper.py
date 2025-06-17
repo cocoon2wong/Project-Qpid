@@ -2,26 +2,31 @@
 @Author: Conghao Wong
 @Date: 2022-09-29 09:53:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-11-11 13:53:44
+@LastEditTime: 2025-06-17 21:10:24
 @Description: png content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import os
+from typing import TypeVar
 
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
 
 from ...constant import ANN_TYPES
 from ...utils import INIT_POSITION, ROOT_TEMP_DIR, dir_check
-from .settings import (DISTRIBUTION_TEMP_NAME, DISTRIBUTION_TEMP_PATH,
-                       IF_DRAW_LINES)
+from .__args import VisArgs
+from .settings import DISTRIBUTION_TEMP_NAME, DISTRIBUTION_TEMP_PATH
+
+T = TypeVar('T', np.ndarray, Figure)
 
 
 class BaseVisHelper():
-    def __init__(self):
-        self.draw_lines = IF_DRAW_LINES
+    def __init__(self, args: VisArgs):
+        self.args = args
 
     def draw_single(self, source: np.ndarray,
                     inputs: np.ndarray,
@@ -40,7 +45,7 @@ class BaseVisHelper():
                   png: np.ndarray,
                   color=(255, 255, 255),
                   width=3,
-                  draw_lines: bool | int = True):
+                  do_not_draw_lines: None | bool = None) -> np.ndarray:
         """
         Draw one trajectory on the source image.
 
@@ -50,44 +55,42 @@ class BaseVisHelper():
         """
         raise NotImplementedError
 
-    def draw_dis(self, source: np.ndarray,
-                 inputs: np.ndarray,
+    def draw_dis(self, source: T,
+                 pred: np.ndarray,
                  alpha: float,
-                 steps: str = 'all',
-                 plt_mode: bool = False):
+                 *args, **kwargs) -> T:
         """
         Draw model predicted trajectories in the distribution way.
 
-        :param source: The background image.
-        :param inputs: Model predictions, shape = ((K), steps, dim).
+        :param source: The background image or the plt canvas.
+        :param pred: Model predictions, shape = ((K), steps, dim).
         :param alpha: Transparency (from 0 to 1).
-        :param steps: Indices of the predicted steps to be visualized. \
-            It accepts a string that contains several integers split by `_`. \
-            For example, `'0_6_11'`.
-        :param plt_mode: (Do not change it manually)
         """
 
-        import seaborn as sns
-        from matplotlib import pyplot as plt
-
-        if steps != 'all':
+        # Prepare model predictions
+        if (steps := self.args.distribution_steps) != 'all':
             _indices = [int(ii) for ii in steps.split('_') if len(ii)]
             _indices = np.array(_indices)
-            dat = inputs[..., _indices, :]
+            dat = pred[..., _indices, :]
         else:
-            dat = inputs
+            dat = pred
 
         dat = dat.reshape([-1, 2])   # inputs shape: ((K), steps, dim)
 
-        if not plt_mode:
+        # Prepare canvas
+        if not isinstance(source, Figure):
             h, w = source.shape[:2]
             plt.figure(figsize=(h/100, w/100), dpi=100)
 
+        # Draw distribution
+        import seaborn as sns
         sns.kdeplot(x=dat[..., 0], y=dat[..., 1], fill=True)
 
-        if plt_mode:
+        if isinstance(source, Figure):
             return source
 
+        # Post process images
+        # (by adding distributions to the original image)
         plt.subplots_adjust(top=1, bottom=0, right=1,
                             left=0, hspace=0, wspace=0)
         plt.margins(0, 0)
@@ -110,8 +113,6 @@ class BaseVisHelper():
 
 
 class CoordinateHelper(BaseVisHelper):
-    def __init__(self):
-        super().__init__()
 
     def draw_single(self, source: np.ndarray,
                     inputs: np.ndarray,
@@ -124,7 +125,7 @@ class CoordinateHelper(BaseVisHelper):
                   png: np.ndarray,
                   color: None | tuple[int, int, int] = None,
                   width=3,
-                  draw_lines=True):
+                  do_not_draw_lines: None | bool = None):
 
         if inputs.max() >= 0.5 * INIT_POSITION:
             return source
@@ -133,7 +134,7 @@ class CoordinateHelper(BaseVisHelper):
         _color = (255, 255, 255) if color is None else color
 
         # draw lines
-        if draw_lines and self.draw_lines and steps >= 2:
+        if (self.args.draw_lines and steps >= 2) and (not do_not_draw_lines):
             _lines = np.zeros_like(source)
             traj = np.column_stack([inputs.T[1], inputs.T[0]])
             for left, right in zip(traj[:-1], traj[1:]):
@@ -170,8 +171,6 @@ class CoordinateHelper(BaseVisHelper):
 
 
 class BoundingboxHelper(BaseVisHelper):
-    def __init__(self):
-        super().__init__()
 
     def draw_single(self, source: np.ndarray,
                     inputs: np.ndarray,
@@ -200,7 +199,7 @@ class BoundingboxHelper(BaseVisHelper):
                   png: np.ndarray,
                   color=(255, 255, 255),
                   width=3,
-                  draw_lines=True):
+                  do_not_draw_lines: None | bool = None):
 
         if inputs.max() >= 0.5 * INIT_POSITION:
             return source
@@ -209,12 +208,12 @@ class BoundingboxHelper(BaseVisHelper):
             inputs = np.reshape(inputs, [-1, inputs.shape[-1]])
 
         for box in inputs:
-            source = self.draw_single(
-                source, box, png, color, width, draw_center=draw_lines)
+            source = self.draw_single(source, box, png, color, width,
+                                      draw_center=self.args.draw_lines)
         return source
 
 
-def get_helper(anntype: str) -> BaseVisHelper:
+def get_helper(anntype: str, vis_args: VisArgs) -> BaseVisHelper:
     if anntype == ANN_TYPES.CO_2D:
         h = CoordinateHelper
     elif anntype == ANN_TYPES.BB_2D:
@@ -222,7 +221,7 @@ def get_helper(anntype: str) -> BaseVisHelper:
     else:
         raise NotImplementedError(anntype)
 
-    return h()
+    return h(vis_args)
 
 
 def ADD(source: np.ndarray,

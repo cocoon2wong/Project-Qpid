@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-05-14 11:24:05
+@LastEditTime: 2025-06-17 20:46:52
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -89,3 +89,12 @@ class VisArgs(EmptyArgs):
         observation moment.
         """
         return self._arg('draw_full_neighbors', 0, argtype=TEMPORARY)
+
+    @property
+    def draw_with_plt(self) -> int:
+        """
+        (bool) Choose whether to use PLT as the preferred method for
+        visualizing trajectories (on the empty canvas). It will try to
+        visualize all points on the scene images if this arg is not enabled. 
+        """
+        return self._arg('draw_with_plt', 0, argtype=TEMPORARY)

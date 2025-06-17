@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-11-07 21:21:56
+@LastEditTime: 2025-06-17 21:14:33
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -11,9 +11,11 @@
 import os
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
 
 from ...base import BaseManager, SecondaryBar
 from ...dataset import AnnotationManager, Clip, SplitManager
@@ -21,26 +23,11 @@ from ...dataset.__base import BaseInputObject
 from ...dataset.agent_based import Agent
 from ...model import Model
 from ...training import Structure
-from ...utils import dir_check, get_relative_path
+from ...utils import dir_check
 from .__args import VisArgs
 from .__helper import ADD, get_helper
-from .settings import IF_PUT_TEXT_IN_VIDEOS
-
-OBS_IMAGE = 'obs_small.png'
-NEI_OBS_IMAGE = 'neighbor_small.png'
-CURRENT_IMAGE = 'neighbor_current.png'
-GT_IMAGE = 'gt_small.png'
-PRED_IMAGE = 'pred_small.png'
-
-OBS_IMAGE = get_relative_path(__file__, OBS_IMAGE)
-NEI_OBS_IMAGE = get_relative_path(__file__, NEI_OBS_IMAGE)
-CURRENT_IMAGE = get_relative_path(__file__, CURRENT_IMAGE)
-GT_IMAGE = get_relative_path(__file__, GT_IMAGE)
-PRED_IMAGE = get_relative_path(__file__, PRED_IMAGE)
-
-DRAW_ON_VIDEO = 0
-DRAW_ON_IMAGE = 1
-DRAW_ON_EMPTY = 2
+from .__vis_plt import text_plt, vis_plt
+from .settings import *
 
 
 class Visualization(BaseManager):
@@ -55,7 +42,8 @@ class Visualization(BaseManager):
         self.manager: Structure
 
         # Init vis-related args
-        self.vis_args = self.args.register_subargs(VisArgs, __package__)
+        self.vis_args = self.args.register_subargs(
+            VisArgs, 'Visualization Args')
 
         # Get information of the video clip
         self.info: Clip = self.manager.split_manager.clips_dict[clip]
@@ -73,7 +61,7 @@ class Visualization(BaseManager):
             self.scene_image = None
 
         # annotation helper
-        self.helper = get_helper(self.args.anntype)
+        self.helper = get_helper(self.args.anntype, self.vis_args)
 
         # Read png files
         self.obs_file = cv2.imread(OBS_IMAGE, -1)
@@ -154,7 +142,7 @@ class Visualization(BaseManager):
             self.draw(agent=agent,
                       frames=frames,
                       save_name=save_format.format(index),
-                      save_as_images=save_image,
+                      draw_with_plt=self.vis_args.draw_with_plt,
                       traj_wise_outputs=to,
                       agent_wise_outputs=ao)
 
@@ -174,6 +162,12 @@ class Visualization(BaseManager):
         _, f = self.video_capture.read()
         f = self.rescale(f)
         return f
+
+    def get_static_image(self) -> np.ndarray:
+        if self.scene_image is None:
+            raise ValueError
+
+        return self.rescale(self.scene_image.copy())
 
     def get_text(self, frame: int, agent: BaseInputObject) -> list[str]:
         return [self.info.clip_name,
@@ -265,160 +259,181 @@ class Visualization(BaseManager):
         return f
 
     def draw(self, agent: BaseInputObject,
-             frames: list[int] | np.ndarray,
+             frames: int | list[int] | np.ndarray,
              save_name: str,
-             save_name_with_frame=True,
-             draw_with_plt=False,
+             save_name_postfix=True,
+             draw_with_plt: int | bool = False,
              interp=True,
-             save_as_images=False,
              traj_wise_outputs: dict = {},
-             agent_wise_outputs: dict = {}):
+             agent_wise_outputs: dict = {}) -> str:
         """
-        Draw trajectories on the video.
+        Visualize forecasted trajectories.
 
         :param agent: The agent object (`Agent`) to visualize.
-        :param frames: A list frames of current observation steps.
-        :param save_name: The name to save the output video, which does not contain \
-            the file format.
-        :param save_name_with_frame: Choose whether to add the `frame_index` after \
-            the file name. (For example, `'zara1_0.jpg'` -> `'zara1_0_70.jpg'`)
+        :param frames: A list frames of current observation steps to be \
+            visualized. Pass a list with only one element or a single int \
+            value to visualize forecasted trajectories as an image file.
+        :param save_name: The name to save the output video, which does not \
+            contain the file format.
+        :param save_name_postfix: Choose whether to add the `frame_index` \
+            after the file name. (Like `'zara1_0.jpg'` -> `'zara1_0_70.jpg'`)
         :param draw_with_plt: Choose whether to draw with plt by default.
         :param interp: Choose whether to draw the full video or only
             draw on the sampled time steps.
-        :param save_as_images: Choose if to save as an image or a video clip.
         :param traj_wise_outputs: Extra trajectory-wise model outputs.
         :param agent_wise_outputs: Extra agent-wise model outputs.
+
+        :return file_name: Name of the saved image (at the current moment).
         """
 
-        video_writer = None
-        status: int = -1
-        f_empty = None
+        # Prepare folder
+        dir_check(os.path.dirname(save_name))
 
         # Try obtaining the RGB image
-        if self.video_capture is not None:
-            f = self.get_image(frames[0])
-            status = DRAW_ON_VIDEO
-        elif self.scene_image is not None:
-            f = np.array(self.scene_image).copy()
-            f = self.rescale(f)
-            status = DRAW_ON_IMAGE
-        else:
-            f = None
-            status = DRAW_ON_EMPTY
-
         # Decide to draw on RGB images or plt canvas
-        if (f is not None) and (not draw_with_plt):
-            vis_func = self.vis
-            text_func = self.text
-            real2pixel = True
-            f_empty = np.zeros((f.shape[0], f.shape[1], 4))
-            if self.vis_args.draw_on_empty_canvas:
-                f = 255 * np.ones_like(f)
-        else:
-            vis_func = self._visualization_plt
-            text_func = self._put_text_plt
+        status = -1
+        f = None
+
+        if not draw_with_plt:
+            if self.video_capture is not None:
+                status = DRAW_ON_VIDEO
+                fps = self.info.paras[1]
+            elif self.scene_image is not None:
+                status = DRAW_ON_IMAGE
+                fps = self.info.paras[1]
+            else:
+                draw_with_plt = True
+
+            if not draw_with_plt:
+                vis_func = self.vis
+                text_func = self.text
+                real2pixel = True
+                f = self.get_static_image()
+                if self.vis_args.draw_on_empty_canvas:
+                    f = 255 * np.ones_like(f)
+
+        if draw_with_plt:
+            vis_func = vis_plt
+            text_func = text_plt
             real2pixel = False
-            plt.figure()
+            f = plt.figure()
+            status = DRAW_ON_PLTCANVAS
+            fps = 1 / self.args.interval
+
+        # Get shape of the target video
+        if isinstance(f, np.ndarray):
+            video_shape = (f.shape[1], f.shape[0])
+        elif isinstance(f, Figure):
+            _shape = f.get_size_inches() * 100
+            video_shape = (int(_shape[0]), int(_shape[1]))
+        else:
+            raise ValueError(f)
 
         # Prepare trajectories
         sampled_frames: list[int] = list(agent.frames)
-        obs_len = agent.obs_length
         obs, pred, gt, nei = self.get_trajectories(agent, real2pixel)
+        obs_len = agent.obs_length
+
+        # Visualize as a single image
+        if isinstance(frames, int):
+            frames = [frames]
+            video_writer = None
+            pred_colors = None
+
+        # Open the video writer
+        else:
+            if status == DRAW_ON_PLTCANVAS:
+                frames = frames[:obs_len]
+
+            if pred is not None:
+                pred_colors = 255 * np.random.rand(pred.shape[0], 3)
+
+            video_writer = cv2.VideoWriter(
+                save_name + '.mp4',
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                fps=fps,
+                frameSize=video_shape,
+            )
 
         # Interpolate frames
-        if interp:
+        if interp and (status != DRAW_ON_PLTCANVAS):
             frames = np.arange(frames[0], frames[-1]+1)
 
-        # Vis on a single frame of image
-        if save_as_images:
-            start_frame = frames[0]
+        # Config the timebar
+        desc = 'Processing frames...'
+        if not self.bar:
+            timebar = self.timebar(frames, desc)
+        else:
+            timebar = SecondaryBar(frames, manager=self, desc=desc)
 
-            # Draw trajectories
-            f = vis_func(f, obs, gt, pred, neighbor=nei)
-
-            # Put text (top-left)
-            f = text_func(f, self.get_text(start_frame, agent))
-
-            # Put trajectory-wise outputs
-            if self.vis_args.draw_extra_outputs:
-                # Put text (trajectory-wise)
-                for index in range(len(pred)):
-                    pos = pred[index, -1]
-                    text = [f'{v[index]:.2f}' for (
-                        k, v) in traj_wise_outputs.items()]
-                    f = text_func(f, texts=text, x=pos[1], y=pos[0],
-                                  font=cv2.FONT_HERSHEY_SIMPLEX,
-                                  size=0.5, width=2, line_height=30,
-                                  shadow_bias=1)
-
-                # TODO: draw agent-wise outputs on images
-
-            if save_name_with_frame:
-                _name = save_name + f'_{start_frame}.jpg'
-            else:
-                _name = save_name
-
-            dir_check(os.path.dirname(_name))
-            if ((status in [DRAW_ON_IMAGE, DRAW_ON_VIDEO])
-                    and (not draw_with_plt)):
-                cv2.imwrite(_name, f)
-            else:
-                plt.savefig(_name)
-                plt.close()
-            return
-
-        dir_check(os.path.dirname(save_name))
-        video_shape = (f.shape[1], f.shape[0])
-        video_writer = cv2.VideoWriter(save_name + '.mp4',
-                                       cv2.VideoWriter_fourcc(*'mp4v'),
-                                       self.info.paras[1],
-                                       video_shape)
-
-        # Continue vis as a short video clip
-        f_pred = vis_func(f_empty, pred=pred)
-        f_others = np.zeros_like(f_pred)
-
-        for frame in SecondaryBar(frames,
-                                  manager=self,
-                                  desc='Processing frames...'):
+        for frame in timebar:
             # Get a new scene image
             if status == DRAW_ON_VIDEO:
                 f = self.get_image(frame)
             elif status == DRAW_ON_IMAGE:
-                f = self.scene_image.copy()
-            elif status == DRAW_ON_EMPTY:
-                f = None
+                f = self.get_static_image()
+            elif status == DRAW_ON_PLTCANVAS:
+                plt.close(PLT_CANVAS_TITLE)
+                f = plt.figure(PLT_CANVAS_TITLE)
             else:
                 raise ValueError(status)
 
             if frame in sampled_frames:
                 step = sampled_frames.index(frame)
-                if step < obs_len:
-                    start, end = [max(0, step-1), step+1]
-                    f_others = vis_func(
-                        f_others, obs=obs[start:end],
-                        neighbor=nei[:, start:end] if nei is not None else None)
+                obs_end = min(step, obs_len) + 1
+                nei_end = min(step, obs_len + 1) + 1
+                if nei_end > obs_len + 1:
+                    nei_end = 0
+
+                if step > obs_len and (gt is not None):
+                    gt_end = step - obs_len + 1
                 else:
-                    step -= obs_len
-                    start, end = [max(0, step-1), step+1]
-                    f_others = vis_func(f_others, gt=gt[start:end])
+                    gt_end = 0
+
+            if nei_end > 0 and (nei is not None):
+                f = vis_func(source=f, neighbor=nei[:, :nei_end])
+
+            f = vis_func(source=f, obs=obs[:obs_end])
 
             # Draw predictions
-            if frame > sampled_frames[obs_len-1]:
-                f = vis_func(f, background=f_pred)
+            if frame >= sampled_frames[obs_len-1]:
+                f = vis_func(source=f, pred=pred, pred_colors=pred_colors)
 
-            # Draw observations and groundtruths
-            f = vis_func(f, background=f_others)
+            if gt_end > 0 and (gt is not None):
+                f = vis_func(source=f, neighbor=gt[None, :step - obs_len + 1])
+                f = vis_func(source=f, gt=gt[:step - obs_len + 1])
 
             if IF_PUT_TEXT_IN_VIDEOS:
                 f = text_func(f, self.get_text(frame, agent))
 
-            video_writer.write(f)
+            # Save as images (on sampled points)
+            if frame in sampled_frames:
+                name_postfix = f'_f{frame}.jpg' if save_name_postfix else ''
+                saved_img_name = save_name + name_postfix
+                if isinstance(f, np.ndarray):
+                    cv2.imwrite(saved_img_name, f)
+
+                elif isinstance(f, Figure):
+                    f.savefig(saved_img_name)
+                    plt.close(f)
+
+            if video_writer is not None:
+                if isinstance(f, Figure):
+                    f = cv2.imread(saved_img_name)
+
+                if f is not None:
+                    video_writer.write(f)
+
+        return saved_img_name
 
     def vis(self, source: np.ndarray,
-            obs=None, gt=None, pred=None,
-            neighbor=None,
-            background: np.ndarray | None = None):
+            obs: np.ndarray | None = None,
+            gt: np.ndarray | None = None,
+            pred: np.ndarray | None = None,
+            neighbor: np.ndarray | None = None,
+            background: np.ndarray | None = None,
+            pred_colors: np.ndarray | None = None,
+            *args, **kwargs):
         """
         Draw one agent's observations, predictions, and groundtruths.
 
@@ -438,14 +453,12 @@ class Visualization(BaseManager):
         if neighbor is not None:
             f = self.helper.draw_traj(f, neighbor[..., -1:, :],
                                       self.current_file,
-                                      draw_lines=False)
+                                      do_not_draw_lines=True)
 
             neighbor = neighbor if self.vis_args.draw_full_neighbors \
                 else neighbor[..., -1:, :]
             for nei in neighbor:
-                f = self.helper.draw_traj(
-                    f, nei, self.neighbor_file,
-                    draw_lines=self.vis_args.draw_lines)
+                f = self.helper.draw_traj(f, nei, self.neighbor_file)
 
         # draw predicted trajectories
         if pred is not None:
@@ -454,11 +467,13 @@ class Visualization(BaseManager):
                 f = self.helper.draw_dis(f, pred, alpha=alpha,
                                          steps=self.vis_args.distribution_steps)
             else:
-                for pred_k in pred:
+                if pred_colors is None:
+                    pred_colors = 255 * np.random.rand(pred.shape[0], 3)
+
+                for (pred_k, color_k) in zip(pred, pred_colors):
                     f = self.helper.draw_traj(
                         f, pred_k, self.pred_file,
-                        draw_lines=self.vis_args.draw_lines,
-                        color=255 * np.random.rand(3))
+                        color=color_k)
 
         # draw observed and groundtruth trajectories
         if obs is not None:
@@ -466,16 +481,14 @@ class Visualization(BaseManager):
                 obs = obs[np.newaxis]
 
             for _obs in obs:
-                f = self.helper.draw_traj(f, _obs, self.obs_file,
-                                          draw_lines=self.vis_args.draw_lines)
+                f = self.helper.draw_traj(f, _obs, self.obs_file)
 
         if gt is not None:
             if gt.ndim == 2:
                 gt = gt[np.newaxis]
 
             for _gt in gt:
-                f = self.helper.draw_traj(f, _gt, self.gt_file,
-                                          draw_lines=self.vis_args.draw_lines)
+                f = self.helper.draw_traj(f, _gt, self.gt_file)
 
         # draw the background image
         if background is not None:
@@ -493,7 +506,8 @@ class Visualization(BaseManager):
              size: float = 0.9,
              width: int = 2,
              line_height: int = 30,
-             shadow_bias: int = 3) -> np.ndarray:
+             shadow_bias: int = 3,
+             *args, **kwargs) -> np.ndarray:
         """
         Put text on one image
         """
@@ -514,87 +528,3 @@ class Visualization(BaseManager):
                             thickness=width)
 
         return f
-
-    def _visualization_plt(self, f,
-                           obs=None, gt=None, pred=None,
-                           neighbor=None,
-                           **kwargs):
-        """
-        Vis with plt (It only support 2D coordinates now).
-
-        :param f: (Useless in this method.)
-        :param obs: Observations, shape = (..., 2)
-        """
-
-        _p = '-' if self.vis_args.draw_lines else ''
-
-        # draw neighbors' trajectories
-        if neighbor is not None:
-            neighbor = neighbor[None] if neighbor.ndim == 2 else neighbor
-            for nei in neighbor:
-                plt.plot(nei[-1, 0], nei[-1, 1], _p + 'o',
-                         color='darkorange', markersize=13)
-
-                plt.plot(nei[:, 0], nei[:, 1], _p + 's', color='purple')
-
-        # draw observations
-        if obs is not None:
-            obs = obs[None] if obs.ndim == 2 else obs
-            for o in obs:
-                plt.plot(o[:, 0], o[:, 1], _p + 's', color='cornflowerblue')
-
-        if gt is not None:
-            gt = gt[None] if gt.ndim == 2 else gt
-            for g in gt:
-                plt.plot(g[:, 0], g[:, 1], _p + 's', color='lightgreen')
-
-        if pred is not None:
-            pred = pred[None] if pred.ndim == 2 else pred
-
-            # Draw as the trajectory distribution
-            if self.vis_args.draw_distribution:
-                f = self.helper.draw_dis(f, pred, alpha=1.0,
-                                         steps=self.vis_args.distribution_steps,
-                                         plt_mode=True)
-
-            # Draw as multiple trajectories
-            else:
-                for p in pred:
-                    plt.plot(p[:, 0], p[:, 1], _p + 's')
-
-        plt.axis('equal')
-
-    def _put_text_plt(self, f: np.ndarray, texts: list[str], *args, **kwargs):
-        plt.title(', '.join(texts))
-
-
-def __draw_single_boundingbox(source, box: np.ndarray, png_file,
-                              color, width, alpha):
-    """
-    The shape of `box` is `(4)`.
-    """
-    (y1, x1, y2, x2) = box[:4]
-    cv2.rectangle(img=source,
-                  pt1=(x1, y1),
-                  pt2=(x2, y2),
-                  color=color,
-                  thickness=width)
-    return source
-
-
-def __draw_traj_boundingboxes(source, trajs, png_file,
-                              color, width, alpha):
-    """
-    The shape of `trajs` is `(steps, 4)`.
-    """
-    for box in trajs:
-        source = __draw_single_boundingbox(
-            source, box, png_file, color, width, alpha)
-
-    # draw center point
-    source[:, :, 3] = alpha * 255 * source[:, :, 0]/color[0]
-    for box in trajs:
-        source = ADD(source, png_file,
-                     ((box[1]+box[3])//2, (box[0]+box[2])//2))
-
-    return source
