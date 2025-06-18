@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-06-17 21:14:33
+@LastEditTime: 2025-06-18 09:41:28
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -14,7 +14,6 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from ...base import BaseManager, SecondaryBar
@@ -93,14 +92,8 @@ class Visualization(BaseManager):
 
         # Unpack model outputs
         pred_all = outputs[0].numpy()
-        traj_wise_outputs = dict([
-            (key, outputs[i].numpy())
-            for i, key in self.model.ext_traj_wise_outputs.items()])
 
-        agent_wise_outputs = dict([
-            (key, outputs[i].numpy())
-            for i, key in self.model.ext_agent_wise_outputs.items()])
-
+        # Filter agents by their indices and types
         if self.vis_args.draw_index == 'all':
             agent_indexes = list(range(len(pred_all)))
         else:
@@ -111,25 +104,18 @@ class Visualization(BaseManager):
         if self.vis_args.draw_exclude_type != 'null':
             ex_types = self.vis_args.draw_exclude_type.split("_")
 
+        # Start visualizing
         self.log(f'Start saving images into `{img_dir}`...')
         for index in self.timebar(agent_indexes, 'Saving...'):
             # Write traj into the agent
             agent = self.manager.agent_manager.agents[index]
             agent.write_pred(pred_all[index])
 
-            # Get extra model outputs
-            to = dict([(k, v[index])
-                       for (k, v) in traj_wise_outputs.items()])
-            ao = dict([(k, v[index])
-                       for (k, v) in agent_wise_outputs.items()])
-
             # choose to draw as a video or a single image
             if self.args.draw_videos != 'null':
-                save_image = False
                 frames = agent.frames
             else:
-                save_image = True
-                frames = [agent.frames[self.args.obs_frames-1]]
+                frames = agent.frames[self.args.obs_frames - 1]
 
             skip = False
             for extype in ex_types:
@@ -142,9 +128,7 @@ class Visualization(BaseManager):
             self.draw(agent=agent,
                       frames=frames,
                       save_name=save_format.format(index),
-                      draw_with_plt=self.vis_args.draw_with_plt,
-                      traj_wise_outputs=to,
-                      agent_wise_outputs=ao)
+                      draw_with_plt=self.vis_args.draw_with_plt)
 
         self.log(f'Prediction result images are saved at {img_dir}')
 
@@ -335,8 +319,9 @@ class Visualization(BaseManager):
         obs_len = agent.obs_length
 
         # Visualize as a single image
-        if isinstance(frames, int):
-            frames = [frames]
+        if (isinstance(frames, (int, float)) or
+                (getattr(frames, 'size', 0) == 1)):
+            frames = [int(frames)]
             video_writer = None
             pred_colors = None
 

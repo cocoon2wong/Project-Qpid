@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 16:14:03
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-05-22 15:10:13
+@LastEditTime: 2025-06-18 09:09:55
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -91,10 +91,6 @@ class Model(torch.nn.Module, BaseManager):
         # Containers for extra times steps as input or output
         self.__input_pred_steps: torch.Tensor | None = None
         self.__output_pred_steps: torch.Tensor | None = None
-
-        # Extra model outputs and their indexes
-        self.ext_traj_wise_outputs: dict[int, str] = {}
-        self.ext_agent_wise_outputs: dict[int, str] = {}
 
     @property
     def structure(self) -> BaseManager:
