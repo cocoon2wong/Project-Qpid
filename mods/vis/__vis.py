@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-06-18 09:41:28
+@LastEditTime: 2025-07-23 11:27:33
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -25,7 +25,7 @@ from ...training import Structure
 from ...utils import dir_check
 from .__args import VisArgs
 from .__helper import ADD, get_helper
-from .__vis_plt import text_plt, vis_plt
+from .__vis_plt import PLTHelper
 from .settings import *
 
 
@@ -297,8 +297,9 @@ class Visualization(BaseManager):
                     f = 255 * np.ones_like(f)
 
         if draw_with_plt:
-            vis_func = vis_plt
-            text_func = text_plt
+            self.plt_helper = PLTHelper(self.vis_args)
+            vis_func = self.plt_helper.vis_plt
+            text_func = self.plt_helper.text_plt
             real2pixel = False
             f = plt.figure()
             status = DRAW_ON_PLTCANVAS
