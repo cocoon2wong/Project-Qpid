@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-07-23 11:27:33
+@LastEditTime: 2025-09-03 11:17:17
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -385,9 +385,15 @@ class Visualization(BaseManager):
             if frame >= sampled_frames[obs_len-1]:
                 f = vis_func(source=f, pred=pred, pred_colors=pred_colors)
 
-            if gt_end > 0 and (gt is not None):
+            # Draw ground truths
+            # On a video
+            if (gt_end > 0) and (gt is not None):
                 f = vis_func(source=f, neighbor=gt[None, :step - obs_len + 1])
                 f = vis_func(source=f, gt=gt[:step - obs_len + 1])
+            
+            # On a single image
+            elif (len(frames) == 1) and (gt is not None):
+                f = vis_func(source=f, gt=gt)
 
             if IF_PUT_TEXT_IN_VIDEOS:
                 f = text_func(f, self.get_text(frame, agent))
