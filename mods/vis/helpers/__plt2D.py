@@ -2,38 +2,46 @@
 @Author: Conghao Wong
 @Date: 2025-06-17 10:01:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-07-23 11:29:56
+@LastEditTime: 2025-09-16 21:02:04
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
 
-from typing import Callable
+from typing import Any
 
 import numpy as np
+from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
-from .__args import VisArgs
+from .__base import BaseCanvasManager
+
+PLT_CANVAS_TITLE = 'Visualized Predictions'
 
 
-class PLTHelper():
-    def __init__(self, args: VisArgs) -> None:
-        self.args = args
+class PLT2DCanvas(BaseCanvasManager):
 
-    def text_plt(self, source: Figure, texts: list[str], *args, **kwargs):
+    def init_canvas(self, init_image: Any | None = None, *args, **kwargs):
+        plt.close(PLT_CANVAS_TITLE)
+        f = plt.figure(PLT_CANVAS_TITLE)
+        return f
+
+    def text(self, source: Figure,
+             texts: list[str],
+             *args, **kwargs):
+
         source.gca().set_title(', '.join(texts))
         return source
 
-    def vis_plt(self, source: Figure,
-                obs: np.ndarray | None = None,
-                gt: np.ndarray | None = None,
-                pred: np.ndarray | None = None,
-                neighbor: np.ndarray | None = None,
-                pred_process_function: Callable[..., Figure] | None = None,
-                *args, **kwargs):
+    def vis(self, source: Figure,
+            obs: np.ndarray | None = None,
+            gt: np.ndarray | None = None,
+            pred: np.ndarray | None = None,
+            neighbor: np.ndarray | None = None,
+            *args, **kwargs):
         """
         Visualize trajectories with plt (2D coordinates only).
         """
-        _p = '-' if self.args.draw_lines else ''
+        _p = '-' if self.vis_args.draw_lines else ''
         f = source.gca()
 
         # draw neighbors' trajectories
@@ -60,8 +68,9 @@ class PLTHelper():
             pred = pred[None] if pred.ndim == 2 else pred
 
             # Draw as the trajectory distribution
-            if isinstance(pred_process_function, Callable):
-                source = pred_process_function(source, pred=pred, alpha=1.0)
+            if False:
+                # TODO
+                pass
 
             # Draw as multiple trajectory points
             else:

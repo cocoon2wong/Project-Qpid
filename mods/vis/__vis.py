@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-03 11:17:17
+@LastEditTime: 2025-09-16 21:10:52
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -16,16 +16,15 @@ import numpy as np
 import torch
 from matplotlib.figure import Figure
 
-from ...base import BaseManager, SecondaryBar
-from ...dataset import AnnotationManager, Clip, SplitManager
-from ...dataset.__base import BaseInputObject
-from ...dataset.agent_based import Agent
-from ...model import Model
-from ...training import Structure
-from ...utils import dir_check
+from qpid.base import BaseManager, SecondaryBar
+from qpid.dataset import AnnotationManager, Clip, SplitManager
+from qpid.dataset.__base import BaseInputObject
+from qpid.dataset.agent_based import Agent
+from qpid.training import Structure
+from qpid.utils import dir_check
+
+from . import helpers
 from .__args import VisArgs
-from .__helper import ADD, get_helper
-from .__vis_plt import PLTHelper
 from .settings import *
 
 
@@ -50,7 +49,7 @@ class Visualization(BaseManager):
         # Try to open the video
         video_path = self.info.video_path
         vc = cv2.VideoCapture(video_path)
-        self._vc = vc if vc.open(video_path) else None
+        self.video_capture = vc if vc.open(video_path) else None
 
         # Try to read the scene image
         try:
@@ -59,27 +58,13 @@ class Visualization(BaseManager):
         except:
             self.scene_image = None
 
-        # annotation helper
-        self.helper = get_helper(self.args.anntype, self.vis_args)
-
-        # Read png files
-        self.obs_file = cv2.imread(OBS_IMAGE, -1)
-        self.neighbor_file = cv2.imread(NEI_OBS_IMAGE, -1)
-        self.current_file = cv2.imread(CURRENT_IMAGE, -1)
-        self.pred_file = cv2.imread(PRED_IMAGE, -1)
-        self.gt_file = cv2.imread(GT_IMAGE, -1)
-
-    @property
-    def video_capture(self) -> cv2.VideoCapture | None:
-        return self._vc
-
-    @property
-    def picker(self) -> AnnotationManager:
-        return self.manager.get_member(AnnotationManager)
-
-    @property
-    def model(self) -> Model:
-        return self.manager.model
+        # Init the canvas manager and visualization helpers
+        self.canvas_helper = helpers.get(
+            anntype=self.args.anntype,
+            video_status=self.video_capture,
+            image_status=self.scene_image,
+            force_using_plt=self.vis_args.draw_with_plt
+        )(manager=self)
 
     def run_commands(self, outputs: list[torch.Tensor]):
         # Make the dir to save images
@@ -247,9 +232,7 @@ class Visualization(BaseManager):
              save_name: str,
              save_name_postfix=True,
              draw_with_plt: int | bool = False,
-             interp=True,
-             traj_wise_outputs: dict = {},
-             agent_wise_outputs: dict = {}) -> str:
+             interp=True) -> str:
         """
         Visualize forecasted trajectories.
 
@@ -264,8 +247,6 @@ class Visualization(BaseManager):
         :param draw_with_plt: Choose whether to draw with plt by default.
         :param interp: Choose whether to draw the full video or only
             draw on the sampled time steps.
-        :param traj_wise_outputs: Extra trajectory-wise model outputs.
-        :param agent_wise_outputs: Extra agent-wise model outputs.
 
         :return file_name: Name of the saved image (at the current moment).
         """
@@ -289,21 +270,26 @@ class Visualization(BaseManager):
                 draw_with_plt = True
 
             if not draw_with_plt:
-                vis_func = self.vis
-                text_func = self.text
                 real2pixel = True
-                f = self.get_static_image()
-                if self.vis_args.draw_on_empty_canvas:
-                    f = 255 * np.ones_like(f)
 
         if draw_with_plt:
-            self.plt_helper = PLTHelper(self.vis_args)
-            vis_func = self.plt_helper.vis_plt
-            text_func = self.plt_helper.text_plt
             real2pixel = False
-            f = plt.figure()
             status = DRAW_ON_PLTCANVAS
             fps = 1 / self.args.interval
+
+        # Update the canvas helper
+        canvas_type = helpers.get(
+            anntype=self.args.anntype,
+            video_status=self.video_capture,
+            image_status=self.scene_image,
+            force_using_plt=draw_with_plt,
+        )
+
+        if not isinstance(self.canvas_helper, canvas_type):
+            self.canvas_helper = canvas_type(manager=self)
+
+        # Init the canvas
+        f = self.canvas_helper.init_canvas(init_image=self.get_static_image())
 
         # Get shape of the target video
         if isinstance(f, np.ndarray):
@@ -352,18 +338,25 @@ class Visualization(BaseManager):
         else:
             timebar = SecondaryBar(frames, manager=self, desc=desc)
 
+        # Start visualizing
+        vis_func = self.canvas_helper.vis
+        text_func = self.canvas_helper.text
+
         for frame in timebar:
             # Get a new scene image
             if status == DRAW_ON_VIDEO:
-                f = self.get_image(frame)
+                init_image = self.get_image(frame)
             elif status == DRAW_ON_IMAGE:
-                f = self.get_static_image()
+                init_image = self.get_static_image()
             elif status == DRAW_ON_PLTCANVAS:
-                plt.close(PLT_CANVAS_TITLE)
-                f = plt.figure(PLT_CANVAS_TITLE)
+                init_image = None
             else:
                 raise ValueError(status)
 
+            # Init canvas with the above image
+            f = self.canvas_helper.init_canvas(init_image)
+
+            # Draw trajectories step-by-step
             if frame in sampled_frames:
                 step = sampled_frames.index(frame)
                 obs_end = min(step, obs_len) + 1
@@ -390,7 +383,7 @@ class Visualization(BaseManager):
             if (gt_end > 0) and (gt is not None):
                 f = vis_func(source=f, neighbor=gt[None, :step - obs_len + 1])
                 f = vis_func(source=f, gt=gt[:step - obs_len + 1])
-            
+
             # On a single image
             elif (len(frames) == 1) and (gt is not None):
                 f = vis_func(source=f, gt=gt)
@@ -417,106 +410,3 @@ class Visualization(BaseManager):
                     video_writer.write(f)
 
         return saved_img_name
-
-    def vis(self, source: np.ndarray,
-            obs: np.ndarray | None = None,
-            gt: np.ndarray | None = None,
-            pred: np.ndarray | None = None,
-            neighbor: np.ndarray | None = None,
-            background: np.ndarray | None = None,
-            pred_colors: np.ndarray | None = None,
-            *args, **kwargs):
-        """
-        Draw one agent's observations, predictions, and groundtruths.
-
-        :param source: The image file.
-        :param obs: (optional) The observations in *pixel* scale.
-        :param gt: (optional) The ground truth in *pixel* scale.
-        :param pred: (optional) The predictions in *pixel* scale,\
-            shape = `(K, steps, dim)`.
-        :param neighbor: (optional) The observed neighbors' positions\
-             in *pixel* scale, shape = `(batch, dim)`.
-        :param draw_distribution: Controls whether to draw as a distribution.
-        :param alpha: The alpha channel coefficient.
-        """
-        f = np.zeros([source.shape[0], source.shape[1], 4])
-
-        # draw neighbors' observed trajectories
-        if neighbor is not None:
-            f = self.helper.draw_traj(f, neighbor[..., -1:, :],
-                                      self.current_file,
-                                      do_not_draw_lines=True)
-
-            neighbor = neighbor if self.vis_args.draw_full_neighbors \
-                else neighbor[..., -1:, :]
-            for nei in neighbor:
-                f = self.helper.draw_traj(f, nei, self.neighbor_file)
-
-        # draw predicted trajectories
-        if pred is not None:
-            if self.vis_args.draw_distribution:
-                alpha = 0.8 if not self.vis_args.draw_on_empty_canvas else 1.0
-                f = self.helper.draw_dis(f, pred, alpha=alpha,
-                                         steps=self.vis_args.distribution_steps)
-            else:
-                if pred_colors is None:
-                    pred_colors = 255 * np.random.rand(pred.shape[0], 3)
-
-                for (pred_k, color_k) in zip(pred, pred_colors):
-                    f = self.helper.draw_traj(
-                        f, pred_k, self.pred_file,
-                        color=color_k)
-
-        # draw observed and groundtruth trajectories
-        if obs is not None:
-            if obs.ndim == 2:
-                obs = obs[np.newaxis]
-
-            for _obs in obs:
-                f = self.helper.draw_traj(f, _obs, self.obs_file)
-
-        if gt is not None:
-            if gt.ndim == 2:
-                gt = gt[np.newaxis]
-
-            for _gt in gt:
-                f = self.helper.draw_traj(f, _gt, self.gt_file)
-
-        # draw the background image
-        if background is not None:
-            f = ADD(background, f, [f.shape[1]//2, f.shape[0]//2])
-
-        # add the original image
-        f = ADD(source, f, [f.shape[1]//2, f.shape[0]//2])
-        return f
-
-    def text(self, f: np.ndarray,
-             texts: list[str],
-             x: int = 10,
-             y: int = 40,
-             font: int = cv2.FONT_HERSHEY_COMPLEX,
-             size: float = 0.9,
-             width: int = 2,
-             line_height: int = 30,
-             shadow_bias: int = 3,
-             *args, **kwargs) -> np.ndarray:
-        """
-        Put text on one image
-        """
-        for index, text in enumerate(texts):
-            f = cv2.putText(f, text,
-                            org=(x + shadow_bias, y + index *
-                                 line_height + shadow_bias),
-                            fontFace=font,
-                            fontScale=size,
-                            color=(0, 0, 0),
-                            thickness=width)
-
-            f = cv2.putText(f, text,
-                            org=(x, y + index * line_height),
-                            fontFace=font,
-                            fontScale=size,
-                            color=(255, 255, 255),
-                            thickness=width)
-
-        return f
