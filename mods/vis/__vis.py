@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-16 21:10:52
+@LastEditTime: 2025-09-16 21:29:04
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -259,6 +259,7 @@ class Visualization(BaseManager):
         status = -1
         f = None
 
+        # Config the video/image/plt canvas to be visualized and initialize it
         if not draw_with_plt:
             if self.video_capture is not None:
                 status = DRAW_ON_VIDEO
@@ -276,6 +277,9 @@ class Visualization(BaseManager):
             real2pixel = False
             status = DRAW_ON_PLTCANVAS
             fps = 1 / self.args.interval
+            init_image = None
+        else:
+            init_image = self.get_static_image()
 
         # Update the canvas helper
         canvas_type = helpers.get(
@@ -289,7 +293,7 @@ class Visualization(BaseManager):
             self.canvas_helper = canvas_type(manager=self)
 
         # Init the canvas
-        f = self.canvas_helper.init_canvas(init_image=self.get_static_image())
+        f = self.canvas_helper.init_canvas(init_image)
 
         # Get shape of the target video
         if isinstance(f, np.ndarray):

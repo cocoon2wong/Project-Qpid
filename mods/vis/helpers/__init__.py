@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:27:53
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-16 21:19:45
+@LastEditTime: 2025-09-16 21:24:25
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -14,6 +14,7 @@ from qpid.constant import ANN_TYPES
 
 from .__normal2D import Normal2DCanvas
 from .__plt2D import PLT2DCanvas
+from .__plt3DSkeleton17 import PLT3DSkeleton17Canvas
 
 
 def get(anntype: str,
@@ -27,6 +28,8 @@ def get(anntype: str,
     if force_using_plt or ((video_status is None) and (image_status is None)):
         if anntype == ANN_TYPES.CO_2D:
             h = PLT2DCanvas
+        elif anntype == ANN_TYPES.SKE_3D_17:
+            h = PLT3DSkeleton17Canvas
         else:
             __report_error(anntype)
 
