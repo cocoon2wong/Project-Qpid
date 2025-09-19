@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-13 10:27:56
+@LastEditTime: 2025-09-19 10:40:05
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -142,12 +142,20 @@ class ADE(BaseLossLayer):
         if pred.ndim == label.ndim:
             pred = pred[..., None, :, :]
 
-        ade = []
-        picker = self.picker.get_coordinate_series
-        for _pred, _label in zip(picker(pred), picker(label)):
-            ade.append(ADE_2D(_pred, _label, self.coe, mask))
+        # Only for trajectories with annotation types other than coordinates
+        # So that ADE can be computed point-wise (each 2D or 3D point)
+        # This does not affect normal 2D/3D coordinate predictions
+        if self.picker.base_len / self.picker.base_dim > 1:
+            picker = self.picker.get_coordinate_series
 
-        return torch.mean(torch.stack(ade))
+            # -> (..., K, pred * n_points, dim_of_each_point)
+            pred = torch.concat(picker(pred), dim=-2)
+
+            # -> (..., pred * n_points, dim_of_each_point)
+            label = torch.concat(picker(label), dim=-2)
+
+        ade = ADE_2D(pred, label, self.coe, mask)
+        return ade
 
 
 class FDE(ADE):
