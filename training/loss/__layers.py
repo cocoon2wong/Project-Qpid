@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-19 10:40:05
+@LastEditTime: 2025-09-19 11:33:57
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -125,12 +125,21 @@ class ADE(BaseLossLayer):
     """
     has_unit = True
 
-    def forward(self, outputs: list, labels: list,
-                inputs: list, points: int = -1,
+    def forward(self, outputs: list[torch.Tensor] | torch.Tensor,
+                labels: list[torch.Tensor] | torch.Tensor,
+                inputs: list[torch.Tensor],
+                points: int = -1,
                 mask=None, training=None, *args, **kwargs):
 
-        pred = outputs[0]
-        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+        if isinstance(outputs, torch.Tensor):
+            pred = outputs
+        else:
+            pred = outputs[0]
+
+        if isinstance(labels, torch.Tensor):
+            label = labels
+        else:
+            label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
 
         if (pred.shape[-2] == label.shape[-2]) and (points > 0):
             pred = pred[..., :points, :]
@@ -165,7 +174,9 @@ class FDE(ADE):
     """
     has_unit = True
 
-    def forward(self, outputs: list, labels: list, inputs: list,
+    def forward(self, outputs: list[torch.Tensor],
+                labels: list[torch.Tensor],
+                inputs: list[torch.Tensor],
                 index: int = -1,
                 mask=None, training=None, *args, **kwargs):
 
@@ -175,8 +186,8 @@ class FDE(ADE):
             index = -1
             label = pick_keypoints_from_gt(self, pred, label)
 
-        return super().forward([pred[..., index, None, :]],
-                               [label[..., index, None, :]],
+        return super().forward(pred[..., index, None, :],
+                               label[..., index, None, :],
                                inputs,
                                mask=mask, training=training,
                                *args, **kwargs)
@@ -187,11 +198,24 @@ class avgCenter(BaseLossLayer):
     Average displacement error on the center of each prediction.
     """
     has_unit = True
-    def forward(self, outputs: list, labels: list, inputs: list,
+
+    def forward(self, outputs: list[torch.Tensor] | torch.Tensor,
+                labels: list[torch.Tensor] | torch.Tensor,
+                inputs: list[torch.Tensor],
                 mask=None, training=None, *args, **kwargs):
 
-        label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
-        label = pick_keypoints_from_gt(self, pred := outputs[0], label)
+        if isinstance(outputs, torch.Tensor):
+            pred = outputs
+        else:
+            pred = outputs[0]
+
+        if isinstance(labels, torch.Tensor):
+            label = labels
+        else:
+            label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
+
+        label = pick_keypoints_from_gt(self, pred, label)
+
         return ADE_2D(self.picker.get_center(pred),
                       self.picker.get_center(label),
                       self.coe, mask)
@@ -203,13 +227,16 @@ class finalCenter(avgCenter):
     """
     has_unit = True
 
-    def forward(self, outputs: list, labels: list, inputs: list,
+    def forward(self, outputs: list[torch.Tensor],
+                labels: list[torch.Tensor],
+                inputs: list[torch.Tensor],
                 mask=None, training=None, *args, **kwargs):
 
         label = self.model.get_label(labels, INPUT_TYPES.GROUNDTRUTH_TRAJ)
         label = pick_keypoints_from_gt(self, pred := outputs[0], label)
-        return super().forward([pred[..., -1, None, :]],
-                               [label[..., -1, None, :]],
+
+        return super().forward(pred[..., -1, None, :],
+                               label[..., -1, None, :],
                                inputs,
                                mask=mask, training=training,
                                *args, **kwargs)
