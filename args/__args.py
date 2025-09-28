@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-05-22 15:12:31
+@LastEditTime: 2025-09-28 09:56:31
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -538,3 +538,10 @@ class Args(ArgsManager):
         Controls whether to compute metrics separately on different kinds of agents.
         """
         return self._arg('compute_metrics_with_types', 0, argtype=TEMPORARY)
+
+    @property
+    def compute_statistical_metrics(self) -> int:
+        """
+        (bool) Choose whether to compute metrics (ADE/FDE) as `mean $\\pm$ std`.
+        """
+        return self._arg('compute_statistical_metrics', 0, argtype=TEMPORARY)

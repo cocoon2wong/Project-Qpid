@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2024-12-05 15:38:31
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-12-05 16:50:10
+@LastEditTime: 2025-09-28 09:51:09
 @Github: https://cocoon2wong.github.io
 @Copyright 2024 Conghao Wong, All Rights Reserved.
 """
@@ -13,6 +13,7 @@ from ...args import Args
 from ...constant import ANN_TYPES
 from .__iou import AIOU, FIOU
 from .__layers import ADE, FDE, l2
+from .__layers_statistical import MeanADE, MeanFDE, StdADE, StdFDE
 
 
 def default_metrics(args: Args):
@@ -66,7 +67,22 @@ def h36m_metrics(args: Args):
         ]
 
 
+def default_metrics_statistical(args: Args):
+    if not args.compute_statistical_metrics:
+        return None
+
+    if args.anntype not in [ANN_TYPES.CO_2D, ANN_TYPES.CO_3D]:
+        return None
+
+    return {MeanADE: 1.0,
+            MeanFDE: 1.0,
+            StdADE: 0.0,
+            StdFDE: 0.0}
+
+
+# Rules will be applied from the last rule-fuction
 METRICS_RULES = [default_metrics,
+                 default_metrics_statistical,
                  boundingbox_metric,
                  h36m_metrics,
                  nba_metrics]

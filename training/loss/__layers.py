@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-19 19:16:49
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-19 11:33:57
+@LastEditTime: 2025-09-28 09:53:05
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -98,6 +98,16 @@ class BaseLossLayer(torch.nn.Module):
     def clear_memory(self):
         self.value = {}
         self.batch_size = {}
+
+    def log(self, s: str, level: str = 'info',
+            raiseError: type[BaseException] | None = None,
+            only_log_under_verbose_mode=None):
+
+        if self.manager is None:
+            raise ValueError
+
+        return self.manager.log(s, level, raiseError,
+                                only_log_under_verbose_mode)
 
 
 class l2(BaseLossLayer):
