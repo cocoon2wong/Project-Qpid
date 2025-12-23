@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 09:26:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-22 09:42:19
+@LastEditTime: 2025-12-22 18:26:51
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -128,8 +128,7 @@ class Agent(BaseInputObject):
         if self._traj_neighbor is None:
             raise ValueError
 
-        ref = self.traj[..., -1:, :]
-        return self.padding(self.pickers.get(self._traj_neighbor[..., self.obs_length:, :])) - ref
+        return self.padding(self.pickers.get(self._traj_neighbor[..., self.obs_length:, :]))
 
     @traj_neighbor.setter
     def traj_neighbor(self, value):
