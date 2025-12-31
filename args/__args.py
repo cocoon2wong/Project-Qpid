@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 10:53:48
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-28 09:56:31
+@LastEditTime: 2025-12-31 11:11:58
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -169,7 +169,7 @@ class Args(ArgsManager):
         Max number of agents to predict per frame.
         It only works when `model_type == 'frame-based'`.
         """
-        return self._arg('max_agents', 50, argtype=STATIC)
+        return self._arg('max_agents', 50, argtype=DYNAMIC)
 
     @property
     def batch_size(self) -> int:
