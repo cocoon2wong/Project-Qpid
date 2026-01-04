@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 09:26:56
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-12-22 18:26:51
+@LastEditTime: 2026-01-04 11:12:49
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -108,11 +108,15 @@ class Agent(BaseInputObject):
         if self._traj_neighbor_force is not None:
             return self._traj_neighbor_force[..., :self.obs_length, :]
 
-        if self._traj_neighbor is None:
+        if self._traj_neighbor is None or self._traj is None:
             raise ValueError
 
         ref = self.traj[..., -1:, :]
-        return self.padding(self.pickers.get(self._traj_neighbor[..., :self.obs_length, :])) - ref
+        return self.padding(
+            self.pickers.get(self._traj_neighbor[..., :self.obs_length, :]),
+            ref=(-1, self._traj,
+                 self._traj_neighbor[..., :self.obs_length, :]),
+        ) - ref
 
     @property
     def groundtruth_neighbor(self) -> np.ndarray:
@@ -125,10 +129,14 @@ class Agent(BaseInputObject):
         if self._traj_neighbor_force is not None:
             return self._traj_neighbor_force[..., self.obs_length:, :]
 
-        if self._traj_neighbor is None:
+        if self._traj_neighbor is None or self._traj is None:
             raise ValueError
 
-        return self.padding(self.pickers.get(self._traj_neighbor[..., self.obs_length:, :]))
+        return self.padding(
+            self.pickers.get(self._traj_neighbor[..., self.obs_length:, :]),
+            ref=(-1, self._traj,
+                 self._traj_neighbor[..., :self.obs_length, :]),
+        )
 
     @traj_neighbor.setter
     def traj_neighbor(self, value):
@@ -351,7 +359,7 @@ class Trajectory():
             nei_pos = matrix[obs_frame - frame_step, list(neighbors), :]
             tar_pos = self.traj[obs_frame - frame_step, np.newaxis, :]
             dis = calculate_length(nei_pos - tar_pos)
-            neighbors = neighbors[np.argsort(dis)[1:max_neighbor+1]]
+            neighbors = neighbors[np.argsort(dis)[0:max_neighbor]]
 
         nei_traj = matrix[start_frame:end_frame:frame_step, list(neighbors), :]
         nei_traj = np.transpose(nei_traj, [1, 0, 2])

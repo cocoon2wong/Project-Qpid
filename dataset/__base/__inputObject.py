@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-06-12 15:11:35
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-10-16 20:07:01
+@LastEditTime: 2026-01-04 11:11:52
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -53,7 +53,7 @@ class BaseInputObject():
 
     @property
     def pickers(self) -> AnnotationManager:
-        return self.manager.pickers
+        return self.manager.pickers  # type: ignore
 
     def init_data(self):
         raise NotImplementedError
@@ -72,10 +72,16 @@ class BaseInputObject():
                 setattr(self, item, zipped_data[item])
         return self
 
-    def padding(self, trajs: np.ndarray) -> np.ndarray:
+    def padding(self, trajs: np.ndarray,
+                ref: tuple[int, np.ndarray, np.ndarray] | None = None) -> np.ndarray:
         """
-        Padding all agents' trajectories.
-        Shape should be `(n_agent, steps, dim)`.
+        Padding or selecting neighbors' trajectories according to the arg
+        `max_agents`. `ref` is used to compute and sort relative distance
+        to the ego agent as the reference for selecting, if there are more
+        actual neighbors in the scene (set it to `None` to disable).
+        It should be a tuple of `(ref_index, source, target)`.
+        Here, `source` should be some trajectory of the ego agent.
+        Shape of `trajs` should be `(n_agent, steps, dim)`.
         """
         n = len(trajs)
 
@@ -89,7 +95,15 @@ class BaseInputObject():
                               ((0, m-n), (0, 0), (0, 0)))
             zero_pad[n:, :, :] = INIT_POSITION
         else:
-            zero_pad = trajs[:m]
+            if ref is None:
+                zero_pad = trajs[:m]
+            else:
+                idx, source, target = ref
+                s = self.pickers.source.get_center(source)
+                t = self.pickers.source.get_center(target)
+                dis = np.linalg.norm(s[None, idx] - t[:, idx], ord=2, axis=-1)
+                order = np.argsort(dis)[:m]
+                zero_pad = trajs[order]
 
         return zero_pad
 

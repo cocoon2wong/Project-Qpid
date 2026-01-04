@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-05-19 14:38:26
 @LastEditors: Conghao Wong
-@LastEditTime: 2024-03-22 09:42:31
+@LastEditTime: 2026-01-04 10:18:18
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -11,7 +11,7 @@
 import numpy as np
 
 from ...base import BaseManager, SecondaryBar
-from ...utils import INIT_POSITION
+from ...utils import INIT_POSITION, MAX_NEIGHBORS
 from ..__base import BaseInputObjectManager
 from .__inputObject import Agent, Trajectory
 
@@ -95,6 +95,6 @@ class AgentObjectManager(BaseInputObjectManager):
                                                        end_frame=end,
                                                        matrix=matrix,
                                                        frame_step=frame_step,
-                                                       max_neighbor=self.args.max_agents))
+                                                       max_neighbor=MAX_NEIGHBORS))
 
         return train_samples

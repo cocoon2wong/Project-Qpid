@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-01-02 17:07:48
+@LastEditTime: 2026-01-04 11:09:34
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -36,6 +36,7 @@ ARGS_FILE_NAME = 'args.json'
 
 # Dataset configs
 INIT_POSITION = 100000000
+MAX_NEIGHBORS = 50
 
 # Preprocess configs
 ROTATE_BIAS = 0.01
