@@ -2,15 +2,13 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 21:50:44
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-01-05 15:40:50
+@LastEditTime: 2026-01-05 17:11:48
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
 """
 
 import torch
-
-from ...utils import repeat
 
 
 class OuterLayer(torch.nn.Module):
@@ -43,13 +41,7 @@ class OuterLayer(torch.nn.Module):
             else its output shape = (..., M*N)
         """
 
-        _a = tensorA[..., None]
-        _b = tensorB[..., None, :]
-
-        _a = repeat(_a, self.N, dim=-1)
-        _b = repeat(_b, self.M, dim=-2)
-
-        outer = _a * _b
+        outer = tensorA[..., None] * tensorB[..., None, :]
 
         if not self.reshape:
             return outer
