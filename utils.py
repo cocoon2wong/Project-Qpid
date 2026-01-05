@@ -162,6 +162,15 @@ def batch_matmul(a: torch.Tensor, b: torch.Tensor, transpose_b=False):
     return torch.reshape(res, list(batch) + list(res.shape[1:]))
 
 
+def repeat(input: torch.Tensor, repeats: int, dim: int):
+    shape = input.shape
+    d = dim % len(shape)
+    x = input.unsqueeze(d+1)
+    x = x.expand(*shape[:d+1], repeats, *shape[d+1:])
+    x = x.flatten(d, d+1)
+    return x
+
+
 def encode_string(name: str, depth=MAX_TYPE_NAME_LEN) -> np.ndarray:
     _array = np.array([ord(s) for s in name])
 
