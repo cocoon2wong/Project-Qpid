@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-01-06 19:16:05
+@LastEditTime: 2026-01-06 19:43:48
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -202,6 +202,13 @@ def check_datasets(root=DATASET_CONFIG_DIR):
     """
     Get all supported datasets/splits/clips from the `dataset_configs` folder.
     """
+    if not os.path.exists(root):
+        raise FileNotFoundError(
+            'Dataset files (`dataset_configs` or `dataset_processed`) not ' +
+            'found! Please run `qpid` within one specific model folder and ' +
+            'make sure that softlinks of these dataset files have been made.'
+        )
+
     datasets: dict[str, dict[str, list[str]]] = {}
     for dataset in os.listdir(root):
         subset_path = os.path.join(root, dataset)
