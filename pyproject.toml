@@ -24,6 +24,5 @@ authors = [
 qpid = "qpid.cli:entrance_cli"
 
 [tool.setuptools]
-packages = [
-    "qpid",
-]
+packages = ["qpid"]
+package-dir = { "qpid" = "." }

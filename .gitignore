@@ -44,3 +44,5 @@ temp*
 
 playground.ipynb
 modules
+
+*.egg-info
