@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2024-05-30 09:58:23
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-04-14 17:52:32
+@LastEditTime: 2026-01-06 18:53:03
 @Github: https://cocoon2wong.github.io
 @Copyright 2024 Conghao Wong, All Rights Reserved.
 """
@@ -55,7 +55,7 @@ class SystemManager(BaseManager):
     """
 
     def __init__(self):
-        super().__init__(name='SYSTEM')
+        super().__init__(name='qpid')
 
         self.__model_dict: dict[str, tuple[type[Structure],
                                            type[Model]]] = {}
@@ -224,3 +224,6 @@ class SystemManager(BaseManager):
                 f'Model type `{name}` is not supported.')
 
         return self.__model_dict[name]
+
+
+sys_mgr = SystemManager()

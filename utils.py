@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-20 20:10:58
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-01-04 11:09:34
+@LastEditTime: 2026-01-06 19:16:05
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -53,6 +53,19 @@ CHECKPOINT_FILENAME = 'best_ade_epoch.txt'
 
 # Type of agents
 MAX_TYPE_NAME_LEN = 30
+
+"""
+Exclude packages
+"""
+EXCLUDE_PKGS = [
+    'qpid',
+    'playground',
+    'scripts',
+    'weights',
+    'logs',
+    '__pycache__',
+    '.DS_Store',
+]
 
 
 def dir_check(target_dir: str) -> str:

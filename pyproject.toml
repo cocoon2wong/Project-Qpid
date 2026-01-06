@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qpid"
+version = "0.1.0"
+description = "Trajectory prediction framework (qpid)"
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "torch>=2.0",
+    "numpy",
+    "tqdm",
+    "tensorboard",
+]
+
+authors = [
+    { name = "Conghao Wong", email = "conghaowong@icloud.com" }
+]
+
+[project.scripts]
+qpid = "qpid.cli:entrance_cli"
+
+[tool.setuptools]
+packages = [
+    "qpid",
+]

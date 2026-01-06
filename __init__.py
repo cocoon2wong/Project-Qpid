@@ -5,9 +5,8 @@ A training "engine" for trajectory prediction models (based on PyTorch).
 """
 
 from . import applications, args, base, help, model, training, utils
-from .__system import SystemManager as __SysMgr
-
-sys_mgr = __SysMgr()
+from .__system import sys_mgr
+from .cli import entrance
 
 add_arg_alias = sys_mgr.add_arg_alias
 get_structure = sys_mgr.get_structure
@@ -33,29 +32,3 @@ register(
 
 # Register basic prediction args
 register_args(args.Args, 'Basic Args')
-
-
-def entrance(terminal_args: list[str], train_or_test=True):
-    """
-    Main entrance for training or testing models from terminals.
-    """
-    _temp_args = args.Args(terminal_args, is_temporary=True)
-
-    # Check if `-h` or `--help` in args
-    if (h := _temp_args.help) != 'null':
-        get_all_args_docs('all_args' if h == 'True' else h)
-        exit()
-
-    # Init the structure
-    t_type = get_structure(_temp_args.model)
-    t = t_type(terminal_args)
-
-    # Start training or testing
-    if train_or_test:
-        t.train_or_test()
-
-    # (DEBUG) Verbose mode
-    if t.args.verbose:
-        t.print_info_all()
-
-    return t
