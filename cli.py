@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2026-01-06 18:27:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-01-06 18:50:36
+@LastEditTime: 2026-01-20 19:33:25
 @Github: https://cocoon2wong.github.io
 @Copyright 2026 Conghao Wong, All Rights Reserved.
 """
@@ -44,7 +44,7 @@ def entrance(terminal_args: list[str], train_or_test=True):
 
     # (DEBUG) Verbose mode
     if t.args.verbose:
-        t.print_info_all()
+        t.print_info_all(debug=True)
 
     return t
 
