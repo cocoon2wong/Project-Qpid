@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-06-17 20:46:52
+@LastEditTime: 2026-03-20 14:57:25
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -98,3 +98,13 @@ class VisArgs(EmptyArgs):
         visualize all points on the scene images if this arg is not enabled. 
         """
         return self._arg('draw_with_plt', 0, argtype=TEMPORARY)
+
+    @property
+    def text_scale(self) -> float:
+        """
+        A value used to scale the legend (text, icons, etc.) during the
+        visualization process. A larger value indicates that text and icons
+        occupy a larger relative proportion of the screen. It should be a float
+        value greater than `0.2`.
+        """
+        return self._arg('text_scale', -1.0, argtype=TEMPORARY)

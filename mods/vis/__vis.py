@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-16 21:29:04
+@LastEditTime: 2026-03-20 14:57:17
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -65,6 +65,27 @@ class Visualization(BaseManager):
             image_status=self.scene_image,
             force_using_plt=self.vis_args.draw_with_plt
         )(manager=self)
+
+    @property
+    def data_scale(self):
+        """
+        A value used to scale the original annotated data. It cannot be
+        modified manually and remains constant after the dataset is created.
+        """
+        return self.info.get_manager(SplitManager).scale
+
+    @property
+    def ui_scale(self):
+        """
+        A value used to scale the legend (text, icons, etc.) in the 
+        visualization results.
+        """
+        base_scale = self.info.get_manager(SplitManager).scale_vis
+
+        if (t := self.vis_args.text_scale) > 0.2:
+            base_scale *= t
+
+        return base_scale
 
     def run_commands(self, outputs: list[torch.Tensor]):
         # Make the dir to save images
@@ -174,8 +195,7 @@ class Visualization(BaseManager):
         :param pixel_pos: Coordinates in pixels, shape = (..., 2).
         :return r: Coordinates in meters, shape = (..., 2).
         """
-        scale = self.info.get_manager(SplitManager).scale / \
-            self.info.get_manager(SplitManager).scale_vis
+        scale = self.data_scale / self.ui_scale
         weights = self.info.matrix
 
         w = [weights[0], weights[2]]
@@ -196,8 +216,6 @@ class Visualization(BaseManager):
         :param real_pos: Coordinates, shape = (n, 2) or (k, n, 2).
         :return pixel_pos: Coordinates in pixels.
         """
-        scale = self.info.get_manager(SplitManager).scale / \
-            self.info.get_manager(SplitManager).scale_vis
         weights = self.info.matrix
 
         if type(real_pos) == list:
@@ -206,7 +224,7 @@ class Visualization(BaseManager):
         w = [weights[0], weights[2]]
         b = [weights[1], weights[3]]
 
-        real = scale * real_pos
+        real = self.data_scale * real_pos
         real_2d = self.manager.get_member(AnnotationManager) \
             .target.get_coordinate_series(real)
 
@@ -215,14 +233,14 @@ class Visualization(BaseManager):
             pixel += [w[0] * p[..., 0] + b[0],
                       w[1] * p[..., 1] + b[1]]
 
-        pixel = np.stack(pixel, axis=-1)
+        pixel = np.stack(pixel, axis=-1) / self.ui_scale
 
         if integer:
             pixel = pixel.astype(np.int32)
         return pixel
 
     def rescale(self, f: np.ndarray):
-        if (s := self.info.get_manager(SplitManager).scale_vis) > 1:
+        if (s := self.ui_scale) != 1:
             x, y = f.shape[:2]
             f = cv2.resize(f, (int(y/s), int(x/s)))
         return f
