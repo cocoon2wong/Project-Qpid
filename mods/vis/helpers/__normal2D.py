@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:44:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-16 21:20:32
+@LastEditTime: 2026-03-23 18:05:46
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -12,6 +12,7 @@ from typing import Any, TypeVar
 
 import cv2
 import numpy as np
+from cv2.typing import MatLike
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
@@ -42,13 +43,16 @@ class CoordinateHelper(BaseVisHelper):
 
     def draw_single(self, source: np.ndarray,
                     inputs: np.ndarray,
-                    png: np.ndarray):
+                    png: np.ndarray | MatLike | None):
+
+        if png is None:
+            return source
 
         return ADD(source, png, (inputs[1], inputs[0]))
 
     def draw_traj(self, source: np.ndarray,
                   inputs: np.ndarray,
-                  png: np.ndarray,
+                  png: np.ndarray | MatLike | None,
                   color: None | tuple[int, int, int] = None,
                   width=3,
                   do_not_draw_lines: None | bool = None):
@@ -59,7 +63,7 @@ class CoordinateHelper(BaseVisHelper):
         steps, dim = inputs.shape[-2:]
         _color = (255, 255, 255) if color is None else color
 
-        # draw lines
+        # Draw lines.
         if (self.args.draw_lines and steps >= 2) and (not do_not_draw_lines):
             _lines = np.zeros_like(source)
             traj = np.column_stack([inputs.T[1], inputs.T[0]])
@@ -69,15 +73,15 @@ class CoordinateHelper(BaseVisHelper):
                          pt2=(right[0], right[1]),
                          color=_color, thickness=width)
 
-            # Add the alpha channel
+            # Add the alpha channel.
             _lines_alpha = 255 * (np.sum(_lines[..., :3], axis=-1) > 0)
             _lines[..., -1] = _lines_alpha
 
-            # Add lines to the image
+            # Add lines to the image.
             source = ADD(source, _lines, type='auto')
 
-        # recolor the marker
-        if color is not None:
+        # Recolor the marker.
+        if color is not None and png is not None:
             if png.shape[-1] == 4:
                 _c = np.concatenate([np.array(color), [255]], axis=-1)
             else:
@@ -86,7 +90,7 @@ class CoordinateHelper(BaseVisHelper):
             png = (png.astype(float) *
                    _c[np.newaxis, np.newaxis] / 255).astype(np.uint8)
 
-        # draw points
+        # Draw points.
         if inputs.ndim > 2:
             inputs = np.reshape(inputs, [-1, dim])
 
@@ -100,14 +104,14 @@ class CoordinateHelper(BaseVisHelper):
                  alpha: float,
                  *args, **kwargs) -> T:
         """
-        Draw model predicted trajectories in the distribution way.
+        Draw forecasted trajectories as a spatial distribution.
 
         :param source: The background image or the plt canvas.
-        :param pred: Model predictions, shape = ((K), steps, dim).
+        :param pred: Model predictions, shape = `((K), steps, dim)`.
         :param alpha: Transparency (from 0 to 1).
         """
 
-        # Prepare model predictions
+        # Prepare model predictions.
         if (steps := self.args.distribution_steps) != 'all':
             _indices = [int(ii) for ii in steps.split('_') if len(ii)]
             _indices = np.array(_indices)
@@ -115,22 +119,22 @@ class CoordinateHelper(BaseVisHelper):
         else:
             dat = pred
 
-        dat = dat.reshape([-1, 2])   # inputs shape: ((K), steps, dim)
+        # Inputs shape: ((K), steps, dim)
+        dat = dat.reshape([-1, 2])
 
-        # Prepare canvas
+        # Prepare the canvas.
         if not isinstance(source, Figure):
             h, w = source.shape[:2]
-            plt.figure(figsize=(h/100, w/100), dpi=100)
+            plt.figure(figsize=(h / 100, w / 100), dpi=100)
 
-        # Draw distribution
+        # Draw the distribution.
         import seaborn as sns
         sns.kdeplot(x=dat[..., 0], y=dat[..., 1], fill=True)
 
         if isinstance(source, Figure):
             return source
 
-        # Post process images
-        # (by adding distributions to the original image)
+        # Post-process images by adding distributions to the original image.
         plt.subplots_adjust(top=1, bottom=0, right=1,
                             left=0, hspace=0, wspace=0)
         plt.margins(0, 0)
@@ -144,9 +148,9 @@ class CoordinateHelper(BaseVisHelper):
         plt.savefig(path := os.path.join(r, DISTRIBUTION_TEMP_NAME))
         plt.close()
 
-        f_dis = cv2.imread(path)
+        f_dis = np.array(cv2.imread(path))
         f_dis = np.transpose(f_dis, [1, 0, 2])[:, ::-1, :]
-        f_dis_alpha = (255 * (np.sum(f_dis, axis=-1) < 255*3)).astype(int)
+        f_dis_alpha = (255 * (np.sum(f_dis, axis=-1) < 255 * 3)).astype(int)
         f_dis_png = np.concatenate([f_dis, f_dis_alpha[..., None]], axis=-1)
         source = ADD(source, f_dis_png, alpha=alpha, type='auto')
         return source
@@ -156,10 +160,13 @@ class BoundingboxHelper(BaseVisHelper):
 
     def draw_single(self, source: np.ndarray,
                     inputs: np.ndarray,
-                    png: np.ndarray,
+                    png: np.ndarray | MatLike | None,
                     color=(255, 255, 255),
                     width=3,
                     draw_center: bool | int = True):
+
+        if png is None:
+            return source
 
         (y1, x1, y2, x2) = inputs[:4]
         color = tuple([int(c) for c in color])
@@ -171,14 +178,14 @@ class BoundingboxHelper(BaseVisHelper):
         source[:, :, -1] = 255 * np.sign(source[:, :, 0])
 
         if draw_center:
-            center = ((x1 + x2)//2, (y1 + y2)//2)
+            center = ((x1 + x2) // 2, (y1 + y2) // 2)
             source = ADD(source, png, center)
 
         return source
 
     def draw_traj(self, source: np.ndarray,
                   inputs: np.ndarray,
-                  png: np.ndarray,
+                  png: np.ndarray | MatLike | None,
                   color=(255, 255, 255),
                   width=3,
                   do_not_draw_lines: None | bool = None):
@@ -196,6 +203,7 @@ class BoundingboxHelper(BaseVisHelper):
 
 
 class Normal2DCanvas(BaseCanvasManager):
+
     def __init__(self, args: Args | None = None,
                  manager: Any = None,
                  name: str | None = 'Visualization Helper'):
@@ -204,7 +212,7 @@ class Normal2DCanvas(BaseCanvasManager):
 
         anntype = self.args.anntype
 
-        # Get basic vis helper
+        # Get the basic visualization helper.
         if anntype == ANN_TYPES.CO_2D:
             h = CoordinateHelper
         elif anntype == ANN_TYPES.BB_2D:
@@ -214,24 +222,40 @@ class Normal2DCanvas(BaseCanvasManager):
 
         self.helper = h(self.vis_args)
 
-        # Read png files
+        # Read PNG files.
         self.obs_file = cv2.imread(OBS_IMAGE, -1)
         self.neighbor_file = cv2.imread(NEI_OBS_IMAGE, -1)
         self.current_file = cv2.imread(CURRENT_IMAGE, -1)
         self.pred_file = cv2.imread(PRED_IMAGE, -1)
         self.gt_file = cv2.imread(GT_IMAGE, -1)
 
+        # Core canvas.
+        self.__canvas: np.ndarray | None = None
+
+    def get_canvas(self):
+        """
+        Get the canvas object. It will raise a ValueError when this canvas
+        object is `None`.
+        """
+        if self.__canvas is None:
+            raise ValueError
+        else:
+            return self.__canvas
+
+    def update_canvas(self, new_canvas: np.ndarray | None):
+        self.__canvas = new_canvas
+
     def init_canvas(self, init_image: Any | None = None, *args, **kwargs):
         if init_image is None:
-            raise (ValueError)
+            raise ValueError
 
         f = init_image
         if self.vis_args.draw_on_empty_canvas:
             f = 255 * np.ones_like(f)
-        return f
 
-    def text(self, source: np.ndarray,
-             texts: list[str],
+        self.update_canvas(f)
+
+    def text(self, texts: list[str],
              x: int = 10,
              y: int = 40,
              font: int = cv2.FONT_HERSHEY_COMPLEX,
@@ -239,30 +263,31 @@ class Normal2DCanvas(BaseCanvasManager):
              width: int = 2,
              line_height: int = 30,
              shadow_bias: int = 3,
-             *args, **kwargs) -> np.ndarray:
+             *args, **kwargs):
         """
-        Put text on one image
+        Overlay text onto the image.
         """
+        f = self.get_canvas()
+
         for index, text in enumerate(texts):
-            source = cv2.putText(source, text,
-                                 org=(x + shadow_bias, y + index *
-                                      line_height + shadow_bias),
-                                 fontFace=font,
-                                 fontScale=size,
-                                 color=(0, 0, 0),
-                                 thickness=width)
+            f = cv2.putText(f, text,
+                            org=(x + shadow_bias, y + index *
+                                 line_height + shadow_bias),
+                            fontFace=font,
+                            fontScale=size,
+                            color=(0, 0, 0),
+                            thickness=width)
 
-            source = cv2.putText(source, text,
-                                 org=(x, y + index * line_height),
-                                 fontFace=font,
-                                 fontScale=size,
-                                 color=(255, 255, 255),
-                                 thickness=width)
+            f = cv2.putText(f, text,
+                            org=(x, y + index * line_height),
+                            fontFace=font,
+                            fontScale=size,
+                            color=(255, 255, 255),
+                            thickness=width)
 
-        return source
+        self.update_canvas(f)
 
-    def vis(self, source: np.ndarray,
-            obs: np.ndarray | None = None,
+    def vis(self, obs: np.ndarray | None = None,
             gt: np.ndarray | None = None,
             pred: np.ndarray | None = None,
             neighbor: np.ndarray | None = None,
@@ -270,21 +295,21 @@ class Normal2DCanvas(BaseCanvasManager):
             pred_colors: np.ndarray | None = None,
             *args, **kwargs):
         """
-        Draw one agent's observations, predictions, and groundtruths.
+        Draw one agent's observations, predictions, and ground-truths.
 
-        :param source: The image file.
         :param obs: (optional) The observations in *pixel* scale.
         :param gt: (optional) The ground truth in *pixel* scale.
-        :param pred: (optional) The predictions in *pixel* scale,\
+        :param pred: (optional) The predictions in *pixel* scale, 
             shape = `(K, steps, dim)`.
-        :param neighbor: (optional) The observed neighbors' positions\
-             in *pixel* scale, shape = `(batch, dim)`.
+        :param neighbor: (optional) The observed neighbors' positions 
+            in *pixel* scale, shape = `(batch, dim)`.
         :param draw_distribution: Controls whether to draw as a distribution.
         :param alpha: The alpha channel coefficient.
         """
+        source = self.get_canvas()
         f = np.zeros([source.shape[0], source.shape[1], 4])
 
-        # draw neighbors' observed trajectories
+        # Draw neighbors' observed trajectories.
         if neighbor is not None:
             f = self.helper.draw_traj(f, neighbor[..., -1:, :],
                                       self.current_file,
@@ -295,7 +320,7 @@ class Normal2DCanvas(BaseCanvasManager):
             for nei in neighbor:
                 f = self.helper.draw_traj(f, nei, self.neighbor_file)
 
-        # draw predicted trajectories
+        # Draw predicted trajectories.
         if pred is not None:
             if self.vis_args.draw_distribution:
                 alpha = 0.8 if not self.vis_args.draw_on_empty_canvas else 1.0
@@ -305,12 +330,15 @@ class Normal2DCanvas(BaseCanvasManager):
                 if pred_colors is None:
                     pred_colors = 255 * np.random.rand(pred.shape[0], 3)
 
-                for (pred_k, color_k) in zip(pred, pred_colors):
+                for pred_k, color_k in zip(pred, pred_colors):
                     f = self.helper.draw_traj(
-                        f, pred_k, self.pred_file,
-                        color=color_k)
+                        source=f,
+                        inputs=pred_k,
+                        png=self.pred_file,
+                        color=color_k,
+                    )
 
-        # draw observed and groundtruth trajectories
+        # Draw observed and ground-truth trajectories.
         if obs is not None:
             if obs.ndim == 2:
                 obs = obs[np.newaxis]
@@ -325,13 +353,14 @@ class Normal2DCanvas(BaseCanvasManager):
             for _gt in gt:
                 f = self.helper.draw_traj(f, _gt, self.gt_file)
 
-        # draw the background image
+        # Draw the background image.
         if background is not None:
-            f = ADD(background, f, [f.shape[1]//2, f.shape[0]//2])
+            f = ADD(background, f, [f.shape[1] // 2, f.shape[0] // 2])
 
-        # add the original image
-        f = ADD(source, f, [f.shape[1]//2, f.shape[0]//2])
-        return f
+        # Add the original image.
+        f = ADD(source, f, [f.shape[1] // 2, f.shape[0] // 2])
+
+        self.update_canvas(f)
 
 
 def ADD(source: np.ndarray,
@@ -340,26 +369,26 @@ def ADD(source: np.ndarray,
         alpha=1.0,
         type=None):
     """
-    Add a png to the source image
+    Add a PNG to the source image.
 
     :param source: The source image, shape = `(H, W, 3)` or `(H, W, 4)`.
-    :param png: The png image, shape = `(H, W, 3)` or `(H, W, 4)`.
-    :param position: The pixel-level position in the source image, shape = `(2)`.
+    :param png: The PNG image, shape = `(H, W, 3)` or `(H, W, 4)`.
+    :param position: The pixel-level position in the source image, shape `(2)`.
     :param alpha: Transparency.
     """
     if position is None:
         if type == 'auto':
-            position = [source.shape[1]//2, source.shape[0]//2]
+            position = [source.shape[1] // 2, source.shape[0] // 2]
         else:
             raise ValueError
 
     yc, xc = position
     xp, yp, _ = png.shape
     xs, ys, _ = source.shape
-    x0, y0 = [xc-xp//2, yc-yp//2]
+    x0, y0 = [xc - xp // 2, yc - yp // 2]
 
     if png.shape[-1] == 4:
-        png_mask = png[:, :, 3:4]/255
+        png_mask = png[:, :, 3:4] / 255
         png_file = png[:, :, :3]
     else:
         png_mask = np.ones_like(png[:, :, :1])

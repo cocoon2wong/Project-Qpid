@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-20 14:57:17
+@LastEditTime: 2026-03-23 17:57:51
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -36,29 +36,29 @@ class Visualization(BaseManager):
 
         super().__init__(manager=manager, name=name)
 
-        # For type hinting
+        # For type hinting.
         self.manager: Structure
 
-        # Init vis-related args
+        # Initialize visualization-related args.
         self.vis_args = self.args.register_subargs(
             VisArgs, 'Visualization Args')
 
-        # Get information of the video clip
+        # Get information about the video clip.
         self.info: Clip = self.manager.split_manager.clips_dict[clip]
 
-        # Try to open the video
+        # Try to open the video.
         video_path = self.info.video_path
         vc = cv2.VideoCapture(video_path)
         self.video_capture = vc if vc.open(video_path) else None
 
-        # Try to read the scene image
+        # Try to read the scene image.
         try:
             img_path = self.info.other_files['rgb_image']
             self.scene_image = cv2.imread(img_path)
         except:
             self.scene_image = None
 
-        # Init the canvas manager and visualization helpers
+        # Initialize the canvas manager and visualization helpers.
         self.canvas_helper = helpers.get(
             anntype=self.args.anntype,
             video_status=self.video_capture,
@@ -88,7 +88,7 @@ class Visualization(BaseManager):
         return base_scale
 
     def run_commands(self, outputs: list[torch.Tensor]):
-        # Make the dir to save images
+        # Create the directory to save images.
         save_base_path = dir_check(self.args.log_dir) \
             if self.args.load == 'null' \
             else self.args.load
@@ -96,10 +96,10 @@ class Visualization(BaseManager):
         img_dir = dir_check(os.path.join(save_base_path, 'VisualTrajs'))
         save_format = os.path.join(img_dir, self.info.clip_name + '_{}')
 
-        # Unpack model outputs
+        # Unpack model outputs.
         pred_all = outputs[0].numpy()
 
-        # Filter agents by their indices and types
+        # Filter agents by their indices and types.
         if self.vis_args.draw_index == 'all':
             agent_indexes = list(range(len(pred_all)))
         else:
@@ -110,14 +110,14 @@ class Visualization(BaseManager):
         if self.vis_args.draw_exclude_type != 'null':
             ex_types = self.vis_args.draw_exclude_type.split("_")
 
-        # Start visualizing
+        # Start visualizing.
         self.log(f'Start saving images into `{img_dir}`...')
         for index in self.timebar(agent_indexes, 'Saving...'):
-            # Write traj into the agent
+            # Write the predicted trajectory into the agent.
             agent = self.manager.agent_manager.agents[index]
             agent.write_pred(pred_all[index])
 
-            # choose to draw as a video or a single image
+            # Choose whether to draw as a video or a single image.
             if self.args.draw_videos != 'null':
                 frames = agent.frames
             else:
@@ -140,7 +140,7 @@ class Visualization(BaseManager):
 
     def get_image(self, frame: int) -> np.ndarray:
         """
-        Get a frame from the video
+        Get a frame from the video.
 
         :param frame: The frame number of the image.
         """
@@ -190,7 +190,7 @@ class Visualization(BaseManager):
 
     def pixel2real(self, pixel_pos: np.ndarray):
         """
-        Transfer coordinates from pixel scale to the real scale.
+        Convert coordinates from the pixel scale to the real scale.
 
         :param pixel_pos: Coordinates in pixels, shape = (..., 2).
         :return r: Coordinates in meters, shape = (..., 2).
@@ -211,7 +211,7 @@ class Visualization(BaseManager):
 
     def real2pixel(self, real_pos, integer=True):
         """
-        Transfer coordinates from real scale to pixels.
+        Convert coordinates from the real scale to pixels.
 
         :param real_pos: Coordinates, shape = (n, 2) or (k, n, 2).
         :return pixel_pos: Coordinates in pixels.
@@ -242,7 +242,8 @@ class Visualization(BaseManager):
     def rescale(self, f: np.ndarray):
         if (s := self.ui_scale) != 1:
             x, y = f.shape[:2]
-            f = cv2.resize(f, (int(y/s), int(x/s)))
+            f = cv2.resize(f, (int(y/s), int(x/s)),
+                           interpolation=cv2.INTER_NEAREST)
         return f
 
     def draw(self, agent: BaseInputObject,
@@ -255,29 +256,31 @@ class Visualization(BaseManager):
         Visualize forecasted trajectories.
 
         :param agent: The agent object (`Agent`) to visualize.
-        :param frames: A list frames of current observation steps to be \
-            visualized. Pass a list with only one element or a single int \
-            value to visualize forecasted trajectories as an image file.
-        :param save_name: The name to save the output video, which does not \
-            contain the file format.
-        :param save_name_postfix: Choose whether to add the `frame_index` \
-            after the file name. (Like `'zara1_0.jpg'` -> `'zara1_0_70.jpg'`)
-        :param draw_with_plt: Choose whether to draw with plt by default.
-        :param interp: Choose whether to draw the full video or only
-            draw on the sampled time steps.
+        :param frames: A list of frames representing the current observation
+            steps to be visualized. Pass a list with only one element or a
+            single int value to visualize forecasted trajectories as an
+            image file.
+        :param save_name: The name to save the output video, which does not
+            contain the file format extension.
+        :param save_name_postfix: Controls whether to add the `frame_index`
+            after the file name (e.g., `'zara1_0.jpg'` -> `'zara1_0_70.jpg'`).
+        :param draw_with_plt: Controls whether to draw with matplotlib (plt)
+            by default.
+        :param interp: Controls whether to draw the full video or only draw
+            on the sampled time steps.
 
         :return file_name: Name of the saved image (at the current moment).
         """
 
-        # Prepare folder
+        # Prepare folder.
         dir_check(os.path.dirname(save_name))
 
-        # Try obtaining the RGB image
-        # Decide to draw on RGB images or plt canvas
+        # Try obtaining the RGB image.
+        # Decide whether to draw on RGB images or a plt canvas.
         status = -1
         f = None
 
-        # Config the video/image/plt canvas to be visualized and initialize it
+        # Configure and initialize the video/image/plt canvas to be visualized.
         if not draw_with_plt:
             if self.video_capture is not None:
                 status = DRAW_ON_VIDEO
@@ -299,7 +302,7 @@ class Visualization(BaseManager):
         else:
             init_image = self.get_static_image()
 
-        # Update the canvas helper
+        # Update the canvas helper.
         canvas_type = helpers.get(
             anntype=self.args.anntype,
             video_status=self.video_capture,
@@ -310,10 +313,11 @@ class Visualization(BaseManager):
         if not isinstance(self.canvas_helper, canvas_type):
             self.canvas_helper = canvas_type(manager=self)
 
-        # Init the canvas
-        f = self.canvas_helper.init_canvas(init_image)
+        # Initialize the canvas (only to get the canvas size).
+        self.canvas_helper.init_canvas(init_image)
+        f = self.canvas_helper.get_canvas()
 
-        # Get shape of the target video
+        # Get the shape of the target video.
         if isinstance(f, np.ndarray):
             video_shape = (f.shape[1], f.shape[0])
         elif isinstance(f, Figure):
@@ -322,19 +326,19 @@ class Visualization(BaseManager):
         else:
             raise ValueError(f)
 
-        # Prepare trajectories
+        # Prepare trajectories.
         sampled_frames: list[int] = list(agent.frames)
         obs, pred, gt, nei = self.get_trajectories(agent, real2pixel)
         obs_len = agent.obs_length
+        pred_colors = None
 
-        # Visualize as a single image
+        # Visualize as a single image.
         if (isinstance(frames, (int, float)) or
                 (getattr(frames, 'size', 0) == 1)):
-            frames = [int(frames)]
+            frames = [int(frames)]  # type: ignore
             video_writer = None
-            pred_colors = None
 
-        # Open the video writer
+        # Open the video writer.
         else:
             if status == DRAW_ON_PLTCANVAS:
                 frames = frames[:obs_len]
@@ -344,28 +348,50 @@ class Visualization(BaseManager):
 
             video_writer = cv2.VideoWriter(
                 save_name + '.mp4',
-                cv2.VideoWriter_fourcc(*'mp4v'),
+                cv2.VideoWriter_fourcc(*'mp4v'),    # type: ignore
                 fps=fps,
                 frameSize=video_shape,
             )
 
-        # Interpolate frames
+        # Interpolate frames.
         if interp and (status != DRAW_ON_PLTCANVAS):
-            frames = np.arange(frames[0], frames[-1]+1)
+            frames = np.arange(frames[0], frames[-1] + 1)
 
-        # Config the timebar
+        # Configure the timebar.
         desc = 'Processing frames...'
         if not self.bar:
             timebar = self.timebar(frames, desc)
         else:
             timebar = SecondaryBar(frames, manager=self, desc=desc)
 
-        # Start visualizing
+        # Assign random colors for predictions.
+        if pred_colors is not None:
+            pass
+
+        # One prediction -> One color.
+        elif pred is None or self.vis_args.pred_color_mode == 0:
+            pred_colors = None
+
+        # K predictions for one agent -> One color.
+        elif self.vis_args.pred_color_mode == 1:
+            pred_colors = 255 * np.random.rand(*pred.shape[:-3], 3)
+            pred_colors = pred_colors[..., None, :]
+            pred_colors = pred_colors.repeat(pred.shape[-3], axis=-2)
+            pred_colors = pred_colors.reshape([-1, 3])
+
+        else:
+            pass
+
+        # Trajectories will be visualized one by one.
+        if pred is not None:
+            pred = pred.reshape([-1] + list(pred.shape[-2:]))
+
+        # Start visualizing.
         vis_func = self.canvas_helper.vis
         text_func = self.canvas_helper.text
 
         for frame in timebar:
-            # Get a new scene image
+            # Get a new scene image.
             if status == DRAW_ON_VIDEO:
                 init_image = self.get_image(frame)
             elif status == DRAW_ON_IMAGE:
@@ -375,10 +401,10 @@ class Visualization(BaseManager):
             else:
                 raise ValueError(status)
 
-            # Init canvas with the above image
-            f = self.canvas_helper.init_canvas(init_image)
+            # Initialize the canvas with the above image.
+            self.canvas_helper.init_canvas(init_image)
 
-            # Draw trajectories step-by-step
+            # Draw trajectories step-by-step.
             if frame in sampled_frames:
                 step = sampled_frames.index(frame)
                 obs_end = min(step, obs_len) + 1
@@ -391,29 +417,36 @@ class Visualization(BaseManager):
                 else:
                     gt_end = 0
 
+            # Draw neighbors' observations.
             if nei_end > 0 and (nei is not None):
-                f = vis_func(source=f, neighbor=nei[:, :nei_end])
+                vis_func(neighbor=nei[:, :nei_end])
 
-            f = vis_func(source=f, obs=obs[:obs_end])
+            # Draw the ego agent's observations.
+            vis_func(obs=obs[:obs_end])
 
-            # Draw predictions
-            if frame >= sampled_frames[obs_len-1]:
-                f = vis_func(source=f, pred=pred, pred_colors=pred_colors)
+            # Draw predictions.
+            if frame >= sampled_frames[obs_len - 1]:
+                vis_func(pred=pred, pred_colors=pred_colors)
 
-            # Draw ground truths
-            # On a video
+            # Draw ground truths.
+            if not self.vis_args.draw_groundtruths:
+                gt = None
+
+            # On a video.
             if (gt_end > 0) and (gt is not None):
-                f = vis_func(source=f, neighbor=gt[None, :step - obs_len + 1])
-                f = vis_func(source=f, gt=gt[:step - obs_len + 1])
+                vis_func(neighbor=gt[None, :step - obs_len + 1])
+                vis_func(gt=gt[:step - obs_len + 1])
 
-            # On a single image
+            # On a single image.
             elif (len(frames) == 1) and (gt is not None):
-                f = vis_func(source=f, gt=gt)
+                vis_func(gt=gt)
 
             if IF_PUT_TEXT_IN_VIDEOS:
-                f = text_func(f, self.get_text(frame, agent))
+                text_func(self.get_text(frame, agent))
 
-            # Save as images (on sampled points)
+            # Save as images (on sampled points).
+            f = self.canvas_helper.get_canvas()
+
             if frame in sampled_frames:
                 name_postfix = f'_f{frame}.jpg' if save_name_postfix else ''
                 saved_img_name = save_name + name_postfix
