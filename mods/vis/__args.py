@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 17:10:27
+@LastEditTime: 2026-03-23 18:29:01
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -37,16 +37,16 @@ class VisArgs(EmptyArgs):
         return self._arg('draw_index', 'all', argtype=TEMPORARY)
 
     @property
-    def draw_distribution(self) -> int:
+    def draw_distribution(self) -> float:
         """
-        (bool) Controls whether to draw predicted distributions instead of
-        several individual points.
+        Controls the bandwidth (smoothing) of the predicted trajectory
+        distributions.
 
-        - 0: Draws results as normal coordinates.
-        - 1: Draws all results as a distribution, where points from different
-          time steps are drawn with different colors.
+        - 0.0: Disable distribution drawing; draw as individual points.
+        - > 0.0: Enable KDE distribution drawing, where this value acts as
+          the `bw_adjust` parameter to control smoothing (e.g., 0.5).
         """
-        return self._arg('draw_distribution', 0, argtype=TEMPORARY,
+        return self._arg('draw_distribution', 0.0, argtype=TEMPORARY,
                          short_name='dd')
 
     @property
@@ -60,12 +60,13 @@ class VisArgs(EmptyArgs):
         return self._arg('distribution_steps', 'all', argtype=TEMPORARY)
 
     @property
-    def draw_on_empty_canvas(self) -> int:
+    def draw_on_empty_canvas(self) -> str:
         """
-        (bool) Controls whether to draw visualized results on an empty canvas
-        instead of the actual video frame.
+        Controls whether to draw on an empty (or a single-colored) canvas.
+        Set to `'null'` to disable, or pass a 6-char RGB HEX string
+        (e.g., `'EBEBEB'`).
         """
-        return self._arg('draw_on_empty_canvas', 0, argtype=TEMPORARY)
+        return self._arg('draw_on_empty_canvas', 'null', argtype=TEMPORARY)
 
     @property
     def draw_extra_outputs(self) -> int:

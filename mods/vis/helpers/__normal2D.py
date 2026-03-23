@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:44:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 18:05:46
+@LastEditTime: 2026-03-23 19:10:11
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -102,13 +102,16 @@ class CoordinateHelper(BaseVisHelper):
     def draw_dis(self, source: T,
                  pred: np.ndarray,
                  alpha: float,
+                 adjust: float = 1.0,
                  *args, **kwargs) -> T:
         """
         Draw forecasted trajectories as a spatial distribution.
 
-        :param source: The background image or the plt canvas.
+        :param source: The background image or the matplotlib (plt) canvas.
         :param pred: Model predictions, shape = `((K), steps, dim)`.
         :param alpha: Transparency (from 0 to 1).
+        :param adjust: Bandwidth adjustment factor for the KDE plot, 
+            controlling the smoothness of the distribution (default is 1.0).
         """
 
         # Prepare model predictions.
@@ -122,6 +125,10 @@ class CoordinateHelper(BaseVisHelper):
         # Inputs shape: ((K), steps, dim)
         dat = dat.reshape([-1, 2])
 
+        # Remove all illegal coordinates.
+        dat_cond = np.abs(dat.astype(np.float32)).sum(-1) < 0.1 * INIT_POSITION
+        dat = dat[np.where(dat_cond)[0]]
+
         # Prepare the canvas.
         if not isinstance(source, Figure):
             h, w = source.shape[:2]
@@ -129,7 +136,7 @@ class CoordinateHelper(BaseVisHelper):
 
         # Draw the distribution.
         import seaborn as sns
-        sns.kdeplot(x=dat[..., 0], y=dat[..., 1], fill=True)
+        sns.kdeplot(x=dat[..., 0], y=dat[..., 1], fill=True, bw_adjust=adjust)
 
         if isinstance(source, Figure):
             return source
@@ -250,8 +257,16 @@ class Normal2DCanvas(BaseCanvasManager):
             raise ValueError
 
         f = init_image
-        if self.vis_args.draw_on_empty_canvas:
-            f = 255 * np.ones_like(f)
+        c = self.vis_args.draw_on_empty_canvas
+
+        if c != 'null':
+            # Hardcode RGB string to BGR tuple.
+            bgr = (int(c[4:6], 16), int(c[2:4], 16), int(c[0:2], 16))
+
+            f = np.empty_like(f)
+            f[..., :3] = bgr
+            if f.shape[-1] == 4:
+                f[..., 3] = 255
 
         self.update_canvas(f)
 
@@ -322,10 +337,11 @@ class Normal2DCanvas(BaseCanvasManager):
 
         # Draw predicted trajectories.
         if pred is not None:
-            if self.vis_args.draw_distribution:
-                alpha = 0.8 if not self.vis_args.draw_on_empty_canvas else 1.0
+            if self.vis_args.draw_distribution != 0:
+                alpha = 0.8 if self.vis_args.draw_on_empty_canvas == 'null' else 0.9
                 f = self.helper.draw_dis(f, pred, alpha=alpha,
-                                         steps=self.vis_args.distribution_steps)
+                                         steps=self.vis_args.distribution_steps,
+                                         adjust=self.vis_args.draw_distribution)
             else:
                 if pred_colors is None:
                     pred_colors = 255 * np.random.rand(pred.shape[0], 3)
