@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:44:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 19:10:11
+@LastEditTime: 2026-03-23 20:23:17
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -271,36 +271,74 @@ class Normal2DCanvas(BaseCanvasManager):
         self.update_canvas(f)
 
     def text(self, texts: list[str],
-             x: int = 10,
-             y: int = 40,
-             font: int = cv2.FONT_HERSHEY_COMPLEX,
-             size: float = 0.9,
-             width: int = 2,
-             line_height: int = 30,
-             shadow_bias: int = 3,
+             x: int = 22,
+             y: int = 16,
+             size: int = 18,
+             line_height: int = 22,
+             shadow_bias: int = 2,
              *args, **kwargs):
         """
-        Overlay text onto the image.
+        Overlay text using PIL with Matplotlib's built-in DejaVu Sans font.
+        This avoids adding font files to the repository while ensuring 
+        high-quality anti-aliasing across all platforms.
         """
+        import os
+
+        import matplotlib
+        from PIL import Image, ImageDraw, ImageFont
+
         f = self.get_canvas()
+        is_rgba = f.shape[-1] == 4
 
-        for index, text in enumerate(texts):
-            f = cv2.putText(f, text,
-                            org=(x + shadow_bias, y + index *
-                                 line_height + shadow_bias),
-                            fontFace=font,
-                            fontScale=size,
-                            color=(0, 0, 0),
-                            thickness=width)
+        # Determine text color and shadow visibility.
+        bg = self.vis_args.draw_on_empty_canvas
+        if bg == 'null':
+            draw_shadow = True
+            text_color = (255, 255, 255)
+        else:
+            draw_shadow = False
+            # Calculate luminance to intelligently switch between black and white.
+            try:
+                r, g, b = int(bg[0:2], 16), int(bg[2:4], 16), int(bg[4:6], 16)
+                luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                text_color = (0, 0, 0) if luminance > 128 else (255, 255, 255)
+            except ValueError:
+                text_color = (0, 0, 0)
 
-            f = cv2.putText(f, text,
-                            org=(x, y + index * line_height),
-                            fontFace=font,
-                            fontScale=size,
-                            color=(255, 255, 255),
-                            thickness=width)
+        # Convert OpenCV array to PIL Image.
+        f_uint8 = np.clip(f, 0, 255).astype(np.uint8)
+        cv_color = cv2.COLOR_BGRA2RGBA if is_rgba else cv2.COLOR_BGR2RGB
+        pil_img = Image.fromarray(cv2.cvtColor(f_uint8, cv_color))
+        draw = ImageDraw.Draw(pil_img)
 
-        self.update_canvas(f)
+        # Dynamically locate Matplotlib's built-in font.
+        try:
+            mpl_data_dir = matplotlib.get_data_path()
+            # DejaVuSans-Bold.ttf or DejaVuSans.ttf
+            font_path = os.path.join(
+                mpl_data_dir, 'fonts', 'ttf', 'DejaVuSans-Bold.ttf'
+            )
+            font = ImageFont.truetype(font_path, size)
+        except Exception:
+            font = ImageFont.load_default()
+
+        # Draw texts.
+        for index, text_line in enumerate(texts):
+            current_y = y + index * line_height
+
+            # Draw shadow only if drawing on the original video/image.
+            if draw_shadow:
+                draw.text((x + shadow_bias, current_y + shadow_bias),
+                          text_line, font=font, fill=(0, 0, 0))
+
+            # Draw main text.
+            draw.text((x, current_y), text_line, font=font, fill=text_color)
+
+        # Convert back to OpenCV format.
+        cv_back = cv2.COLOR_RGBA2BGRA if is_rgba else cv2.COLOR_RGB2BGR
+        f_out = cv2.cvtColor(np.array(pil_img), cv_back)
+
+        self.update_canvas(f_out.astype(f.dtype))
 
     def vis(self, obs: np.ndarray | None = None,
             gt: np.ndarray | None = None,

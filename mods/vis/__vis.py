@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 17:57:51
+@LastEditTime: 2026-03-23 20:08:57
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -160,10 +160,10 @@ class Visualization(BaseManager):
         return self.rescale(self.scene_image.copy())
 
     def get_text(self, frame: int, agent: BaseInputObject) -> list[str]:
-        return [self.info.clip_name,
-                f'frame: {str(frame).zfill(6)}',
-                f'agent: {agent.id}',
-                f'type: {agent.type}']
+        return [
+            f'{self.info.clip_name} @ {str(frame).zfill(6)}f',
+            f'Agent {agent.id} ({agent.type.replace('"', '')})',
+        ]
 
     def get_trajectories(self, agent: BaseInputObject, real2pixel=True):
         obs = agent.traj_masked
