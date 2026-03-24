@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 20:08:57
+@LastEditTime: 2026-03-24 17:16:27
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -162,7 +162,7 @@ class Visualization(BaseManager):
     def get_text(self, frame: int, agent: BaseInputObject) -> list[str]:
         return [
             f'{self.info.clip_name} @ {str(frame).zfill(6)}f',
-            f'Agent {agent.id} ({agent.type.replace('"', '')})',
+            f'Agent {agent.id} ({agent.type})',
         ]
 
     def get_trajectories(self, agent: BaseInputObject, real2pixel=True):
@@ -417,13 +417,6 @@ class Visualization(BaseManager):
                 else:
                     gt_end = 0
 
-            # Draw neighbors' observations.
-            if nei_end > 0 and (nei is not None):
-                vis_func(neighbor=nei[:, :nei_end])
-
-            # Draw the ego agent's observations.
-            vis_func(obs=obs[:obs_end])
-
             # Draw predictions.
             if frame >= sampled_frames[obs_len - 1]:
                 vis_func(pred=pred, pred_colors=pred_colors)
@@ -432,14 +425,25 @@ class Visualization(BaseManager):
             if not self.vis_args.draw_groundtruths:
                 gt = None
 
+            # Concat the current observation point to the gt
+            if gt is not None:
+                gt = np.concat([obs[-1:], gt], axis=-2)
+
             # On a video.
             if (gt_end > 0) and (gt is not None):
-                vis_func(neighbor=gt[None, :step - obs_len + 1])
-                vis_func(gt=gt[:step - obs_len + 1])
+                vis_func(neighbor=gt[None, :step - obs_len + 2])
+                vis_func(gt=gt[:step - obs_len + 2])
 
             # On a single image.
             elif (len(frames) == 1) and (gt is not None):
                 vis_func(gt=gt)
+
+            # Draw neighbors' observations.
+            if nei_end > 0 and (nei is not None):
+                vis_func(neighbor=nei[:, :nei_end])
+
+            # Draw the ego agent's observations.
+            vis_func(obs=obs[:obs_end])
 
             if IF_PUT_TEXT_IN_VIDEOS:
                 text_func(self.get_text(frame, agent))

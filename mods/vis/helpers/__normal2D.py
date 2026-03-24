@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:44:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 20:23:17
+@LastEditTime: 2026-03-24 17:02:17
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -346,6 +346,7 @@ class Normal2DCanvas(BaseCanvasManager):
             neighbor: np.ndarray | None = None,
             background: np.ndarray | None = None,
             pred_colors: np.ndarray | None = None,
+            draw_neighbor_markers: bool = True,
             *args, **kwargs):
         """
         Draw one agent's observations, predictions, and ground-truths.
@@ -364,9 +365,10 @@ class Normal2DCanvas(BaseCanvasManager):
 
         # Draw neighbors' observed trajectories.
         if neighbor is not None:
-            f = self.helper.draw_traj(f, neighbor[..., -1:, :],
-                                      self.current_file,
-                                      do_not_draw_lines=True)
+            if draw_neighbor_markers:
+                f = self.helper.draw_traj(f, neighbor[..., -1:, :],
+                                          self.current_file,
+                                          do_not_draw_lines=True)
 
             neighbor = neighbor if self.vis_args.draw_full_neighbors \
                 else neighbor[..., -1:, :]
