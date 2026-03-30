@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-24 17:16:27
+@LastEditTime: 2026-03-30 16:02:43
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -374,7 +374,9 @@ class Visualization(BaseManager):
 
         # K predictions for one agent -> One color.
         elif self.vis_args.pred_color_mode == 1:
-            pred_colors = 255 * np.random.rand(*pred.shape[:-3], 3)
+            rng = np.random.default_rng(seed=42)
+            pred_colors = 255 * rng.random((*pred.shape[:-3], 3))
+
             pred_colors = pred_colors[..., None, :]
             pred_colors = pred_colors.repeat(pred.shape[-3], axis=-2)
             pred_colors = pred_colors.reshape([-1, 3])
@@ -441,6 +443,9 @@ class Visualization(BaseManager):
             # Draw neighbors' observations.
             if nei_end > 0 and (nei is not None):
                 vis_func(neighbor=nei[:, :nei_end])
+
+                if self.vis_args.draw_neighbor_IDs:
+                    self.canvas_helper.vis_neighbor_IDs(nei[:, :nei_end])
 
             # Draw the ego agent's observations.
             vis_func(obs=obs[:obs_end])

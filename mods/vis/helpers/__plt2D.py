@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-06-17 10:01:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 18:01:59
+@LastEditTime: 2026-03-30 16:23:13
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -58,8 +58,29 @@ class PLT2DCanvas(BaseCanvasManager):
 
         self.update_canvas(f)
 
-    def text(self, texts: list[str], *args, **kwargs):
-        self.get_canvas().gca().set_title(', '.join(texts))
+    def text(self, texts: list[str],
+             x: int = -1,
+             y: int = -1,
+             size: int = 10,
+             text_mode='title',
+             *args, **kwargs):
+
+        if text_mode == 'title':
+            self.get_canvas().gca().set_title(', '.join(texts))
+            return
+
+        plt.text(x + 0.14, y + 0.14,
+                 ' '.join(texts),
+                 fontsize=size,
+                 ha='center',
+                 va='bottom',
+                 color='black',
+                 bbox=dict(
+                     boxstyle='round,pad=0.3',
+                     facecolor='gray',
+                     alpha=0.5,
+                     edgecolor='none'
+                 ))
 
     def vis(self, obs: np.ndarray | None = None,
             gt: np.ndarray | None = None,
@@ -113,3 +134,7 @@ class PLT2DCanvas(BaseCanvasManager):
                         f.plot(p[:, 0], p[:, 1], _p + 's', color=c / 255)
 
         f.axis('equal')
+
+    def vis_neighbor_IDs(self, neighbor: np.ndarray):
+        for id, nei_pos in enumerate(neighbor[..., -1, :]):
+            self.text([f'{id}'], x=nei_pos[0], y=nei_pos[1], text_mode='0')

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:28:59
 @LastEditors: Conghao Wong
-@LastEditTime: 2025-09-16 20:29:45
+@LastEditTime: 2026-03-30 16:24:03
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -71,7 +71,7 @@ class BaseCanvasManager(BaseManager):
 
         self.vis_args = self.args.register_subargs(
             VisArgs, 'Visualization Args')
-        
+
     def init_canvas(self, init_image: Any | None = None, *args, **kwargs):
         raise NotImplementedError   # <- Define this method in subclasses
 
@@ -85,3 +85,6 @@ class BaseCanvasManager(BaseManager):
             neighbor: np.ndarray | None = None,
             *args, **kwargs):
         raise NotImplementedError   # <- Define this method in subclasses
+
+    def vis_neighbor_IDs(self, neighbor: np.ndarray):
+        return                      # <- Define this method in subclasses

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-23 18:29:01
+@LastEditTime: 2026-03-30 16:24:53
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -91,6 +91,14 @@ class VisArgs(EmptyArgs):
         visualization.
         """
         return self._arg('draw_groundtruths', 1, argtype=TEMPORARY)
+
+    @property
+    def draw_neighbor_IDs(self) -> int:
+        """
+        (bool) Controls whether to draw the index of neighbors during
+        visualization.
+        """
+        return self._arg('draw_neighbor_IDs', 0, argtype=TEMPORARY)
 
     @property
     def draw_full_neighbors(self) -> int:
