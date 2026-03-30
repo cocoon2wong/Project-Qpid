@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:44:09
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-30 16:11:17
+@LastEditTime: 2026-03-30 20:06:19
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -418,8 +418,8 @@ class Normal2DCanvas(BaseCanvasManager):
 
         self.update_canvas(f)
 
-    def vis_neighbor_IDs(self, neighbor: np.ndarray):
-        for id, nei_pos in enumerate(neighbor[..., -1, :]):
+    def vis_neighbor_IDs(self, neighbor: np.ndarray, IDs: list[int]):
+        for id, nei_pos in zip(IDs, neighbor[..., -1, :]):
             self.text([f'{id}'], x=nei_pos[1], y=nei_pos[0], size=22)
 
 

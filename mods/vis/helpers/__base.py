@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2025-09-16 19:28:59
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-30 16:24:03
+@LastEditTime: 2026-03-30 20:07:36
 @Github: https://cocoon2wong.github.io
 @Copyright 2025 Conghao Wong, All Rights Reserved.
 """
@@ -86,5 +86,5 @@ class BaseCanvasManager(BaseManager):
             *args, **kwargs):
         raise NotImplementedError   # <- Define this method in subclasses
 
-    def vis_neighbor_IDs(self, neighbor: np.ndarray):
+    def vis_neighbor_IDs(self, neighbor: np.ndarray, IDs: list[int]):
         return                      # <- Define this method in subclasses

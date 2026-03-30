@@ -135,6 +135,6 @@ class PLT2DCanvas(BaseCanvasManager):
 
         f.axis('equal')
 
-    def vis_neighbor_IDs(self, neighbor: np.ndarray):
-        for id, nei_pos in enumerate(neighbor[..., -1, :]):
+    def vis_neighbor_IDs(self, neighbor: np.ndarray, IDs: list[int]):
+        for id, nei_pos in zip(IDs, neighbor[..., -1, :]):
             self.text([f'{id}'], x=nei_pos[0], y=nei_pos[1], text_mode='0')

@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-30 16:02:43
+@LastEditTime: 2026-03-30 20:07:47
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -420,7 +420,8 @@ class Visualization(BaseManager):
                     gt_end = 0
 
             # Draw predictions.
-            if frame >= sampled_frames[obs_len - 1]:
+            if (self.vis_args.draw_predictions and
+                    frame >= sampled_frames[obs_len - 1]):
                 vis_func(pred=pred, pred_colors=pred_colors)
 
             # Draw ground truths.
@@ -445,7 +446,14 @@ class Visualization(BaseManager):
                 vis_func(neighbor=nei[:, :nei_end])
 
                 if self.vis_args.draw_neighbor_IDs:
-                    self.canvas_helper.vis_neighbor_IDs(nei[:, :nei_end])
+                    # IDs will be assigned according to l2 distance to the ego.
+                    d = np.linalg.norm(nei[:, -1, :] - obs[-1:, :], 2, axis=-1)
+                    ids = list(np.argsort(np.argsort(d)))
+
+                    self.canvas_helper.vis_neighbor_IDs(
+                        neighbor=nei[:, :nei_end],
+                        IDs=ids,
+                    )
 
             # Draw the ego agent's observations.
             vis_func(obs=obs[:obs_end])

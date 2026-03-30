@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-30 16:24:53
+@LastEditTime: 2026-03-30 21:09:39
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -83,6 +83,13 @@ class VisArgs(EmptyArgs):
         trajectory points.
         """
         return self._arg('draw_lines', 0, argtype=TEMPORARY)
+
+    @property
+    def draw_predictions(self) -> int:
+        """
+        (bool) Controls whether to draw prediction during visualization.
+        """
+        return self._arg('draw_predictions', 1, argtype=TEMPORARY)
 
     @property
     def draw_groundtruths(self) -> int:
