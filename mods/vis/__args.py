@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2023-10-17 09:52:24
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-30 21:09:39
+@LastEditTime: 2026-04-07 19:59:06
 @Description: file content
 @Github: https://cocoon2wong.github.io
 @Copyright 2023 Conghao Wong, All Rights Reserved.
@@ -102,10 +102,14 @@ class VisArgs(EmptyArgs):
     @property
     def draw_neighbor_IDs(self) -> int:
         """
-        (bool) Controls whether to draw the index of neighbors during
-        visualization.
+        Controls whether to draw the index of neighbors during
+        visualization. It accepts an integer value. Set it to `0` to disable
+        this function. Set it to `1` to visualize all neighbors' IDs, while 
+        set it to an integer larger that `1` will only display this limited
+        number of neighbor IDs.
         """
-        return self._arg('draw_neighbor_IDs', 0, argtype=TEMPORARY)
+        return self._arg('draw_neighbor_IDs', 0, argtype=TEMPORARY,
+                         other_names=['draw_neighbor_ids'])
 
     @property
     def draw_full_neighbors(self) -> int:
@@ -138,8 +142,13 @@ class VisArgs(EmptyArgs):
     def pred_color_mode(self) -> int:
         """
         An integer indicating how stochastic predictions will be colored.
-        Set to `0` to assign a random color to each specific prediction
-        (shape `t_f * dim`), or `1` to assign the same random color to all
-        predictions of a single agent (shape `K * t_f * dim`).
+        It accepts the following values:
+
+        - `0`: Assign a random color to each specific prediction of each
+          agent to be forecasted (shaped with `t_f * dim`).
+        - `1`: Assign the same random color to all predictions of a single
+          agent.
+        - `2`: Assign the same random color to the $k$th stochastic prediction
+          of all agents to be forecasted.
         """
         return self._arg('pred_color_mode', 0, argtype=TEMPORARY)

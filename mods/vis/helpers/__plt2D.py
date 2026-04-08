@@ -129,6 +129,13 @@ class PLT2DCanvas(BaseCanvasManager):
                 if pred_colors is None:
                     pred_colors = 255 * np.random.rand(pred.shape[0], 3)
 
+                # RGB -> BGR
+                pred_colors = np.column_stack([
+                    pred_colors.T[2],
+                    pred_colors.T[1],
+                    pred_colors.T[0]
+                ])
+
                 for p, c in zip(pred, pred_colors):
                     if np.abs(p).max() < 0.5 * INIT_POSITION:
                         f.plot(p[:, 0], p[:, 1], _p + 's', color=c / 255)

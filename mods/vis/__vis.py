@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-03-30 20:07:47
+@LastEditTime: 2026-04-07 20:02:20
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -372,14 +372,29 @@ class Visualization(BaseManager):
         elif pred is None or self.vis_args.pred_color_mode == 0:
             pred_colors = None
 
-        # K predictions for one agent -> One color.
-        elif self.vis_args.pred_color_mode == 1:
+        # Assign colors for multimodal predictions
+        # Shape of `pred` should be `([N,] [K,] steps, dim)`
+        elif (m := self.vis_args.pred_color_mode) != 0:
             rng = np.random.default_rng(seed=42)
-            pred_colors = 255 * rng.random((*pred.shape[:-3], 3))
 
-            pred_colors = pred_colors[..., None, :]
-            pred_colors = pred_colors.repeat(pred.shape[-3], axis=-2)
-            pred_colors = pred_colors.reshape([-1, 3])
+            # K predictions for one agent -> One color.
+            if m == 1:
+                c = 255 * rng.random((*pred.shape[:-3], 3))
+                c = c[..., None, :]
+                c = c.repeat(pred.shape[-3], axis=-2)
+
+            # The kth prediction of all agents -> One color.
+            elif m == 2:
+                c = 255 * rng.random((pred.shape[-3], 3))
+                c = c[..., None, :, :]
+                c = c.repeat(pred.shape[-4], axis=-3)
+
+            else:
+                self.log(s := f'Wrong `pred_color_mode` setting `{m}`!',
+                         level='error')
+                raise ValueError(s)
+            
+            pred_colors = c.reshape([-1, 3])
 
         else:
             pass
@@ -445,10 +460,15 @@ class Visualization(BaseManager):
             if nei_end > 0 and (nei is not None):
                 vis_func(neighbor=nei[:, :nei_end])
 
-                if self.vis_args.draw_neighbor_IDs:
+                if (max_id := self.vis_args.draw_neighbor_IDs):
                     # IDs will be assigned according to l2 distance to the ego.
                     d = np.linalg.norm(nei[:, -1, :] - obs[-1:, :], 2, axis=-1)
                     ids = list(np.argsort(np.argsort(d)))
+
+                    if max_id >= 2:
+                        for idx in range(len(ids)):
+                            if ids[idx] >= max_id:
+                                ids[idx] = ''
 
                     self.canvas_helper.vis_neighbor_IDs(
                         neighbor=nei[:, :nei_end],
