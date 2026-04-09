@@ -152,3 +152,11 @@ class VisArgs(EmptyArgs):
           of all agents to be forecasted.
         """
         return self._arg('pred_color_mode', 0, argtype=TEMPORARY)
+
+    @property
+    def pred_color_seed(self) -> int:
+        """
+        The random seed used to visualize model predictions.
+        Set it to `0` to assign random colors for each prediction.
+        """
+        return self._arg('pred_color_seed', 0, argtype=TEMPORARY)

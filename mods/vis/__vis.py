@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-04-07 20:02:20
+@LastEditTime: 2026-04-09 14:33:44
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -375,7 +375,9 @@ class Visualization(BaseManager):
         # Assign colors for multimodal predictions
         # Shape of `pred` should be `([N,] [K,] steps, dim)`
         elif (m := self.vis_args.pred_color_mode) != 0:
-            rng = np.random.default_rng(seed=42)
+            rng = np.random.default_rng(
+                seed=42 if (s := self.vis_args.pred_color_seed) == 0 else s
+            )
 
             # K predictions for one agent -> One color.
             if m == 1:
@@ -387,13 +389,15 @@ class Visualization(BaseManager):
             elif m == 2:
                 c = 255 * rng.random((pred.shape[-3], 3))
                 c = c[..., None, :, :]
-                c = c.repeat(pred.shape[-4], axis=-3)
+
+                if pred.ndim == 4:
+                    c = c.repeat(pred.shape[-4], axis=-3)
 
             else:
                 self.log(s := f'Wrong `pred_color_mode` setting `{m}`!',
                          level='error')
                 raise ValueError(s)
-            
+
             pred_colors = c.reshape([-1, 3])
 
         else:
