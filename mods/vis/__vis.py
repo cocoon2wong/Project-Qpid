@@ -2,7 +2,7 @@
 @Author: Conghao Wong
 @Date: 2022-06-21 20:36:21
 @LastEditors: Conghao Wong
-@LastEditTime: 2026-04-09 14:33:44
+@LastEditTime: 2026-06-16 10:20:53
 @Description: file content
 @Github: https://github.com/cocoon2wong
 @Copyright 2022 Conghao Wong, All Rights Reserved.
@@ -449,7 +449,7 @@ class Visualization(BaseManager):
 
             # Concat the current observation point to the gt
             if gt is not None:
-                gt = np.concat([obs[-1:], gt], axis=-2)
+                gt = np.concatenate([obs[-1:], gt], axis=-2)
 
             # On a video.
             if (gt_end > 0) and (gt is not None):
